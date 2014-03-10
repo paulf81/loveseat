@@ -1,5 +1,6 @@
-CMakeCache.txt
-CMakeFiles
-Makefile
-cmake_install.cmake
-install_manifest.txt
+*.dep
+lib/
+applications/bin
+vdc*
+lnInclude/
+linux64GccDPOpt/
