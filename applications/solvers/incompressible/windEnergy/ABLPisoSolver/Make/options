@@ -1,0 +1,10 @@
+EXE_INC = \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
+    -I$(LIB_SRC)/finiteVolume/lnInclude 
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lincompressibleTransportModels \
+    -lfiniteVolume \
+    -lmeshTools 

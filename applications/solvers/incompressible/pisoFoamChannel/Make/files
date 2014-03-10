@@ -1,0 +1,3 @@
+pisoFoamChannel.C
+
+EXE = $(FOAM_USER_APPBIN)/pisoFoamChannel

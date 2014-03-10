@@ -1,0 +1,6 @@
+LOCAL_OBJECTS = \
+dynLagrangianCs.o\
+dynLagrangianCsBound.o\
+SchumannGrotzbachFvPatchField.o\
+fixedHeatingRateFvPatchField.o\
+velocityABLWallFunctionFvPatchField.o

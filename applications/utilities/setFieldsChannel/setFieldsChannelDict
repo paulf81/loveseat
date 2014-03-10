@@ -1,0 +1,58 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.0.x                                 |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "";
+    case            "";
+    instance        "";
+    local           "";
+
+    class           dictionary;
+    object          setFieldsChannelDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Base velocity profile scalar.
+C                         1.125;
+
+// Perturbation magnitude as a percentage of average mean velocity.
+epsilon                   0.1;
+
+// Average mean velocity.
+Ubar                      1.0;
+
+// Length of domain in flow direction.
+L1                        12.566370614359172953850573533118;
+
+// Length of domain in cross channel direction (2 times half-channel width).
+L2                        2.0;
+
+// Length of domain in spanwise direction.
+L3                        6.283185307179586476925286766559;
+
+// Flow direction.
+flowDirection             "x";
+
+// Cross-channel direction.
+crossChannelDirection     "y";
+
+// von Karman constant.
+kappa                     0.4;
+
+// Update internal field.
+updateInternalFields      true;
+
+// Update boundary field.
+updateBoundaryFields      true;
+
+// ************************************************************************* //

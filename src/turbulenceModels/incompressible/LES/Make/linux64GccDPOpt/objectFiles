@@ -1,0 +1,6 @@
+OBJECTS = \
+$(OBJECTS_DIR)/dynLagrangianCs.o\
+$(OBJECTS_DIR)/dynLagrangianCsBound.o\
+$(OBJECTS_DIR)/SchumannGrotzbachFvPatchField.o\
+$(OBJECTS_DIR)/fixedHeatingRateFvPatchField.o\
+$(OBJECTS_DIR)/velocityABLWallFunctionFvPatchField.o

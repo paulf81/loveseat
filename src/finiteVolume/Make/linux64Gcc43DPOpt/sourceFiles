@@ -1,0 +1,2 @@
+SOURCE = \
+$(derivedFvPatchFields)/buoyantPressureMod/buoyantPressureModFvPatchScalarField.C

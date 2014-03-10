@@ -1,0 +1,4 @@
+surfaceStressModels = derivedFvPatchFields/surfaceStressModels
+surfaceTemperatureFluxModels = derivedFvPatchFields/surfaceTemperatureFluxModels
+surfaceVelocityModels = derivedFvPatchFields/surfaceVelocityModels
+LIB = $(FOAM_USER_LIBBIN)/libuserincompressibleLESModels

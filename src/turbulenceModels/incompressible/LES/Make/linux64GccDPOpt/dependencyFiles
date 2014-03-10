@@ -1,0 +1,6 @@
+DEPENDENCIES = \
+dynLagrangianCs/dynLagrangianCs.dep\
+dynLagrangianCsBound/dynLagrangianCsBound.dep\
+$(surfaceStressModels)/SchumannGrotzbach/SchumannGrotzbachFvPatchField.dep\
+$(surfaceTemperatureFluxModels)/fixedHeatingRate/fixedHeatingRateFvPatchField.dep\
+$(surfaceVelocityModels)/velocityABLWallFunction/velocityABLWallFunctionFvPatchField.dep
