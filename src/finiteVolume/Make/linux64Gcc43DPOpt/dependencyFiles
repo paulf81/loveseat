@@ -1,2 +1,0 @@
-DEPENDENCIES = \
-$(derivedFvPatchFields)/buoyantPressureMod/buoyantPressureModFvPatchScalarField.dep
