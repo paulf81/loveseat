@@ -1,5 +1,0 @@
-include dynLagrangianCs/dynLagrangianCs.dep
-include dynLagrangianCsBound/dynLagrangianCsBound.dep
-include $(surfaceStressModels)/SchumannGrotzbach/SchumannGrotzbachFvPatchField.dep
-include $(surfaceTemperatureFluxModels)/fixedHeatingRate/fixedHeatingRateFvPatchField.dep
-include $(surfaceVelocityModels)/velocityABLWallFunction/velocityABLWallFunctionFvPatchField.dep
