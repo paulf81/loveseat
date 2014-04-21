@@ -144,13 +144,15 @@ private:
             //- List of names of turbine types in array.
             DynamicList<word> turbineType;
 
-	    //- List of booleans for including nacelle.
+	    //- List of booleans for including nacelle and a global boolean that is
+	    //  true if at least one turbine nacelle is included..
 	    DynamicList<bool> includeNacelle;
-            bool includeNacelleAllFalse;
+            bool includeNacelleSomeTrue;
 
-	    //- List of booleans for including tower.
+	    //- List of booleans for including tower and a global boolean that is
+	    //  true if at least one turbine tower is included.
 	    DynamicList<bool> includeTower;
-            bool includeNacelleAllFalse;
+            bool includeNacelleSomeTrue;
  
             //- List of locations of bases of turbines in array relative to origin (m).
             DynamicList<vector> baseLocation;
@@ -173,7 +175,9 @@ private:
             //  within which the actuator point lies.  "linear" uses linear
             //  interpolation from the cell within which the actuator point lies and
             //  from neighboring cells.
-            DynamicList<word> actuatorPointInterpType;
+            DynamicList<word> actuatorPointInterpTypeBlade;
+            DynamicList<word> actuatorPointInterpTypeNacelle;
+            DynamicList<word> actuatorPointInterpTypeTower;
 
             //- List of how the blades are updated in time.  "oldPosition" means that for
             //  computing the body force due to the blades for t^(n+1), the velocity is
@@ -206,8 +210,10 @@ private:
             //  actuator point from which the force is being projected, this normalization
             //  dies to 0.1% of its peak value.  Beyond that distance, stop doing the projection
             //  to save computational effort.  This variable is that distance in (m).  It
-            //  is based on epsilonBlade.  The larger epsilonBlade, the wider the projection.
-            DynamicList<scalar> projectionRadius;
+            //  is based on epsilon values.  The larger epsilon, the wider the projection.
+            DynamicList<scalar> projectionRadiusBlade;
+            DynamicList<scalar> projectionRadiusNacelle;
+            DynamicList<scalar> projectionRadiusTower;
 
             //- List of tip/root loss correction type for each turbine.  "none" applies
             //  no correction.  "Glauert" applies the Glauert tip loss correction.
@@ -563,7 +569,7 @@ private:
 	    //  geometry-aligned coordinate system (i.e., windVectorsBlade are in the
 	    //  bladeAlignedVectors coordinate system).
             DynamicList<List<List<vector> > > windVectorsBlade;
-	    DynamicList<List<vector> > windVectorsNacelle;
+	    DynamicList<vector> windVectorNacelle;
 	    DynamicList<List<vector> > windVectorsTower;
 
 	    //- Change in yaw each time step.
@@ -596,19 +602,45 @@ private:
             DynamicList<List<List<scalar> > > drag;
 
             //- Axial force/density at each actuator point (not pointed in blade-local
-            //  axial, but rather along shaft). 
-            DynamicList<List<List<scalar> > > axialForce;
+            //  axial, but rather along horizontal component of shaft). 
+            DynamicList<List<List<scalar> > > axialForceBladePoint;
+	    DynamicList<List<scalar> > axialForceNacellePoint;
+	    DynamicList<List<scalar> > axialForceTowerPoint;
 
             //- Tangential force/density at each actuator point.
-            DynamicList<List<List<scalar> > > tangentialForce;
+            DynamicList<List<List<scalar> > > tangentialForceBladePoint;
 
-            //- Thrust/density on turbine.
-            DynamicList<scalar> thrust;
+	    //- Horizontal force/density at each actuator point (horizontal and perpendicular
+	    //  to shaft axis).
+	    DynamicList<List<List<scalar> > > horizontalForceBladePoint;
+	    DynamicList<List<scalar> > horizontalForceNacellePoint;
+	    DynamicList<List<scalar> > horizontalForceTowerPoint;
 
-            //- Total rotor torque/density on turbine.
+
+	    //- Vertical force/density at each actuator point (horizontal and perpendicular
+	    //  to shaft axis).
+	    DynamicList<List<List<scalar> > > verticalForceBladePoint;
+	    DynamicList<List<scalar> > verticalForceNacellePoint;
+
+
+            //- Thrust on turbine (along horizontal component of shaft axis).
+            DynamicList<scalar> thrustRotor;
+	    DynamicList<scalar> thrustNacelle;
+	    DynamicList<scalar> thrustTower;
+
+            //- Total rotor torque/density on turbine (about shaft axis).
             DynamicList<scalar> torqueRotor;
 
-            //- Power/density on turbine rotor.
+	    //- Total horizontal force on turbine (horizontal and perpendicular to shaft axis).
+	    DynamicList<scalar> horizontalForceRotor;
+	    DynamicList<scalar> horizontalForceNacelle;
+	    DynamicList<scalar> horizontalForceTower;
+
+	    //- Total vertical force on turbine (along tower axis).
+	    DynamicList<scalar> verticalForceRotor;
+	    DynamicList<scalar> verticalForceNacelle;
+
+            //- Power on turbine rotor.
             DynamicList<scalar> powerRotor;
              
 
@@ -643,10 +675,10 @@ private:
             OFstream* dragFile_;
 
             //- List of output files for axial force/density.
-            OFstream* axialForceFile_;
+            OFstream* axialForceBladePointFile_;
 
             //- List of output files for tangential/density.
-            OFstream* tangentialForceFile_;
+            OFstream* tangentialForceBladePointFile_;
 
             //- List of output files for actuator point locations.
             OFstream* xFile_;
@@ -659,8 +691,8 @@ private:
             //- List of output files for generator torque/density.
             OFstream* torqueGenFile_;
 
-            //- List of output files for total thrust/density.
-            OFstream* thrustFile_;
+            //- List of output files for total thrustRotor/density.
+            OFstream* thrustRotorFile_;
 
             //- List of output files for total power/density.
             OFstream* powerRotorFile_;
@@ -722,6 +754,9 @@ private:
         
         //- Compute body forces.
         void computeBodyForce();
+
+        //- Compute body force spreading/projection using different methods.
+	scalar uniformGaussian(scalar epsilon, scalar distance);
 
         //- Rotates a point about a rotation axis and rotation point by the specified
         //  angle in radians.

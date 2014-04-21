@@ -145,8 +145,9 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     lastOutputTime = runTime_.startTime().value();
     outputIndex = 0;
 
-    includeNacelleAllFalse = true;
-    includeTowerAllFalse = true;
+    includeNacelleSomeTrue = false;
+    includeTowerSomeTrue = false;
+
     forAll(turbineName,i)
     {
         turbineType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("turbineType")));
@@ -159,7 +160,9 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         bladePointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladePointDistType")));
         nacellePointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacellePointDistType")));
         towerPointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerPointDistType")));
-        actuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpType")));
+        actuatorPointInterpTypeBlade.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeBlade")));
+        actuatorPointInterpTypeNacelle.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeNacelle")));
+        actuatorPointInterpTypeTower.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeTower")));
         actuatorUpdateType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorUpdateType")));
         epsilonBlade.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("epsilonBlade"))));
         epsilonNacelle.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("epsilonNacelle"))));
@@ -178,14 +181,24 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         nacYaw.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("NacYaw"))));
         fluidDensity.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("fluidDensity")))); 
 
-        if(includeNacelle[i])
+
+        if(includeNacelle[i])   //  if any of the nacelles are active, set this global boolean to true.
         {
-            includeNacelleAllFalse = false;
+            includeNacelleSomeTrue = true;
+        }
+	else   // set the number of nacelle points to 1, if the nacelle is not active.
+        {
+            numNacellePoints[i] = 1;
         }
 
-        if(includeTower[i])
+
+        if(includeTower[i])   //  if any of the nacelles are active, set this global boolean to true.
         {
-            includeTowerAllFalse = false;
+            includeTowerSomeTrue = true;
+        }
+	else   // set the number of tower points to 1, if the tower is not active.
+        {
+            numTowerPoints[i] = 1;
         }
     }
 
@@ -572,7 +585,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         // First compute the radius of the force projection (to the radius
         // where the projection is only 0.001 its maximum value - this seems
         // recover 99.9% of the total forces when integrated).
-        projectionRadius.append(epsilonBlade[i] * Foam::sqrt(Foam::log(1.0/0.001)));
+        projectionRadiusBlade.append(epsilonBlade[i] * Foam::sqrt(Foam::log(1.0/0.001)));
 
         // Calculate the sphere of influence radius (The sphere that 
 	// envelops the rotor at all yaw angles).
@@ -586,7 +599,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
                 sphereRadius = sphereRadiusI;
             }
         } 
-        sphereRadius += max(nacelleSampleDistance[i],projectionRadius[i]);
+        sphereRadius += max(nacelleSampleDistance[i],projectionRadiusBlade[i]);
 
         // Find the cells within the region of influence.
         DynamicList<label> influenceCellsI;
@@ -677,7 +690,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             scalar beta = PreCone[j][k] - ShftTilt[j];
             root.x() = root.x() + HubRad[j]*Foam::sin(beta);
             root.z() = root.z() + HubRad[j]*Foam::cos(beta);
-//          scalar dist = HubRad[j];
+          //scalar dist = HubRad[j];
             scalar dist = 0.0;
             for(int m = 0; m < numBladePoints[i]; m++)
             {
@@ -686,7 +699,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
                bladePoints[i][k][m].y() = root.y();
                bladePoints[i][k][m].z() = root.z() + dist*Foam::cos(beta);
                bladeSamplePoints[i][k][m] = bladePoints[i][k][m];
-//             bladeRadius[i][k][m] = dist;
+             //bladeRadius[i][k][m] = dist;
                bladeRadius[i][k][m] = HubRad[j] + dist;
                totBladePoints++;
                dist = dist + 0.5*dsBlade[i][m];
@@ -784,8 +797,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
         // Define the actuator element wind vector arrays and set them to zero.
         windVectorsBlade.append(List<List<vector> >(NumBl[j],List<vector>(numBladePoints[i],vector::zero)));
-        windVectorsNacelle.append(List<vector>(numBladePoints[i],vector::zero));
-        windVectorsTower.append(List<vector>(numBladePoints[i],vector::zero));
+        windVectorNacelle.append(vector::zero);
+        windVectorsTower.append(List<vector>(numTowerPoints[i],vector::zero));
 
         // Define the size of the deltaNacYaw, deltaAzimuth, and deltaPitch lists and set to zero.
         deltaNacYaw.append(0.0);
@@ -810,13 +823,13 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         drag.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
 
         // Define the size of the axial force lists and set to zero.
-        axialForce.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
+        axialForceBladePoint.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
 
         // Define the size of the tangential force lists and set to zero.
-        tangentialForce.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
+        tangentialForceBladePoint.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
 
-        // Define the size of the thrust lists and set to zero.
-        thrust.append(0.0);
+        // Define the size of the thrustRotor lists and set to zero.
+        thrustRotor.append(0.0);
 
         // Define the size of the aerodynamic torque lists and set to zero.
         torqueRotor.append(0.0);
@@ -1181,7 +1194,7 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
         }
 
         // Tower sampling points.
-        if(includeTowerAllFalse == false)
+        if(includeTowerSomeTrue)
         {
             forAll(towerSamplePoints[i],j)
             {
@@ -1205,7 +1218,7 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
         }
 
         // Nacelle sampling point.
-        if(includeNacelleAllFalse == false)
+        if(includeNacelleSomeTrue)
         {
             label cellID = influenceCells[i][0];
             scalar minDis = mag(mesh_.C()[cellID] - nacelleSamplePoint[i]);
@@ -1231,11 +1244,13 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
     // only the minimum values.
     Pstream::gather(minDisGlobalBlade,minOp<List<scalar> >());
     Pstream::scatter(minDisGlobalBlade);
+
     if(includeNacelleAllFalse == false)
     {
         Pstream::gather(minDisGlobalNacelle,minOp<List<scalar> >());
         Pstream::scatter(minDisGlobalNacelle);
     }
+
     if(includeTowerAllFalse == false)
     {
         Pstream::gather(minDisGlobalTower,minOp<List<scalar> >());
@@ -1260,9 +1275,9 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
             }
         }
         
-        forAll(bladePoints[i], j)
+        forAll(bladeSamplePoints[i], j)
         {
-            forAll(bladePoints[i][j], k)
+            forAll(bladeSamplePoints[i][j], k)
             {
                 if(minDisGlobalBlade[iterBlade] != minDisLocalBlade[iterBlade])
                 {
@@ -1271,14 +1286,35 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
                 iterBlade++;
             }
         }
+
+        if(minDisGlobalNacelle[iterNacelle] != minDisLocalNacelle[iterNacelle])
+	{
+            minDisCellIDNacelle[i] = -1;
+	}
+
+	forAll(towerSamplePoints[i], j)
+        {
+            if(minDisGlobalTower[iterTower] != minDisLocalTower[iterTower])
+            {
+                minDisCellIDTower[i][j] = -1;
+            }
+	    iterTower++;
+        }
+
+
     }
 }	
 
 
 void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 {
-    // Create a list of wind velocity in x, y, z coordinates for each blade point.
+    // Create a list of wind velocity in x, y, z coordinates for each blade, nacelle, and tower sample point.
     List<vector> windVectorsBladeLocal(totBladePoints,vector::zero);
+    List<vector> windVectorsNacelleLocal(totNacellePoints,vector::zero);
+    List<vector> windVectorsTowerLocal(totTowerPoints,vector::zero);
+    
+
+
 
     // If linear interpolation of the velocity from the CFD mesh to the actuator
     // points is used, we need velocity gradient information.
@@ -1287,12 +1323,16 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     forAll(turbinesControlled, p)
     {
         int i = turbinesControlled[p];
-        int iter = 0;
+        int iterBlade = 0;
+	int iterNacelle = 0;
+	int iterTower = 0;
         if(i > 0)
         {
             for(int n = 0; n < i; n++)
             {
-                iter += numBladePoints[n] * NumBl[turbineTypeID[n]];
+                iterBlade += numBladePoints[n] * NumBl[turbineTypeID[n]];
+		iterNacelle += 1;
+		iterTower += numTowerPoints[n];
             }
         }
         
@@ -1302,23 +1342,80 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
             {
                 if(minDisCellIDBlade[i][j][k] != -1)
                 {
+                    vector velocity(vector::zero);
+		    label cellID = minDisCellIDBlade[i][j][k];
+		    vector point = bladeSamplePoints[i][j][k];
+
                     // If the velocity interpolation is "cellCenter", then just use 
                     // the velocity at the center of the cell within which this
-                    // actuator point lies
-                    windVectorsBladeLocal[iter] = U_[minDisCellIDBlade[i][j][k]];
+                    // actuator point lies.  This is also the starting point for
+		    // "linear" interpolation.  It will also be the default if an
+		    // unknown interpolation keyword is given.
+                    #include "velocityInterpolation/cellCenter.H"
 
                     // But if linear interpolation is used, add a correction based
                     // on the local velocity gradient.
-                    if (actuatorPointInterpType[i] == "linear")
+                    if (actuatorPointInterpTypeBlade[i] == "linear")
                     {
-                        vector dx = bladePoints[i][j][k] - mesh_.C()[minDisCellIDBlade[i][j][k]];
-                        vector dU = dx & gradU[minDisCellIDBlade[i][j][k]];
-                        windVectorsBladeLocal[iter] += dU;
+                        #include "velocityInterpolation/linear.H"
                     }
+
+		    windVectorsBladeLocal[iterBlade] = velocity;
                 }
-                iter++;
+                iterBlade++;
             }
         }
+
+	forAll(towerPoints[i], j)
+        {
+            if(minDisCellIDTower[i][j] != -1)
+            {
+                vector velocity(vector::zero);
+                label cellID = minDisCellIDTower[i][j];
+	        vector point = towerSamplePoints[i][j];
+
+                // If the velocity interpolation is "cellCenter", then just use 
+                // the velocity at the center of the cell within which this
+                // actuator point lies.  This is also the starting point for
+	        // "linear" interpolation.  It will also be the default if an
+                // unknown interpolation keyword is given.
+                #include "velocityInterpolation/cellCenter.H"
+
+                // But if linear interpolation is used, add a correction based
+                // on the local velocity gradient.
+                if (actuatorPointInterpTypeTower[i] == "linear")
+                {
+                    #include "velocityInterpolation/linear.H"
+                }
+                windVectorsTowerLocal[iterBlade] = velocity;
+            }
+	    iterTower++;
+        }
+
+	if(minDisCellIDNacelle[i] != -1)
+        {
+            vector velocity(vector::zero);
+	    label cellID = minDisCellIDNacelle[i];
+	    vector point = nacelleSamplePoint[i];
+
+            // If the velocity interpolation is "cellCenter", then just use 
+            // the velocity at the center of the cell within which this
+            // actuator point lies.  This is also the starting point for
+	    // "linear" interpolation.  It will also be the default if an
+	    // unknown interpolation keyword is given.
+            #include "velocityInterpolation/cellCenter.H"
+
+            // But if linear interpolation is used, add a correction based
+            // on the local velocity gradient.
+            if (actuatorPointInterpTypeNacelle[i] == "linear")
+            {
+               #include "velocityInterpolation/linear.H"
+            }
+
+	    windVectorNacelleLocal[iterBlade] = velocity;           
+        }
+
+
     }
 
     // Perform a parallel gather of this local list to the master processor and
@@ -1326,9 +1423,22 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     Pstream::gather(windVectorsBladeLocal,sumOp<List<vector> >());
     Pstream::scatter(windVectorsBladeLocal);
 
+    if(includeNacelleAllFalse == false)
+    {
+        Pstream::gather(windVectorNacelleLocal,sumOp<List<vector> >());
+        Pstream::scatter(windVectorNacelleLocal);
+    }
+
+    if(includeTowerAllFalse == false)
+    {
+        Pstream::gather(windVectorsTowerLocal,sumOp<List<vector> >());
+        Pstream::scatter(windVectorTowerLocal);
+    }
+
+
     // Put the gathered/scattered wind vectors into the windVector variable.
     // Proceed turbine by turbine.
-    int iter = 0;
+    int iterBlade = 0;
     forAll(windVectorsBlade, i)
     {
         // Proceed blade by blade.
@@ -1337,14 +1447,33 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
             // Proceed point by point.
             forAll(windVectorsBlade[i][j], k)
             {
-                // Zero the wind vector.
+                // Zero the wind vector and put in the correct velocity.
                 windVectorsBlade[i][j][k] = vector::zero;
+                windVectorsBlade[i][j][k] = windVectorsBladeLocal[iterBlade];
 
-                // Now put the velocity in that cell into blade-oriented coordinates.
-                windVectorsBlade[i][j][k] = windVectorsBladeLocal[iter];
-
-                iter++;
+                iterBlade++;
             }
+        }
+    }
+
+    int iterNacelle = 0;
+    forAll(windVectorNacelle, i)
+    {
+        windVectorNacelle[i] = vector::zero;
+	windVectorNacelle[i] = windVectorNacelleLocal[iterNacelle];
+
+	iterNacelle++;
+    }
+
+    int iterTower = 0
+    forAll(windVectorsTower, i)
+    {
+        forAll(windVectorsTower[i], j)
+        {
+            windVectorsTower[i][j] = vector::zero;
+	    windVectorsTower[i][j] = windVectorsTowerLocal[iterTower];
+
+	    iterTower++;
         }
     }
 }
@@ -1352,6 +1481,43 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
 void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 {
+    // The nacelle wind vector is in the local wind coordinate system with
+    // x along the wind, y and z are zero.
+    forAll(windVectorNacelle, i)
+    {
+	if (includeNacelle[i])
+        {
+	    vector windVectorNacelleInt = windVectorNacelle[i];
+
+            windVectorNacelle[i] = vector::zero;
+            windVectorNacelle[i].x() = mag(windVectorNacelleInt);
+            windVectorNacelle[i].y() = 0.0;
+            windVectorNacelle[i].z() = 0.0;
+	}
+    }
+
+    // The tower nacelle wind vector's x component is in the direction of the horizontal
+    // component of the wind, y is cross stream, z is the vertical component.
+    forAll(windVectorTower, i)
+    {
+        if (includeTower[i])
+        {
+            forAll(windVectorTower[i], j)
+            {
+                vector windAlignedVector = windVectorsTower[i][j]/mag(windVectorsTower[i][j]);
+                windAlignedVector.z() = 0.0;
+
+                vector windVectorsTowerInt = windVectorsTower[i][j];
+
+                windVectorsTower[i][j] = vector::zero;
+                windVectorsTower[i][j].x() = windVectorsTowerInt & windAlignedVector;
+                windVectorsTower[i][j].y() = 0.0;
+	        windVectorsTower[i][j].z() = windVectorsTowerInt.z();
+            }
+        }
+    }
+
+
     // Take the x,y,z wind vectors and project them into the blade coordinate system.
     // Proceed turbine by turbine.
     forAll(windVectorsBlade, i)
@@ -1405,14 +1571,38 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
 
 
-    // Proceed turbine by turbine.
+    // Compute the tower forces at each actuator point.
+    if (includeTower)
+    {
+        forAll(windVectorsBlade, i)
+        {
+            int m = turbineTypeID[i];
+
+            // Set the total tower thrust of the turbine to zero.  Thrust will be summed on a tower-element-
+            // wise basis.
+            thrustTower[i] = 0.0;
+
+            // Set the total tower sideways force of the turbine to zero.  The force will be summed on a tower-element-
+            // wise basis.
+            horizontalForceTower[i] = 0.0;
+
+            forAll(windVectorsBlade[i], j)
+            {
+                forAll(windVectorsBlade[i]
+            }
+        }
+    }
+
+
+
+    // Compute the blade forces at each actuator point.
     forAll(windVectorsBlade, i)
     {
         int m = turbineTypeID[i];
 
-        // Set the total thrust of the turbine to zero.  Thrust will be summed on a blade-element-
+        // Set the total rotor thrust of the turbine to zero.  Thrust will be summed on a blade-element-
         // wise basis.
-        thrust[i] = 0.0;
+        thrustRotor[i] = 0.0;
 
         // Set the total aerodynamic torque of the turbine to zero.  Thrust will be summed on a blade-element-
         // wise basis.
@@ -1494,17 +1684,17 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
                 // Find the component of the blade element force/density in the axial (along the shaft)
                 // direction.
-                axialForce[i][j][k] = -bladeForce[i][j][k] & uvShaft[i];
+                axialForceBladePoint[i][j][k] = -bladeForce[i][j][k] & uvShaft[i];
 
                 // Find the component of the blade element force/density in the tangential (torque-creating)
                 // direction.
-                tangentialForce[i][j][k] = bladeForce[i][j][k] & bladeAlignedVectors[i][j][1];
+                tangentialForceBladePoint[i][j][k] = bladeForce[i][j][k] & bladeAlignedVectors[i][j][1];
 
-                // Add this blade element's contribution to thrust to the total turbine thrust.
-                thrust[i] += axialForce[i][j][k];
+                // Add this blade element's contribution to thrustRotor to the total turbine thrustRotor.
+                thrustRotor[i] += axialForceBladePoint[i][j][k];
 
                 // Add this blade element's contribution to aerodynamic torque to the total turbine aerodynamic torque.
-                torqueRotor[i] += tangentialForce[i][j][k] * bladeRadius[i][j][k] * cos(PreCone[m][j]);
+                torqueRotor[i] += tangentialForceBladePoint[i][j][k] * bladeRadius[i][j][k] * cos(PreCone[m][j]);
             }
         }
 
@@ -1519,20 +1709,41 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
     // Zero out the body force to begin with.
     bodyForce *= 0.0;
 
-    // Proceed turbine by turbine.
-    scalar thrustSum = 0.0;
-    scalar torqueSum = 0.0;
-    scalar thrustBodyForceSum = 0.0;
-    scalar torqueBodyForceSum = 0.0;
+    // Initialize variables that are integrated forces.
+    scalar thrustRotorSum = 0.0;
+    scalar thrustTowerSum = 0.0;
+    scalar thrustNacelleSum = 0.0;
 
+    scalar torqueRotorSum = 0.0;
+
+    scalar thrustRotorBodyForceSum = 0.0;
+    scalar thrustTowerBodyForceSum = 0.0;
+    scalar thrustNacelleBodyForceSum = 0.0;
+
+    scalar torqueRotorBodyForceSum = 0.0;
+
+
+
+    // Compute body force due to blades.
     forAll(bladeForce, i)
     {
-        
+	    
         int n = turbineTypeID[i];
-
-        // Proceed to compute body forces for turbine i only if there are sphere cells on this processor for this turbine.
+        
+        // Proceed to compute body forces for turbine i only if there are influence cells on this processor for this turbine.
         if (influenceCells[i].size() > 0)
         {
+
+            // Get necessary axes.
+	    vector thrustVector = uvShaft[i];
+	    thrustVector[2] = 0.0;
+	    thrustVector = thrustVector / mag(thrustVector);
+            vector verticalVector = vector::zero;
+	    verticalVector[2] = 1.0;
+	    vector horizontalVector = thrustVector ^ verticalVector;
+	    horizontalVector = horizontalVector / mag(horizontalVector);
+
+
             // For each blade.
             forAll(bladeForce[i], j)
             {
@@ -1543,27 +1754,124 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                     forAll(influenceCells[i], m)
                     {
                         scalar dis = mag(mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
-                        if (dis <= projectionRadius[i])
+                        if (dis <= projectionRadiusBlade[i])
                         {
-                            bodyForce[influenceCells[i][m]] += bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilonBlade[i]))/(Foam::pow(epsilonBlade[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5)));
-                            thrustBodyForceSum += (-bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilonBlade[i]))/(Foam::pow(epsilonBlade[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) *
-                                                    mesh_.V()[influenceCells[i][m]]) & uvShaft[i];
-                            torqueBodyForceSum += ( bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilonBlade[i]))/(Foam::pow(epsilonBlade[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * 
-                                                    bladeRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) & bladeAlignedVectors[i][j][1];
+			    scalar spreading = uniformGaussian(epsilonBlade[i], dis);
+                            bodyForce[influenceCells[i][m]] += bladeForce[i][j][k] * spreading;
+                            rotorThrustBodyForceSum += (-bladeForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
+                            rotorTorqueBodyForceSum += ( bladeForce[i][j][k] * spreading * bladeRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
+				                       & bladeAlignedVectors[i][j][1];
                         }
                     }
                 }  
             }
         }
-        thrustSum += thrust[i];
-        torqueSum += torqueRotor[i];
+        thrustRotorSum += thrustRotor[i];
+        torqueRotorSum += torqueRotor[i];
     }
-    reduce(thrustBodyForceSum,sumOp<scalar>());
+    reduce(thrustRotorBodyForceSum,sumOp<scalar>());
     reduce(torqueBodyForceSum,sumOp<scalar>());
 
-    // Print information comparing the actual thrust and torque to the integrated body force.
-    Info << "Thrust from Body Force = " << thrustBodyForceSum << tab << "Thrust from Act. Line = " << thrustSum << tab << "Ratio = " << thrustBodyForceSum/thrustSum << endl;
-    Info << "Torque from Body Force = " << torqueBodyForceSum << tab << "Torque from Act. Line = " << torqueSum << tab << "Ratio = " << torqueBodyForceSum/torqueSum << endl;
+    // Print information comparing the actual rotor thrust and torque to the integrated body force.
+    Info << "Rotor Thrust from Body Force = " << thrustRotorBodyForceSum << tab << "Rotor Thrust from Actuator = " << thrustRotorSum << tab
+	 << "Ratio = " << thrustRotorBodyForceSum/thrustRotorSum << endl;
+    Info << "Rotor Torque from Body Force = " << torqueBodyForceSum << tab << "Rotor Torque from Actuator = " << torqueRotorSum << tab 
+	 << "Ratio = " << torqueBodyForceSum/torqueRotorSum << endl;
+
+
+
+    // Compute body force due to tower.
+    forAll(towerForce, i)
+    {
+	    
+        int n = turbineTypeID[i];
+
+        if (includeTower)
+        {
+            forAll(towerForce[i], j)
+            {
+
+                // Get necessary axes.
+                vector thrustVector = uvShaft[i];
+                thrustVector[2] = 0.0;
+                thrustVector = thrustVector / mag(thrustVector);
+                vector verticalVector = vector::zero;
+                verticalVector[2] = 1.0;
+                vector horizontalVector = thrustVector ^ verticalVector;
+                horizontalVector = horizontalVector / mag(horizontalVector);
+
+            
+                forAll(influenceCells[i], m)
+                {
+                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - towerPoints[i][j]);
+                    if (dis <= projectionRadiusTower[i])
+                    {
+                        scalar spreading = uniformGaussian(epsilonTower[i], dis);
+			bodyForce[influenceCells[i][m]] += towerForce[i][j] * spreading;
+			thrustTowerBodyForceSum += (-towerForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
+                    }
+                }
+            }
+        }
+        thrustTowerSum += thrustTower[i];
+    }
+    reduce(thrustTowerBodyForceSum,sumOp<scalar>());
+
+    // Print information comparing the actual tower thrust to the integrated body force.
+    Info << "Tower Thrust from BodyForce = " << thrustTowerBodyForceSum << tab << "Tower Thrust from Actuator = " << thrustTowerSum << tab
+	 << "Ratio = " << thrustTowerBodyForceSum/thrustTowerSum << endl;
+
+
+
+    // Compute body force due to nacelle.
+    forAll(nacelleForce, i)
+    {
+	    
+        int n = turbineTypeID[i];
+
+        if (includeNacelle)
+        {
+            forAll(nacelleForce[i], j)
+            {
+
+                // Get necessary axes.
+                vector thrustVector = uvShaft[i];
+                thrustVector[2] = 0.0;
+                thrustVector = thrustVector / mag(thrustVector);
+                vector verticalVector = vector::zero;
+                verticalVector[2] = 1.0;
+                vector horizontalVector = thrustVector ^ verticalVector;
+                horizontalVector = horizontalVector / mag(horizontalVector);
+
+            
+                forAll(influenceCells[i], m)
+                {
+                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - nacellePoints[i][j]);
+                    if (dis <= projectionRadiusTower[i])
+                    {
+                        scalar spreading = uniformGaussian(epsilonNacelle[i], dis);
+			bodyForce[influenceCells[i][m]] += nacelleForce[i][j] * spreading;
+			thrustNacelleBodyForceSum += (-nacelleForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
+                    }
+                }
+            }
+        }
+        thrustNacelleSum += thrustNacelle[i];
+    }
+    reduce(thrustNacelleBodyForceSum,sumOp<scalar>());
+
+    // Print information comparing the actual tower thrust to the integrated body force.
+    Info << "Nacelle Thrust from BodyForce = " << thrustNacelleBodyForceSum << tab << "Nacelle Thrust from Actuator = " << thrustNacelleSum << tab
+	 << "Ratio = " << thrustNacelleBodyForceSum/thrustNacelleSum << endl;
+
+}
+
+
+scalar horizontalAxisWindTurbinesALM_tn::uniformGaussian(scalar epsilon, scalar distance)
+{
+    // Compute the 3-dimensional Gaussian.
+    scalar value = (1.0 / (Foam::pow(epsilon,3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * Foam::exp(-Foam::sqr(dis/epsilon));
+    return value;
 }
 
 
@@ -1851,9 +2159,9 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
         torqueGenFile_ = new OFstream(rootDir/time/"torqueGen");
         *torqueGenFile_ << "#Turbine    Time(s)    dt(s)    generator torque (N-m)" << endl;
 
-        // Create a total thrust file.
-        thrustFile_ = new OFstream(rootDir/time/"thrust");
-        *thrustFile_ << "#Turbine    Time(s)    dt(s)    thrust (N)" << endl;
+        // Create a total thrustRotor file.
+        thrustRotorFile_ = new OFstream(rootDir/time/"thrustRotor");
+        *thrustRotorFile_ << "#Turbine    Time(s)    dt(s)    thrustRotor (N)" << endl;
 
         // Create a total power file.
         powerRotorFile_ = new OFstream(rootDir/time/"powerRotor");
@@ -1916,12 +2224,12 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
         *dragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
 
         // Create a axial force file.
-        axialForceFile_ = new OFstream(rootDir/time/"axialForce");
-        *axialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+        axialForceBladePointFile_ = new OFstream(rootDir/time/"axialForceBladePoint");
+        *axialForceBladePointFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
 
         // Create a tangential force file.
-        tangentialForceFile_ = new OFstream(rootDir/time/"tangentialForce");
-        *tangentialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    tangential force (N)" << endl;
+        tangentialForceBladePointFile_ = new OFstream(rootDir/time/"tangentialForceBladePoint");
+        *tangentialForceBladePointFile_ << "#Turbine    Blade    Time(s)    dt(s)    tangential force (N)" << endl;
 
         // Create a x-location file.
         xFile_ = new OFstream(rootDir/time/"x");
@@ -1948,7 +2256,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
             // Write out time and delta t.
             *torqueRotorFile_ << i << " " << time << " " << dt << " ";
             *torqueGenFile_ << i << " " << time << " " << dt << " ";
-            *thrustFile_ << i << " " << time << " " << dt << " ";
+            *thrustRotorFile_ << i << " " << time << " " << dt << " ";
             *powerRotorFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFFile_ << i << " " << time << " " << dt << " ";
@@ -1959,7 +2267,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
             // Write out information for each turbine.
             *torqueRotorFile_ << torqueRotor[i]*fluidDensity[i] << endl;
             *torqueGenFile_ << torqueGen[i] << endl;
-            *thrustFile_ << thrust[i]*fluidDensity[i] << endl;
+            *thrustRotorFile_ << thrustRotor[i]*fluidDensity[i] << endl;
             *powerRotorFile_ << powerRotor[i]*fluidDensity[i] << endl;
             *rotSpeedFile_ << rotSpeed[i]/rpmRadSec << endl;
             *rotSpeedFFile_ << rotSpeedF[i]/rpmRadSec << endl;
@@ -1980,8 +2288,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                 *CdFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *liftFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *dragFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *axialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *tangentialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *axialForceBladePointFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *tangentialForceBladePointFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *xFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *yFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *zFile_ << i << " " << j << " " <<  time << " " << dt << " ";
@@ -1997,8 +2305,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                     *CdFile_ << Cd[i][j][k] << " ";
                     *liftFile_ << lift[i][j][k]*fluidDensity[i] << " ";
                     *dragFile_ << drag[i][j][k]*fluidDensity[i] << " ";
-                    *axialForceFile_ << axialForce[i][j][k]*fluidDensity[i] << " ";
-                    *tangentialForceFile_ << tangentialForce[i][j][k]*fluidDensity[i] << " ";
+                    *axialForceBladePointFile_ << axialForceBladePoint[i][j][k]*fluidDensity[i] << " ";
+                    *tangentialForceBladePointFile_ << tangentialForceBladePoint[i][j][k]*fluidDensity[i] << " ";
                     *xFile_ << bladePoints[i][j][k].x() << " ";
                     *yFile_ << bladePoints[i][j][k].y() << " ";
                     *zFile_ << bladePoints[i][j][k].z() << " ";
@@ -2012,8 +2320,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                 *CdFile_ << endl;
                 *liftFile_ << endl;
                 *dragFile_ << endl;
-                *axialForceFile_ << endl;
-                *tangentialForceFile_ << endl;
+                *axialForceBladePointFile_ << endl;
+                *tangentialForceBladePointFile_ << endl;
                 *xFile_ << endl;
                 *yFile_ << endl;
                 *zFile_ << endl;
@@ -2022,7 +2330,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
           
         *torqueRotorFile_ << endl;
         *torqueGenFile_ << endl;
-        *thrustFile_ << endl;
+        *thrustRotorFile_ << endl;
         *powerRotorFile_ << endl;
         *rotSpeedFile_ << endl;
         *rotSpeedFFile_ << endl;
@@ -2039,8 +2347,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
         *CdFile_ << endl;
         *liftFile_ << endl;
         *dragFile_ << endl;
-        *axialForceFile_ << endl;
-        *tangentialForceFile_ << endl;
+        *axialForceBladePointFile_ << endl;
+        *tangentialForceBladePointFile_ << endl;
         *xFile_ << endl;
         *yFile_ << endl;
         *zFile_ << endl;
@@ -2061,14 +2369,16 @@ void horizontalAxisWindTurbinesALM_tn::printDebug()
     Info << "bladePointDistType = " << bladePointDistType << endl;
     Info << "nacellePointDistType = " << nacellePointDistType << endl;
     Info << "towerPointDistType = " << towerPointDistType << endl;
-    Info << "actuatorPointInterpType = " << actuatorPointInterpType << endl;
+    Info << "actuatorPointInterpTypeBlade = " << actuatorPointInterpTypeBlade << endl;
+    Info << "actuatorPointInterpTypeNacelle = " << actuatorPointInterpTypeNacelle << endl;
+    Info << "actuatorPointInterpTypeTower = " << actuatorPointInterpTypeTower << endl;
     Info << "actuatorUpdateType = " << actuatorUpdateType << endl;
     Info << "epsilonBlade = " << epsilonBlade << endl;
     Info << "epsilonNacelle = " << epsilonNacelle << endl;
     Info << "epsilonTower = " << epsilonTower << endl;
     Info << "nacelleSampleDistance = " << nacelleSampleDistance << endl;
     Info << "towerSampleDistance = " << towerSampleDistance << endl;
-    Info << "projectionRadius = " << projectionRadius << endl;
+    Info << "projectionRadiusBlade = " << projectionRadiusBlade << endl;
     Info << "tipRootLossCorrType = " << tipRootLossCorrType << endl;
     Info << "rotationDir = " << rotationDir << endl;
     Info << "rotSpeed = " << rotSpeed << endl;
