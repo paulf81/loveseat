@@ -1574,7 +1574,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
     // Compute the tower forces at each actuator point.
     if (includeTower)
     {
-        forAll(windVectorsBlade, i)
+        forAll(windVectorsTower, i)
         {
             int m = turbineTypeID[i];
 
@@ -1586,9 +1586,22 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
             // wise basis.
             horizontalForceTower[i] = 0.0;
 
-            forAll(windVectorsBlade[i], j)
+            forAll(windVectorsTower[i], j)
             {
-                forAll(windVectorsBlade[i]
+                // Find the flow angle.
+
+                // Interpolate the local twist angle.
+                scalar twistAng = interpolate(towerHeight[i][j], TowerHeight[m], TowerTwist[m]);
+
+                // Interpolate the local chord.
+                scalar chord = interpolate(towerHeight[i][j], TowerHeight[m], TowerChord[m]);
+
+	        // Find the local airfoil type.
+                label airfoil = interpolate(towerHeight[i][j], TowerHeight[m], TowerAirfoilTypeID[m]);
+
+                // Find the local velocity magnitude composed of only the axial flow (do not include the
+                // flow along the tower axis).
+                Vmag[i][j] = Foam::pow((Foam::pow(windVectorsTower[i][j].x(),2) + Foam::pow(windVectorsTower[i][j].y(),2)),0.5);	
             }
         }
     }
@@ -1871,6 +1884,31 @@ scalar horizontalAxisWindTurbinesALM_tn::uniformGaussian(scalar epsilon, scalar 
 {
     // Compute the 3-dimensional Gaussian.
     scalar value = (1.0 / (Foam::pow(epsilon,3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * Foam::exp(-Foam::sqr(dis/epsilon));
+    return value;
+}
+
+scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
+{
+    // Compute a spreading function that is constant over some width radially, then dies off like a Gaussian,
+    // but is also Gaussian in the axial direction.
+
+    // Get the distances between the origin and the point in radial and axial direction.
+    scalar dx = d & u;
+    scalar dr = d - (dx & u);
+    scalar dx = Foam::abs(dx);
+    scalar dr = Foam::abs(dr);
+
+    // Compute the spreading function
+    scalar coeff = ;
+    if (dr <= r0)
+    {
+        f = coeff * Foam::exp(-Foam::sqr(dx/xEpsilon));
+    }
+    else if (dr > r0)
+    {
+        f = coeff *  Foam::exp(-Foam::sqr(dx/xEpsilon)) * Foam::exp(-Foam::sqr((dr - r0)/rEpsilon));
+    }
+
     return value;
 }
 

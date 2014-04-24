@@ -756,7 +756,9 @@ private:
         void computeBodyForce();
 
         //- Compute body force spreading/projection using different methods.
-	scalar uniformGaussian(scalar epsilon, scalar distance);
+        scalar uniformGaussian(scalar epsilon, scalar distance);
+      //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
+        scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
 
         //- Rotates a point about a rotation axis and rotation point by the specified
         //  angle in radians.
