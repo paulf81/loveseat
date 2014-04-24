@@ -1310,7 +1310,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 {
     // Create a list of wind velocity in x, y, z coordinates for each blade, nacelle, and tower sample point.
     List<vector> windVectorsBladeLocal(totBladePoints,vector::zero);
-    List<vector> windVectorsNacelleLocal(totNacellePoints,vector::zero);
+    List<vector> windVectorNacelleLocal(totNacellePoints,vector::zero);
     List<vector> windVectorsTowerLocal(totTowerPoints,vector::zero);
     
 
@@ -1432,7 +1432,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     if(includeTowerSomeTrue)
     {
         Pstream::gather(windVectorsTowerLocal,sumOp<List<vector> >());
-        Pstream::scatter(windVectorTowerLocal);
+        Pstream::scatter(windVectorsTowerLocal);
     }
 
 
@@ -1498,7 +1498,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
     // The tower nacelle wind vector's x component is in the direction of the horizontal
     // component of the wind, y is cross stream, z is the vertical component.
-    forAll(windVectorTower, i)
+    forAll(windVectorsTower, i)
     {
         if (includeTower[i])
         {
@@ -1572,9 +1572,9 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
 
     // Compute the tower forces at each actuator point.
-    if (includeTower)
+    forAll(windVectorsTower, i)
     {
-        forAll(windVectorsTower, i)
+        if (includeTower[i])
         {
             int m = turbineTypeID[i];
 
@@ -1771,8 +1771,8 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         {
 			    scalar spreading = uniformGaussian(epsilonBlade[i], dis);
                             bodyForce[influenceCells[i][m]] += bladeForce[i][j][k] * spreading;
-                            rotorThrustBodyForceSum += (-bladeForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
-                            rotorTorqueBodyForceSum += ( bladeForce[i][j][k] * spreading * bladeRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
+                            thrustRotorBodyForceSum += (-bladeForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
+                            torqueRotorBodyForceSum += ( bladeForce[i][j][k] * spreading * bladeRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
 				                       & bladeAlignedVectors[i][j][1];
                         }
                     }
@@ -1783,13 +1783,13 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
         torqueRotorSum += torqueRotor[i];
     }
     reduce(thrustRotorBodyForceSum,sumOp<scalar>());
-    reduce(torqueBodyForceSum,sumOp<scalar>());
+    reduce(torqueRotorBodyForceSum,sumOp<scalar>());
 
     // Print information comparing the actual rotor thrust and torque to the integrated body force.
     Info << "Rotor Thrust from Body Force = " << thrustRotorBodyForceSum << tab << "Rotor Thrust from Actuator = " << thrustRotorSum << tab
 	 << "Ratio = " << thrustRotorBodyForceSum/thrustRotorSum << endl;
-    Info << "Rotor Torque from Body Force = " << torqueBodyForceSum << tab << "Rotor Torque from Actuator = " << torqueRotorSum << tab 
-	 << "Ratio = " << torqueBodyForceSum/torqueRotorSum << endl;
+    Info << "Rotor Torque from Body Force = " << torqueRotorBodyForceSum << tab << "Rotor Torque from Actuator = " << torqueRotorSum << tab 
+	 << "Ratio = " << torqueRotorBodyForceSum/torqueRotorSum << endl;
 
 
 
@@ -1799,7 +1799,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 	    
         int n = turbineTypeID[i];
 
-        if (includeTower)
+        if (includeTower[i])
         {
             forAll(towerForce[i], j)
             {
@@ -1842,7 +1842,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 	    
         int n = turbineTypeID[i];
 
-        if (includeNacelle)
+        if (includeNacelle[i])
         {
             forAll(nacelleForce[i], j)
             {
