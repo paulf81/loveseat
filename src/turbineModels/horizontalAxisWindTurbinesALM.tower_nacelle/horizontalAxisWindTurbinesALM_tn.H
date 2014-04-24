@@ -152,7 +152,7 @@ private:
 	    //- List of booleans for including tower and a global boolean that is
 	    //  true if at least one turbine tower is included.
 	    DynamicList<bool> includeTower;
-            bool includeNacelleSomeTrue;
+            bool includeTowerSomeTrue;
  
             //- List of locations of bases of turbines in array relative to origin (m).
             DynamicList<vector> baseLocation;

@@ -1198,8 +1198,8 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
         {
             forAll(towerSamplePoints[i],j)
             {
-                label cellID = influenceCells[i][0]
-                scalar minDis = mag(mesh_.c()[cellID] - towerSamplePoints[i][j]);
+                label cellID = influenceCells[i][0];
+                scalar minDis = mag(mesh_.C()[cellID] - towerSamplePoints[i][j]);
 
                 forAll(influenceCells[i], m)
                 {
@@ -1212,7 +1212,7 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
                 }
                 minDisLocalTower[iterBlade] = minDis;
                 minDisGlobalTower[iterBlade] = minDis;
-                minDisCellIDTower[i][j][k] = cellID;
+                minDisCellIDTower[i][j] = cellID;
                 iterTower++;
             }
         }
@@ -1245,13 +1245,13 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
     Pstream::gather(minDisGlobalBlade,minOp<List<scalar> >());
     Pstream::scatter(minDisGlobalBlade);
 
-    if(includeNacelleAllFalse == false)
+    if(includeNacelleSomeTrue)
     {
         Pstream::gather(minDisGlobalNacelle,minOp<List<scalar> >());
         Pstream::scatter(minDisGlobalNacelle);
     }
 
-    if(includeTowerAllFalse == false)
+    if(includeTowerSomeTrue)
     {
         Pstream::gather(minDisGlobalTower,minOp<List<scalar> >());
         Pstream::scatter(minDisGlobalTower);
@@ -1423,13 +1423,13 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     Pstream::gather(windVectorsBladeLocal,sumOp<List<vector> >());
     Pstream::scatter(windVectorsBladeLocal);
 
-    if(includeNacelleAllFalse == false)
+    if(includeNacelleSomeTrue)
     {
         Pstream::gather(windVectorNacelleLocal,sumOp<List<vector> >());
         Pstream::scatter(windVectorNacelleLocal);
     }
 
-    if(includeTowerAllFalse == false)
+    if(includeTowerSomeTrue)
     {
         Pstream::gather(windVectorsTowerLocal,sumOp<List<vector> >());
         Pstream::scatter(windVectorTowerLocal);
@@ -1465,7 +1465,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 	iterNacelle++;
     }
 
-    int iterTower = 0
+    int iterTower = 0;
     forAll(windVectorsTower, i)
     {
         forAll(windVectorsTower[i], j)
