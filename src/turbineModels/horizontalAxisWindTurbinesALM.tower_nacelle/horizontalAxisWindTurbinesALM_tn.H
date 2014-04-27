@@ -211,9 +211,9 @@ private:
             //  dies to 0.1% of its peak value.  Beyond that distance, stop doing the projection
             //  to save computational effort.  This variable is that distance in (m).  It
             //  is based on epsilon values.  The larger epsilon, the wider the projection.
-            DynamicList<scalar> projectionRadiusBlade;
-            DynamicList<scalar> projectionRadiusNacelle;
-            DynamicList<scalar> projectionRadiusTower;
+            DynamicList<scalar> bladeProjectionRadius;
+            DynamicList<scalar> nacelleProjectionRadius;
+            DynamicList<scalar> towerProjectionRadius;
 
             //- List of tip/root loss correction type for each turbine.  "none" applies
             //  no correction.  "Glauert" applies the Glauert tip loss correction.
@@ -227,10 +227,10 @@ private:
 	    //  clockwise rotation for a clockwise rotating turbine (see rotationDir
 	    //  above) or counter-clockwise rotation for a counter-clockwise
 	    //  rotating turbine.
-            DynamicList<scalar> rotSpeed;
+            DynamicList<scalar> rotorSpeed;
 
             //- Filtered rotor speed that is fed to the controllers (rpm).
-            DynamicList<scalar> rotSpeedF;
+            DynamicList<scalar> rotorSpeedF;
 
             //- Speed error between reference low speed shaft and filtered low speed
             //  shaft speed for use in blade pitch PID control (rad/s).
@@ -239,18 +239,18 @@ private:
             //- Integrated speed error used in blade pitch PID control (rad/s).
             DynamicList<scalar> intSpeedError;
 
-            //- Initial blade 1 azimuth angle (degrees) (looking from upwind to 
-	    //  downwind, a positive azimuth angle makes a clockwise movement if
+            //- Initial blade 1 rotorAzimuth angle (degrees) (looking from upwind to 
+	    //  downwind, a positive rotorAzimuth angle makes a clockwise movement if
 	    //  this is a clockwise rotating turbine (see rotationDir above) or
 	    //  or a counterclockwise movement if this is a counter-clockwise
 	    //  rotating turbine).
-            DynamicList<scalar> azimuth;
+            DynamicList<scalar> rotorAzimuth;
 
             //- Initial generator torque on turbine (not density normalized).
-            DynamicList<scalar> torqueGen;
+            DynamicList<scalar> generatorTorque;
 
             //- Initial blade pitch (degrees) of all blades.
-            DynamicList<scalar> pitch;
+            DynamicList<scalar> bladePitch;
 
             //- Initial or fixed nacelle yaw angle.  Direction that the turbine
             //  is pointed in cardinal directions (i.e. 0 = north, 90 = east, 
@@ -298,6 +298,12 @@ private:
 	    //- Distance of nacelle fore to aft extent (m).
 	    DynamicList<scalar> NacelleLength;
 
+	    //- Nacelle frontal area (m^2).
+	    DynamicList<scalar> NacelleFrontalArea;
+
+	    //- Equivalent nacelle radius (m), based on frontal area.
+	    DynamicList<scalar> NacelleEquivalentRadius;
+
             //- Height of tower top above ground (m).
             DynamicList<scalar> TowerHt;
 
@@ -332,7 +338,7 @@ private:
 
             //- Rotor speed controller type.  Options are "none" or "fiveRegion".
             //  "none" provides no torque control and the rotor rotates at a 
-            //  constant rate specified by the variable "rotSpeed".  "fiveRegion"
+            //  constant rate specified by the variable "rotorSpeed".  "fiveRegion"
             //  controls rotor speed through generator torque in regions 1, 1-1/2,
             //  2, 2-1/2, and 3.  Torque control alone will not control speed in
             //  region 3, but if no pitch control is implemented, then rotor speed
@@ -487,9 +493,9 @@ private:
             //- List of cell ID that contains a certain actuator line velocity sampling 
             //  point on theprocessor in control of that point.  If the value is -1,
             //  then this processor is not in control of this point.
-            DynamicList<List<List<label> > > minDisCellIDBlade;
-            DynamicList<label> minDisCellIDNacelle;
-            DynamicList<List<label> > minDisCellIDTower;
+            DynamicList<List<List<label> > > bladeMinDisCellID;
+            DynamicList<label> nacelleMinDisCellID;
+            DynamicList<List<label> > towerMinDisCellID;
 
             //- List of locations of the intersection of the tower axis and the shaft 
             //  centerline relative to the origin (m).
@@ -504,9 +510,9 @@ private:
             DynamicList<DynamicList<label> > influenceCells;
 
             //- Actuator element width.
-            DynamicList<DynamicList<scalar> > dsBlade;
-            DynamicList<DynamicList<scalar> > dsTower;
-            DynamicList<DynamicList<scalar> > dsNacelle;
+            DynamicList<DynamicList<scalar> > bladeDs;
+            DynamicList<DynamicList<scalar> > towerDs;
+            DynamicList<DynamicList<scalar> > nacelleDs;
 
             //- Actuator line point locations with respect to origin.
             DynamicList<List<List<vector> > > bladePoints;
@@ -526,10 +532,10 @@ private:
 	    int totNacellePoints;
 
             //- Blade radius away from rotor apex.  Must take into account coning.
-            DynamicList<List<List<scalar> > > bladeRadius;
+            DynamicList<List<List<scalar> > > bladePointRadius;
 
 	    //- Tower height from ground.
-	    DynamicList<List<scalar> > towerHeight;
+	    DynamicList<List<scalar> > towerPointHeight;
 
 	    //- An indicator of shaft direction.  The convention is that when viewed
             //  from upwind, the rotor turns clockwise for positive rotation angles,
@@ -547,13 +553,13 @@ private:
 	    DynamicList<vector> uvTower;
 
             //- Blade force at each actuator point.
-            DynamicList<List<List<vector> > > bladeForce;
+            DynamicList<List<List<vector> > > bladePointForce;
 
             //- Nacelle force at each actuator point.
-            DynamicList<List<vector> > nacelleForce;
+            DynamicList<List<vector> > nacellePointForce;
 
             //- Tower force at each actuator point.
-            DynamicList<List<vector> > towerForce;
+            DynamicList<List<vector> > towerPointForce;
 
             //- Three vectors for each blade of each turbine that define the local
             //  blade-aligned coordinate system.  Vector 0 is along the blade pointed
@@ -566,16 +572,16 @@ private:
             DynamicList<List<List<vector> > > bladeAlignedVectors;
 
             //- Wind vector at each blade, tower, or nacelle actuator point in
-	    //  geometry-aligned coordinate system (i.e., windVectorsBlade are in the
+	    //  geometry-aligned coordinate system (i.e., bladeWindVectors are in the
 	    //  bladeAlignedVectors coordinate system).
-            DynamicList<List<List<vector> > > windVectorsBlade;
-	    DynamicList<vector> windVectorNacelle;
-	    DynamicList<List<vector> > windVectorsTower;
+            DynamicList<List<List<vector> > > bladeWindVectors;
+	    DynamicList<vector> nacelleWindVector;
+	    DynamicList<List<vector> > towerWindVectors;
 
 	    //- Change in yaw each time step.
 	    DynamicList<scalar> deltaNacYaw;
 
-	    //- Change in azimuth each time step.
+	    //- Change in rotorAzimuth each time step.
 	    DynamicList<scalar> deltaAzimuth;
 
 
@@ -584,130 +590,139 @@ private:
         //  every time step.
 
             //- Angle of attack at each actuator point.
-            DynamicList<List<List<scalar> > > alpha;
+            DynamicList<List<List<scalar> > > bladePointAlpha;
+            DynamicList<List<scalar> > towerPointAlpha;
 
             //- Wind magnitude (not including radial wind) at each actuator point.
-            DynamicList<List<List<scalar> > > Vmag;
+            DynamicList<List<List<scalar> > > bladePointVmag;
+            DynamicList<List<scalar> > towerPointVmag;
+            DynamicList<scalar> nacellePointVmag;
 
             //- Coefficient of lift at each actuator point. 
-            DynamicList<List<List<scalar> > > Cl;
+            DynamicList<List<List<scalar> > > bladePointCl; 
+            DynamicList<List<scalar> > towerPointCl; 
 
             //- Coefficient of drag at each actuator point. 
-            DynamicList<List<List<scalar> > > Cd;
+            DynamicList<List<List<scalar> > > bladePointCd; 
+            DynamicList<List<scalar> > towerPointCd; 
+            DynamicList<scalar> nacellePointCd;
 
             //- Lift/density at each actuator point. 
-            DynamicList<List<List<scalar> > > lift;
+            DynamicList<List<List<scalar> > > bladePointLift;
+            DynamicList<List<scalar> > towerPointLift;
 
             //- Drag/density at each actuator point. 
-            DynamicList<List<List<scalar> > > drag;
+            DynamicList<List<List<scalar> > > bladePointDrag;
+            DynamicList<List<scalar> > dragPointNacelle;
+            DynamicList<List<scalar> > towerPointDrag;
 
             //- Axial force/density at each actuator point (not pointed in blade-local
             //  axial, but rather along horizontal component of shaft). 
-            DynamicList<List<List<scalar> > > axialForceBladePoint;
-	    DynamicList<List<scalar> > axialForceNacellePoint;
-	    DynamicList<List<scalar> > axialForceTowerPoint;
+            DynamicList<List<List<scalar> > > bladePointAxialForce;
+	    DynamicList<List<scalar> > nacellePointAxialForce;
+	    DynamicList<List<scalar> > towerPointAxialForce;
 
             //- Tangential force/density at each actuator point.
-            DynamicList<List<List<scalar> > > tangentialForceBladePoint;
+            DynamicList<List<List<scalar> > > bladePointTangentialForce;
 
 	    //- Horizontal force/density at each actuator point (horizontal and perpendicular
 	    //  to shaft axis).
-	    DynamicList<List<List<scalar> > > horizontalForceBladePoint;
-	    DynamicList<List<scalar> > horizontalForceNacellePoint;
-	    DynamicList<List<scalar> > horizontalForceTowerPoint;
+	    DynamicList<List<List<scalar> > > bladePointHorizontalForce;
+	    DynamicList<List<scalar> > nacellePointHorizontalForce;
+	    DynamicList<List<scalar> > towerPointHorizontalForce;
 
 
 	    //- Vertical force/density at each actuator point (horizontal and perpendicular
 	    //  to shaft axis).
-	    DynamicList<List<List<scalar> > > verticalForceBladePoint;
-	    DynamicList<List<scalar> > verticalForceNacellePoint;
+	    DynamicList<List<List<scalar> > > bladePointVerticalForce;
+	    DynamicList<List<scalar> > nacellePointVerticalForce;
 
 
             //- Thrust on turbine (along horizontal component of shaft axis).
-            DynamicList<scalar> thrustRotor;
-	    DynamicList<scalar> thrustNacelle;
-	    DynamicList<scalar> thrustTower;
+            DynamicList<scalar> rotorThrust;
+	    DynamicList<scalar> nacelleThrust;
+	    DynamicList<scalar> towerThrust;
 
             //- Total rotor torque/density on turbine (about shaft axis).
-            DynamicList<scalar> torqueRotor;
+            DynamicList<scalar> rotorTorque;
 
 	    //- Total horizontal force on turbine (horizontal and perpendicular to shaft axis).
-	    DynamicList<scalar> horizontalForceRotor;
-	    DynamicList<scalar> horizontalForceNacelle;
-	    DynamicList<scalar> horizontalForceTower;
+	    DynamicList<scalar> rotorHorizontalForce;
+	    DynamicList<scalar> nacelleHorizontalForce;
+	    DynamicList<scalar> towerHorizontalForce;
 
 	    //- Total vertical force on turbine (along tower axis).
-	    DynamicList<scalar> verticalForceRotor;
-	    DynamicList<scalar> verticalForceNacelle;
+	    DynamicList<scalar> rotorVerticalForce;
+	    DynamicList<scalar> nacelleVerticalForce;
 
             //- Power on turbine rotor.
-            DynamicList<scalar> powerRotor;
+            DynamicList<scalar> rotorPower;
              
 
 
 
         //- Output Data File Information.
             //- List of output files for angle of attack.
-            OFstream* alphaFile_;
+            OFstream* bladePointAlphaFile_;
 
             //- List of output files for wind magnitude.
-            OFstream* VmagFile_;
+            OFstream* bladePointVmagFile_;
 
             //- List of output files for axial velocity.
-            OFstream* VaxialFile_;
+            OFstream* bladePointVaxialFile_;
 
             //- List of output files for tangential velocity.
-            OFstream* VtangentialFile_;
+            OFstream* bladePointVtangentialFile_;
 
             //- List of output files for radial velocity.
-            OFstream* VradialFile_;
+            OFstream* bladePointVradialFile_;
 
             //- List of output files for coefficient of lift.
-            OFstream* ClFile_;
+            OFstream* bladePointClFile_;
 
             //- List of output files for coefficient of drag.
-            OFstream* CdFile_;
+            OFstream* bladePointCdFile_;
 
             //- List of output files for lift/density.
-            OFstream* liftFile_;
+            OFstream* bladePointLiftFile_;
 
             //- List of output files for drag/density.
-            OFstream* dragFile_;
+            OFstream* bladePointDragFile_;
 
             //- List of output files for axial force/density.
-            OFstream* axialForceBladePointFile_;
+            OFstream* bladePointAxialForceFile_;
 
             //- List of output files for tangential/density.
-            OFstream* tangentialForceBladePointFile_;
+            OFstream* bladePointTangentialForceFile_;
 
             //- List of output files for actuator point locations.
-            OFstream* xFile_;
-            OFstream* yFile_;
-            OFstream* zFile_;
+            OFstream* bladePointXFile_;
+            OFstream* bladePointYBladeFile_;
+            OFstream* bladePointZBladeFile_;
 
             //- List of output files for total aerodynamic torque/density.
-            OFstream* torqueRotorFile_;
+            OFstream* rotorTorqueFile_;
 
             //- List of output files for generator torque/density.
-            OFstream* torqueGenFile_;
+            OFstream* generatorTorqueFile_;
 
-            //- List of output files for total thrustRotor/density.
-            OFstream* thrustRotorFile_;
+            //- List of output files for total rotorThrust/density.
+            OFstream* rotorThrustFile_;
 
             //- List of output files for total power/density.
-            OFstream* powerRotorFile_;
+            OFstream* rotorPowerFile_;
 
             //- List of output files for rotation rate.
-            OFstream* rotSpeedFile_;
+            OFstream* rotorSpeedFile_;
 
             //- List of output files for filtered rotation rate.
-            OFstream* rotSpeedFFile_;
+            OFstream* rotorSpeedFFile_;
 
-            //- List of output files for blade 1 azimuth angle.
-            OFstream* azimuthFile_;
+            //- List of output files for blade 1 rotorAzimuth angle.
+            OFstream* rotorAzimuthFile_;
 
-            //- List of output files for blade pitch angle.
-            OFstream* pitchFile_;
+            //- List of output files for blade bladePitch angle.
+            OFstream* bladePitchFile_;
 
             //- List of output files for nacelle yaw angle.
             OFstream* nacYawFile_;
@@ -756,7 +771,7 @@ private:
         void computeBodyForce();
 
         //- Compute body force spreading/projection using different methods.
-        scalar uniformGaussian(scalar epsilon, scalar distance);
+        scalar uniformGaussian(scalar epsilon, scalar d);
       //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
 
