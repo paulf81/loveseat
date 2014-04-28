@@ -153,32 +153,51 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         turbineType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("turbineType")));
 	includeNacelle.append(bool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeNacelle")));
 	includeTower.append(bool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeTower")));
+
         baseLocation.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("baseLocation")));
+
         numBladePoints.append(int(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("numBladePoints"))));
         numNacellePoints.append(int(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("numNacellePoints"))));
         numTowerPoints.append(int(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("numTowerPoints"))));
+
         bladePointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladePointDistType")));
         nacellePointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacellePointDistType")));
         towerPointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerPointDistType")));
-        actuatorPointInterpTypeBlade.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeBlade")));
-        actuatorPointInterpTypeNacelle.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeNacelle")));
-        actuatorPointInterpTypeTower.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorPointInterpTypeTower")));
+
+        bladeActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeActuatorPointInterpType")));
+        nacelleActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleActuatorPointInterpType")));
+        towerActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerActuatorPointInterpType")));
+
         actuatorUpdateType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorUpdateType")));
-        epsilonBlade.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("epsilonBlade"))));
-        epsilonNacelle.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("epsilonNacelle"))));
-        epsilonTower.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("epsilonTower"))));
+
+        bladeForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeForceProjectionType")));
+        nacelleForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleForceProjectionType")));
+        towerForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerForceProjectionType")));
+
+        bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
+        nacelleEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleEpsilon")));
+        towerEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("towerEpsilon")));
+
         nacelleSampleDistance.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleSampleDistance"))));
         towerSampleDistance.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("towerSampleDistance"))));
+
         tipRootLossCorrType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("tipRootLossCorrType")));
+
         rotationDir.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("rotationDir")));
+
         rotorSpeed.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("RotSpeed"))));
         rotorSpeedF.append(rotorSpeed[i]);
         speedError.append(0.0);
         intSpeedError.append(0.0);
+
         rotorAzimuth.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("Azimuth"))));
+
         generatorTorque.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("TorqueGen"))));
+
         bladePitch.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("Pitch"))));
+
         nacYaw.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("NacYaw"))));
+
         fluidDensity.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("fluidDensity")))); 
 
 
@@ -401,7 +420,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
                id.append(TowerData[i][j][3]);
            }
 
-           TowerHeight.append(height);
+           TowerStation.append(height);
            TowerChord.append(chord);
            TowerTwist.append(twist);
            TowerAirfoilTypeID.append(id);
@@ -591,9 +610,9 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         // First compute the radius of the force projection (to the radius
         // where the projection is only 0.001 its maximum value - this seems
         // recover 99.9% of the total forces when integrated).
-        bladeProjectionRadius.append(epsilonBlade[i] * Foam::sqrt(Foam::log(1.0/0.001)));
-        nacelleProjectionRadius.append(epsilonNacelle[i] * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j]);
-        towerProjectionRadius.append(epsilonTower[i] * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
+        bladeProjectionRadius.append(Foam::max(bladeEpsilon[i]) * Foam::sqrt(Foam::log(1.0/0.001)));
+        nacelleProjectionRadius.append(Foam::max(nacelleEpsilon[i]) * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j]);
+        towerProjectionRadius.append(Foam::max(towerEpsilon[i]) * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
 
         // Calculate the sphere of influence radius (The sphere that 
 	// envelops the rotor at all yaw angles).
@@ -1362,7 +1381,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
                     // But if linear interpolation is used, add a correction based
                     // on the local velocity gradient.
-                    if (actuatorPointInterpTypeBlade[i] == "linear")
+                    if (bladeActuatorPointInterpType[i] == "linear")
                     {
                         #include "velocityInterpolation/linear.H"
                     }
@@ -1390,7 +1409,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
                 // But if linear interpolation is used, add a correction based
                 // on the local velocity gradient.
-                if (actuatorPointInterpTypeTower[i] == "linear")
+                if (towerActuatorPointInterpType[i] == "linear")
                 {
                     #include "velocityInterpolation/linear.H"
                 }
@@ -1414,7 +1433,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
             // But if linear interpolation is used, add a correction based
             // on the local velocity gradient.
-            if (actuatorPointInterpTypeNacelle[i] == "linear")
+            if (nacelleActuatorPointInterpType[i] == "linear")
             {
                #include "velocityInterpolation/linear.H"
             }
@@ -1571,13 +1590,13 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 // Find the flow angle.
 
                 // Interpolate the local twist angle.
-                scalar twistAng = interpolate(towerPointHeight[i][j], TowerHeight[m], TowerTwist[m]);
+                scalar twistAng = interpolate(towerPointHeight[i][j], TowerStation[m], TowerTwist[m]);
 
                 // Interpolate the local chord.
-                scalar chord = interpolate(towerPointHeight[i][j], TowerHeight[m], TowerChord[m]);
+                scalar chord = interpolate(towerPointHeight[i][j], TowerStation[m], TowerChord[m]);
 
 	        // Find the local airfoil type.
-                label airfoil = interpolate(towerPointHeight[i][j], TowerHeight[m], TowerAirfoilTypeID[m]);
+                label airfoil = interpolate(towerPointHeight[i][j], TowerStation[m], TowerAirfoilTypeID[m]);
 
                 // Find the local velocity magnitude composed of only the axial flow (do not include the
                 // flow along the tower axis).
@@ -1752,7 +1771,15 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         scalar dis = mag(mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
                         if (dis <= bladeProjectionRadius[i])
                         {
-			    scalar spreading = uniformGaussian(epsilonBlade[i], dis);
+                            // Currently only uniform Gaussian blade distribution is implemented.
+                            if (bladeForceProjectionType[i] == "uniformGaussian")
+                            {
+			        scalar spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+			    }
+			    else
+                            {
+			        scalar spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+                            }
                             bodyForce[influenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
                             rotorThrustBodyForceSum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
                             rotorTorqueBodyForceSum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
@@ -1799,10 +1826,23 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
             
                 forAll(influenceCells[i], m)
                 {
-                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - towerPoints[i][j]);
+		    vector d = mesh_.C()[influenceCells[i][m]] - towerPoints[i][j];
+                    scalar dis = mag(d);
                     if (dis <= projectionRadiusTower[i])
                     {
-                        scalar spreading = uniformGaussian(epsilonTower[i], dis);
+                        if (towerForceProjectionType[i] == "uniformGaussian")
+                        {
+                            scalar spreading = uniformGaussian(towerEpsilon[i][0], dis);
+                        }
+			else if (towerForceProjectionType[i] == "diskGaussian")
+                        {
+                            scalar r = 0.5 * interpolate(towerPointHeight[i][j], TowerStation[n], TowerChord[n]);
+                            scalar spreading = diskGaussian(towerEpsilon[i][0], towerEpsilon[i][1], verticalVector, r, d);
+                        }
+			else
+                        {
+                            scalar spreading = uniformGaussian(towerEpsilon[i][0], dis);
+                        }
 			bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
 			towerThrustBodyForceSum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
                     }
@@ -1842,10 +1882,22 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
             
                 forAll(influenceCells[i], m)
                 {
-                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - nacellePoints[i][j]);
+                    vector d = mesh_.C()[influenceCells[i][m]] - nacellePoints[i][j];
+                    scalar dis = mag(d);
                     if (dis <= projectionRadiusTower[i])
                     {
-                        scalar spreading = uniformGaussian(epsilonNacelle[i], dis);
+                        if (nacelleForceProjectionType[i] == "uniformGaussian")
+                        {
+                            scalar spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
+                        }
+                        else if (nacelleForceProjectionType[i] == "diskGaussian")
+                        {
+                            scalar spreading = diskGaussian(nacelleEpsilon[i][0], nacelleEpsilon[i][1], thrustVector, nacelleEffectiveRadius[n], d);
+                        }
+                        else
+                        {
+                            scalar spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
+                        }
 			bodyForce[influenceCells[i][m]] += nacellePointForce[i][j] * spreading;
 			nacelleThrustBodyForceSum += (-nacellePointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & thrustVector;
                     }
@@ -2152,11 +2204,17 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
         if (Pstream::parRun())
         {
-            rootDir = runTime_.path()/"../turbineOutput";
+            rootDir = runTime_.path()/"../postProcessing/turbineOutput";
         }
         else
         {
-            rootDir = runTime_.path()/"turbineOutput";
+            rootDir = runTime_.path()/"postProcessing/turbineOutput";
+        }
+
+        // Check to see if the postProcessing directory exists; if not, create it.    
+        if (!isDir(rootDir".."))
+        {
+            mkDir(rootDir"..");
         }
 
         // Check to see if the turbineOutput directory exists; if not, create it.    
@@ -2172,99 +2230,184 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
         }
 
 
-
-        // Create a total aerodynamic torque file.
-        //rotorTorqueFile(rootDir/time/"rotorTorque");
-        rotorTorqueFile_ = new OFstream(rootDir/time/"rotorTorque");
-        *rotorTorqueFile_ << "#Turbine    Time(s)    dt(s)    rotor torque (N-m)" << endl;
-
-        // Create a generator torque file.
-        generatorTorqueFile_ = new OFstream(rootDir/time/"generatorTorque");
-        *generatorTorqueFile_ << "#Turbine    Time(s)    dt(s)    generator torque (N-m)" << endl;
-
-        // Create a total rotorThrust file.
-        rotorThrustFile_ = new OFstream(rootDir/time/"rotorThrust");
-        *rotorThrustFile_ << "#Turbine    Time(s)    dt(s)    rotorThrust (N)" << endl;
-
-        // Create a total power file.
-        rotorPowerFile_ = new OFstream(rootDir/time/"rotorPower");
-        *rotorPowerFile_ << "#Turbine    Time(s)    dt(s)    rotor power (W)" << endl;
-
-        // Create a rotation rate file.
-        rotorSpeedFile_ = new OFstream(rootDir/time/"rotorSpeed");
-        *rotorSpeedFile_ << "#Turbine    Time(s)    dt(s)    rotor rotation rate(rpm)" << endl;
-        
-        // Create a filtered rotation rate file.
-        rotorSpeedFFile_ = new OFstream(rootDir/time/"rotorSpeedFiltered");
-        *rotorSpeedFFile_ << "#Turbine    Time(s)    dt(s)    filtered rotor rotation rate(rpm)" << endl;
-
-        // Create a blade 1 azimuth angle file.
-        rotorAzimuthFile_ = new OFstream(rootDir/time/"rotorAzimuth");
-        *rotorAzimuthFile_ << "#Turbine    Time(s)    dt(s)    blade 1 azimuth angle (degrees)" << endl;
-
-        // Create a blade pitch angle file.
-        bladePitchFile_ = new OFstream(rootDir/time/"bladePitch");
-        *bladePitchFile_ << "#Turbine    Time(s)    dt(s)    blade pitch angle (degrees)" << endl;
-
-        // Create a nacelle yaw direction file.
-        nacYawFile_ = new OFstream(rootDir/time/"nacYaw");
-        *nacYawFile_ << "#Turbine    Time(s)    dt(s)    nacelle yaw angle (degrees)" << endl;
-
-        // Create an angle of attack file.
+	// BLADE-POINT RELATED FILES
         bladePointAlphaFile_ = new OFstream(rootDir/time/"bladePointAlpha");
-        *bladePointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
+       *bladePointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
 
-        // Create a wind speed magnitude file.
         bladePointVmagFile_ = new OFstream(rootDir/time/"bladePointVmag");
-        *bladePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+       *bladePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
     
-        // Create an axial wind speed file.
         bladePointVaxialFile_ = new OFstream(rootDir/time/"bladePointVaxial");
-        *bladePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+       *bladePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
 
-        // Create a tangential wind speed file.
         bladePointVtangentialFile_ = new OFstream(rootDir/time/"bladePointVtangential");
-        *bladePointVtangentialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vtangential(m/s)" << endl;
+       *bladePointVtangentialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vtangential(m/s)" << endl;
 
-        // Create a radial wind speed file.
         bladePointVradialFile_ = new OFstream(rootDir/time/"bladePointVradial");
-        *bladePointVradialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vradial(m/s)" << endl;
+       *bladePointVradialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vradial(m/s)" << endl;
 
-        // Create a coefficient of bladePointLift file.
         bladePointClFile_ = new OFstream(rootDir/time/"bladePointCl");
-        *bladePointClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
+       *bladePointClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
 
-        // Create a coefficient of drag file.
-        CdFile_ = new OFstream(rootDir/time/"bladePointCd");
-        *CdFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cd" << endl;
+        bladePointCdFile_ = new OFstream(rootDir/time/"bladePointCd");
+       *bladePointCdFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cd" << endl;
 
-        // Create a bladePointLift file.
         bladePointLiftFile_ = new OFstream(rootDir/time/"bladePointLift");
-        *bladePointLiftFile_ << "#Turbine    Blade    Time(s)    dt(s)    lift (N)" << endl;
+       *bladePointLiftFile_ << "#Turbine    Blade    Time(s)    dt(s)    lift (N)" << endl;
 
-        // Create a drag file.
         bladePointDragFile_ = new OFstream(rootDir/time/"bladePointDrag");
-        *bladePointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+       *bladePointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
 
-        // Create a axial force file.
         bladePointAxialForceFile_ = new OFstream(rootDir/time/"bladePointAxialForce");
-        *bladePointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+       *bladePointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
 
-        // Create a tangential force file.
-        bladePointTangentialForceFile_ = new OFstream(rootDir/time/"bladePointTangentialForce");
-        *bladePointTangentialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    tangential force (N)" << endl;
+        bladePointHorizontalForceFile_ = new OFstream(rootDir/time/"bladePointHorizontalForce");
+       *bladePointHorizontalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    horizontal force (N)" << endl;
 
-        // Create a x-location file.
+        bladePointVerticalForceFile_ = new OFstream(rootDir/time/"bladePointVerticalForce");
+       *bladePointVerticalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    vertical force (N)" << endl;
+
+        bladePointTorqueFile_ = new OFstream(rootDir/time/"bladePointTorqueForce");
+       *bladePointTorqueFile_ << "#Turbine    Blade    Time(s)    dt(s)    torque (N-m)" << endl;
+
         bladePointXFile_ = new OFstream(rootDir/time/"bladePointX");
-        *bladePointXFile_ << "#Turbine    Blade    Time(s)    dt(s)    x-location(m)" << endl;
+       *bladePointXFile_ << "#Turbine    Blade    Time(s)    dt(s)    x-location(m)" << endl;
 
-        // Create a y-location file.
         bladePointYFile_ = new OFstream(rootDir/time/"bladePointY");
-        *bladePointYFile_ << "#Turbine    Blade    Time(s)    dt(s)    y-location(m)" << endl;
+       *bladePointYFile_ << "#Turbine    Blade    Time(s)    dt(s)    y-location(m)" << endl;
 
-        // Create a z-location file.
         bladePointZFile_ = new OFstream(rootDir/time/"bladePointZ");
-        *bladePointZFile_ << "#Turbine    Blade    Time(s)    dt(s)    z-location(m)" << endl;
+       *bladePointZFile_ << "#Turbine    Blade    Time(s)    dt(s)    z-location(m)" << endl;
+
+
+
+	// NACELLE-POINT RELATED FILES
+        nacellePointVmagFile_ = new OFstream(rootDir/time/"nacellePointVmag");
+       *nacellePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+    
+        nacellePointVaxialFile_ = new OFstream(rootDir/time/"nacellePointVaxial");
+       *nacellePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+
+        nacellePointVhorizontalFile_ = new OFstream(rootDir/time/"nacellePointVhorizontal");
+       *nacellePointVhorizontalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vhorizontal(m/s)" << endl;
+
+        nacellePointVverticalFile_ = new OFstream(rootDir/time/"nacellePointVvertical");
+       *nacellePointVverticalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vvertical(m/s)" << endl;
+
+        nacellePointDragFile_ = new OFstream(rootDir/time/"nacellePointDrag");
+       *nacellePointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+
+        nacellePointAxialForceFile_ = new OFstream(rootDir/time/"nacellePointAxialForce");
+       *nacellePointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+
+        nacellePointHorizontalForceFile_ = new OFstream(rootDir/time/"nacellePointHorizontalForce");
+       *nacellePointHorizontalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    horizontal force (N)" << endl;
+
+        nacellePointVerticalForceFile_ = new OFstream(rootDir/time/"nacellePointVerticalForce");
+       *nacellePointVerticalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    vertical force (N)" << endl;
+
+
+
+	// TOWER-POINT RELATED FILES
+        towerPointAlphaFile_ = new OFstream(rootDir/time/"towerPointAlpha");
+       *towerPointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(deg)" << endl;
+
+        towerPointVmagFile_ = new OFstream(rootDir/time/"towerPointVmag");
+       *towerPointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+    
+        towerPointVaxialFile_ = new OFstream(rootDir/time/"towerPointVaxial");
+       *towerPointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+
+        towerPointVhorizontalFile_ = new OFstream(rootDir/time/"towerPointVhorizontal");
+       *towerPointVhorizontalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vhorizontal(m/s)" << endl;
+
+        towerPointVverticalFile_ = new OFstream(rootDir/time/"towerPointVvertical");
+       *towerPointVverticalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vvertical(m/s)" << endl;
+       
+        towerPointClFile_ = new OFstream(rootDir/time/"towerPointCl");
+       *towerPointClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
+
+        towerPointCdFile_ = new OFstream(rootDir/time/"towerPointCd");
+       *towerPointCdFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cd" << endl;
+
+        towerPointLiftFile_ = new OFstream(rootDir/time/"towerPointLift");
+       *towerPointLiftFile_ << "#Turbine    Blade    Time(s)    dt(s)    lift (N)" << endl;
+
+        towerPointDragFile_ = new OFstream(rootDir/time/"towerPointDrag");
+       *towerPointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+
+        towerPointAxialForceFile_ = new OFstream(rootDir/time/"towerPointAxialForce");
+       *towerPointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+
+        towerPointHorizontalForceFile_ = new OFstream(rootDir/time/"towerPointHorizontalForce");
+       *towerPointHorizontalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    horizontal force (N)" << endl;
+
+        towerPointVerticalForceFile_ = new OFstream(rootDir/time/"towerPointVerticalForce");
+       *towerPointVerticalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    vertical force (N)" << endl;
+
+
+
+
+        // ROTOR-RELATED FILES
+        rotorTorqueFile_ = new OFstream(rootDir/time/"rotorTorque");
+       *rotorTorqueFile_ << "#Turbine    Time(s)    dt(s)    rotor torque (N-m)" << endl;
+
+        rotorAxialForceFile_ = new OFstream(rootDir/time/"rotorAxialForce");
+       *rotorAxialFile_ << "#Turbine    Time(s)    dt(s)    rotor axial force (N)" << endl;
+
+        rotorHorizontalForceFile_ = new OFstream(rootDir/time/"rotorHorizontalForce");
+       *rotorHorizontalFile_ << "#Turbine    Time(s)    dt(s)    rotor horizontal force (N)" << endl;
+
+        rotorVerticalForceFile_ = new OFstream(rootDir/time/"rotorVerticalForce");
+       *rotorVerticalFile_ << "#Turbine    Time(s)    dt(s)    rotor vertical force (N)" << endl;
+
+        rotorPowerFile_ = new OFstream(rootDir/time/"rotorPower");
+       *rotorPowerFile_ << "#Turbine    Time(s)    dt(s)    rotor power (W)" << endl;
+
+        rotorSpeedFile_ = new OFstream(rootDir/time/"rotorSpeed");
+       *rotorSpeedFile_ << "#Turbine    Time(s)    dt(s)    rotor rotation rate(rpm)" << endl;
+
+        rotorSpeedFFile_ = new OFstream(rootDir/time/"rotorSpeedFiltered");
+       *rotorSpeedFFile_ << "#Turbine    Time(s)    dt(s)    filtered rotor rotation rate(rpm)" << endl;
+
+        rotorAzimuthFile_ = new OFstream(rootDir/time/"rotorAzimuth");
+       *rotorAzimuthFile_ << "#Turbine    Time(s)    dt(s)    blade 1 azimuth angle (degrees)" << endl;
+
+
+
+	// NACELLE-RELATED FILES 
+	nacelleAxialForceFile_ = new OFstream(rootDir/time/"nacelleAxialForce");
+       *nacelleAxialForceFile_ << "#Turbine    Time(s)    dt(s)    nacelle axial force (N)" << endl;
+
+        nacelleHorizontalForceFile_ = new OFstream(rootDir/time/"nacelleHorizontalForce");
+       *nacelleHorizontalForceFile_ << "#Turbine    Time(s)    dt(s)    nacelle horizontal force (N)" << endl;
+
+        nacelleVerticalForceFile_ = new OFstream(rootDir/time/"nacelleVerticalForce");
+       *nacelleVerticalForceFile_ << "#Turbine    Time(s)    dt(s)    nacelle vertical force (N)" << endl;
+
+        nacelleYawFile_ = new OFstream(rootDir/time/"nacelleYaw");
+       *nacelleYawFile_ << "#Turbine    Time(s)    dt(s)    nacelle yaw angle (degrees)" << endl;
+
+
+
+	// TOWER-RELATED FILES 
+	towerAxialForceFile_ = new OFstream(rootDir/time/"towerAxialForce");
+       *towerAxialForceFile_ << "#Turbine    Time(s)    dt(s)    tower axial force (N)" << endl;
+
+        towerHorizontalForceFile_ = new OFstream(rootDir/time/"towerHorizontalForce");
+       *towerHorizontalForceFile_ << "#Turbine    Time(s)    dt(s)    tower horizontal force (N)" << endl;
+
+
+	
+	// BLADE-RELATED FILES
+        bladePitchFile_ = new OFstream(rootDir/time/"bladePitch");
+       *bladePitchFile_ << "#Turbine    Time(s)    dt(s)    blade pitch angle (degrees)" << endl;
+
+       
+
+	// GENERATOR-RELATED FILES
+        generatorTorqueFile_ = new OFstream(rootDir/time/"generatorTorque");
+       *generatorTorqueFile_ << "#Turbine    Time(s)    dt(s)    generator torque (N-m)" << endl;
 
     }
 }
@@ -2276,27 +2419,66 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
     {
         forAll(bladePoints,i)
         {
-            // Write out time and delta t.
+            // Write out time and delta t for non-blade point quantities.
+            *nacellePointVmagFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointVaxialFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointVhorizontalFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointVverticalFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointDragFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointAxialForceFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointHorizontalForceFile_ << i << " " << time << " " << dt << " ";
+            *nacellePointVerticalForceFile_ << i << " " << time << " " << dt << " ";
+            *towerPointAlphaFile_ << i << " " << time << " " << dt << " ";
+            *towerPointVmagFile_ << i << " " << time << " " << dt << " ";
+            *towerPointVaxialFile_ << i << " " << time << " " << dt << " ";
+            *towerPointVhorizontalFile_ << i << " " << time << " " << dt << " ";
+            *towerPointVverticalFile_ << i << " " << time << " " << dt << " ";
+            *towerPointClFile_ << i << " " << time << " " << dt << " ";
+            *towerPointCdFile_ << i << " " << time << " " << dt << " ";
+            *towerPointLiftFile_ << i << " " << time << " " << dt << " ";
+            *towerPointDragFile_ << i << " " << time << " " << dt << " ";
+            *towerPointAxialForceFile_ << i << " " << time << " " << dt << " ";
+            *towerPointHorizontalForceFile_ << i << " " << time << " " << dt << " ";
+            *towerPointVerticalForceFile_ << i << " " << time << " " << dt << " ";
             *rotorTorqueFile_ << i << " " << time << " " << dt << " ";
-            *generatorTorqueFile_ << i << " " << time << " " << dt << " ";
-            *rotorThrustFile_ << i << " " << time << " " << dt << " ";
+            *rotorAxialForceFile_ << i << " " << time << " " << dt << " ";
+            *rotorHorizontalForceFile_ << i << " " << time << " " << dt << " ";
+            *rotorVerticalForceFile_ << i << " " << time << " " << dt << " ";
             *rotorPowerFile_ << i << " " << time << " " << dt << " ";
             *rotorSpeedFile_ << i << " " << time << " " << dt << " ";
             *rotorSpeedFFile_ << i << " " << time << " " << dt << " ";
             *rotorAzimuthFile_ << i << " " << time << " " << dt << " ";
+            *nacelleAxialForceFile_ << i << " " << time << " " << dt << " ";
+            *nacelleHorizontalForceFile_ << i << " " << time << " " << dt << " ";
+            *nacelleVerticalForceFile_ << i << " " << time << " " << dt << " ";
+            *nacelleYawFile_ << i << " " << time << " " << dt << " ";
+            *towerAxialForceFile_ << i << " " << time << " " << dt << " ";
+            *towerHorizontalForceFile_ << i << " " << time << " " << dt << " ";
+            *generatorTorqueFile_ << i << " " << time << " " << dt << " ";
             *bladePitchFile_ << i << " " << time << " " << dt << " ";
-            *nacYawFile_ << i << " " << time << " " << dt << " ";
 
-            // Write out information for each turbine.
+
+            // Write out bulk information for each turbine (i.e., quantities not distributed
+	    // along points).
             *rotorTorqueFile_ << rotorTorque[i]*fluidDensity[i] << endl;
-            *generatorTorqueFile_ << generatorTorque[i] << endl;
-            *rotorThrustFile_ << rotorThrust[i]*fluidDensity[i] << endl;
+            *rotorAxialForceFile_ << rotorAxialForce[i]*fluidDensity[i] << endl;
+            *rotorHorizontalForceFile_ << rotorHorizontalForce[i]*fluidDensity[i] << endl;
+            *rotorVerticalForceFile_ << rotorVerticalForce[i]*fluidDensity[i] << endl;
             *rotorPowerFile_ << rotorPower[i]*fluidDensity[i] << endl;
             *rotorSpeedFile_ << rotorSpeed[i]/rpmRadSec << endl;
             *rotorSpeedFFile_ << rotorSpeedF[i]/rpmRadSec << endl;
             *rotorAzimuthFile_ << rotorAzimuth[i]/degRad << endl;
+            *nacelleAxialForceFile_ << nacelleAxialForce[i]*fluidDensity[i] << endl;
+            *nacelleHorizontalForceFile_ << nacelleHorizontalForce[i]*fluidDensity[i] << endl;
+            *nacelleVerticalForceFile_ << nacelleVerticalForce[i]*fluidDensity[i] << endl;
+            *nacelleYawFile_ <<  standardToCompass(nacYaw[i]/degRad) << endl;
+            *towerAxialForceFile_ << towerAxialForce[i]*fluidDensity[i] << endl;
+            *towerHorizontalForceFile_ << towereHorizontalForce[i]*fluidDensity[i] << endl;
+            *generatorTorqueFile_ << generatorTorque[i] << endl;
             *bladePitchFile_ << bladePitch[i] << endl;
-            *nacYawFile_ << standardToCompass(nacYaw[i]/degRad) << endl;
+
+	    // Write out non-blade information distributed along points.
+
 
             // Proceed blade by blade.
             forAll(bladePoints[i], j)
@@ -2312,11 +2494,16 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                 *bladePointLiftFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointDragFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointAxialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *bladePointTangentialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointHorizontalForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointVerticalForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointTorqueFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointXFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointYFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointZFile_ << i << " " << j << " " <<  time << " " << dt << " ";
 
+
+
+		// Write the information for each point on the blade.
                 forAll(bladePoints[i][j], k)
                 {   
                     *bladePointAlphaFile_ << bladePointAlpha[i][j][k] << " ";
@@ -2329,11 +2516,15 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                     *bladePointLiftFile_ << bladePointLift[i][j][k]*fluidDensity[i] << " ";
                     *bladePointDragFile_ << bladePointDrag[i][j][k]*fluidDensity[i] << " ";
                     *bladePointAxialForceFile_ << bladePointAxialForce[i][j][k]*fluidDensity[i] << " ";
-                    *bladePointTangentialForceFile_ << bladePointTangentialForce[i][j][k]*fluidDensity[i] << " ";
+                    *bladePointHorizontalForceFile_ << bladePointHorizontalForce[i][j][k]*fluidDensity[i] << " ";
+                    *bladePointVerticalForceFile_ << bladePointVerticalForce[i][j][k]*fluidDensity[i] << " ";
+                    *bladePoinTorqueFile_ << bladePointTorque[i][j][k]*fluidDensity[i] << " ";
                     *bladePointXFile_ << bladePoints[i][j][k].x() << " ";
                     *bladePointYFile_ << bladePoints[i][j][k].y() << " ";
                     *bladePointZFile_ << bladePoints[i][j][k].z() << " ";
                 }
+
+		// End the line so we can go on to the next blade.
                 *bladePointAlphaFile_ << endl;
                 *bladePointVmagFile_ << endl;
                 *bladePointVaxialFile_ << endl;
@@ -2350,7 +2541,9 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                 *bladePointZFile_ << endl;
             }
         }
-          
+        
+	// Add another space to denote that we are done with a timestep.  The output is blocks
+	// of data for each time step, separated by a blank line between time steps.
         *rotorTorqueFile_ << endl;
         *generatorTorqueFile_ << endl;
         *rotorThrustFile_ << endl;
@@ -2392,13 +2585,13 @@ void horizontalAxisWindTurbinesALM_tn::printDebug()
     Info << "bladePointDistType = " << bladePointDistType << endl;
     Info << "nacellePointDistType = " << nacellePointDistType << endl;
     Info << "towerPointDistType = " << towerPointDistType << endl;
-    Info << "actuatorPointInterpTypeBlade = " << actuatorPointInterpTypeBlade << endl;
-    Info << "actuatorPointInterpTypeNacelle = " << actuatorPointInterpTypeNacelle << endl;
-    Info << "actuatorPointInterpTypeTower = " << actuatorPointInterpTypeTower << endl;
+    Info << "bladeActuatorPointInterpType = " << bladeActuatorPointInterpType << endl;
+    Info << "nacelleActuatorPointInterpType = " << nacelleActuatorPointInterpType << endl;
+    Info << "towerActuatorPointInterpType = " << towerActuatorPointInterpType << endl;
     Info << "actuatorUpdateType = " << actuatorUpdateType << endl;
-    Info << "epsilonBlade = " << epsilonBlade << endl;
-    Info << "epsilonNacelle = " << epsilonNacelle << endl;
-    Info << "epsilonTower = " << epsilonTower << endl;
+    Info << "bladeEpsilon = " << bladeEpsilon << endl;
+    Info << "nacelleEpsilon = " << nacelleEpsilon << endl;
+    Info << "towerEpsilon = " << towerEpsilon << endl;
     Info << "nacelleSampleDistance = " << nacelleSampleDistance << endl;
     Info << "towerSampleDistance = " << towerSampleDistance << endl;
     Info << "bladeProjectionRadius = " << bladeProjectionRadius << endl;

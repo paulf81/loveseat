@@ -175,9 +175,9 @@ private:
             //  within which the actuator point lies.  "linear" uses linear
             //  interpolation from the cell within which the actuator point lies and
             //  from neighboring cells.
-            DynamicList<word> actuatorPointInterpTypeBlade;
-            DynamicList<word> actuatorPointInterpTypeNacelle;
-            DynamicList<word> actuatorPointInterpTypeTower;
+            DynamicList<word> bladeActuatorPointInterpType;
+            DynamicList<word> nacelleActuatorPointInterpType;
+            DynamicList<word> towerActuatorPointInterpType;
 
             //- List of how the blades are updated in time.  "oldPosition" means that for
             //  computing the body force due to the blades for t^(n+1), the velocity is
@@ -189,15 +189,33 @@ private:
             //  are projected.   
             DynamicList<word> actuatorUpdateType;
 
+	    //- The body force projection type to be used. Currently, the options are:
+	    //  "uniformGaussian" - Projects force at a point uniformly in all three directions.
+	    //                      Enter the spreading value epsilon as the first entry into
+	    //                      the epsilon vector, the remaining two entries will be disregarded.
+	    //  "diskGaussian"    - Projects force at a point constantly over a disk of some radius,
+	    //                      but dies off with a Gaussian at the end of the disk.  It also dies
+	    //                      off as a Gaussian in the direction normal to the disk.  Useful for
+	    //                      the tower and nacelle.  For the tower, the disk normal is along
+	    //                      the tower direction and the disk takes the radius of the tower.
+	    //                      For the nacelle, the disk normal is along the drive shaft direction
+	    //                      and the radius is the effective radius (based on frontal area) of
+	    //                      the nacelle. Epsilon for the radial die off of force is the first
+	    //                      entry into the epsilon vector and that of the axial die off is
+	    //                      the second entry (see below).
+            DynamicList<word> bladeForceProjectionType;
+            DynamicList<word> nacelleForceProjectionType;
+            DynamicList<word> towerForceProjectionType;
+
             //- List of body force normalization parameter for each turbine (m). This controls
             //  the width of the Gaussian projection.  It should be tied to grid width.
             //  A value below 1 times the local grid cell length will yield inaccurate
             //  projection of the forces to the grid (i.e., if you integrate the projected
             //  force, it will be significantly smaller than the force that was projected
             //  in the first place.
-            DynamicList<scalar> epsilonBlade;
-            DynamicList<scalar> epsilonNacelle;
-            DynamicList<scalar> epsilonTower;
+            DynamicList<vector> bladeEpsilon;
+            DynamicList<vector> nacelleEpsilon;
+            DynamicList<vector> towerEpsilon;
 
 	    //- The velocity used to calculate tower and nacelle forces must be sampled
 	    //  somewhere upstream of the actuator points.  These variables describe how
@@ -452,7 +470,7 @@ private:
                 DynamicList<List<List<scalar> > > TowerData;
 
                 //- Station along tower in which information is given (m).
-                DynamicList<DynamicList<scalar> > TowerHeight;
+                DynamicList<DynamicList<scalar> > TowerStation;
 
                 //- Chord at this height (m).
                 DynamicList<DynamicList<scalar> > TowerChord;
@@ -613,7 +631,7 @@ private:
 
             //- Drag/density at each actuator point. 
             DynamicList<List<List<scalar> > > bladePointDrag;
-            DynamicList<List<scalar> > dragPointNacelle;
+            DynamicList<List<scalar> > nacellePointDrag;
             DynamicList<List<scalar> > towerPointDrag;
 
             //- Axial force/density at each actuator point (not pointed in blade-local
@@ -622,8 +640,8 @@ private:
 	    DynamicList<List<scalar> > nacellePointAxialForce;
 	    DynamicList<List<scalar> > towerPointAxialForce;
 
-            //- Tangential force/density at each actuator point.
-            DynamicList<List<List<scalar> > > bladePointTangentialForce;
+            //- Torque/density at each actuator point.
+            DynamicList<List<List<scalar> > > bladePointTorque;
 
 	    //- Horizontal force/density at each actuator point (horizontal and perpendicular
 	    //  to shaft axis).
@@ -638,10 +656,10 @@ private:
 	    DynamicList<List<scalar> > nacellePointVerticalForce;
 
 
-            //- Thrust on turbine (along horizontal component of shaft axis).
-            DynamicList<scalar> rotorThrust;
-	    DynamicList<scalar> nacelleThrust;
-	    DynamicList<scalar> towerThrust;
+            //- Axial force on turbine (along horizontal component of shaft axis).
+            DynamicList<scalar> rotorAxialForce;
+	    DynamicList<scalar> nacelleAxialForce;
+	    DynamicList<scalar> towerAxialForce;
 
             //- Total rotor torque/density on turbine (about shaft axis).
             DynamicList<scalar> rotorTorque;
@@ -662,70 +680,98 @@ private:
 
 
         //- Output Data File Information.
-            //- List of output files for angle of attack.
-            OFstream* bladePointAlphaFile_;
+            //- List of output files for blade points.
+            OFstream* bladePointAlphaFile_;.
 
-            //- List of output files for wind magnitude.
             OFstream* bladePointVmagFile_;
-
-            //- List of output files for axial velocity.
             OFstream* bladePointVaxialFile_;
-
-            //- List of output files for tangential velocity.
             OFstream* bladePointVtangentialFile_;
-
-            //- List of output files for radial velocity.
             OFstream* bladePointVradialFile_;
 
-            //- List of output files for coefficient of lift.
             OFstream* bladePointClFile_;
-
-            //- List of output files for coefficient of drag.
             OFstream* bladePointCdFile_;
 
-            //- List of output files for lift/density.
             OFstream* bladePointLiftFile_;
-
-            //- List of output files for drag/density.
             OFstream* bladePointDragFile_;
 
-            //- List of output files for axial force/density.
             OFstream* bladePointAxialForceFile_;
+            OFstream* bladePointHorizontalForceFile_;
+            OFstream* bladePointVerticalForceFile_;
+            OFstream* bladePointTorqueFile_;
 
-            //- List of output files for tangential/density.
-            OFstream* bladePointTangentialForceFile_;
-
-            //- List of output files for actuator point locations.
             OFstream* bladePointXFile_;
-            OFstream* bladePointYBladeFile_;
-            OFstream* bladePointZBladeFile_;
+            OFstream* bladePointYFile_;
+            OFstream* bladePointZFile_;
 
-            //- List of output files for total aerodynamic torque/density.
+
+
+            //- List of output files for nacelle points.
+            OFstream* nacellePointVmagFile_;
+            OFstream* nacellePointVaxialFile_;
+            OFstream* nacellePointVhorizontalFile_;
+            OFstream* nacellePointVverticalFile_;
+
+            OFstream* nacellePointDragFile_;
+
+            OFstream* nacellePointAxialForceFile_;
+            OFstream* nacellePointHorizontalForceFile_;
+            OFstream* nacellePointVerticalForceFile_;
+
+
+	    
+            //- List of output files for tower points.
+            OFstream* towerPointAlphaFile_;.
+
+            OFstream* towerPointVmagFile_;
+            OFstream* towerPointVaxialFile_;
+            OFstream* towerPointVhorizontalFile_;
+            OFstream* towerPointVverticalFile_;
+
+            OFstream* towerPointClFile_;
+            OFstream* towerPointCdFile_;
+
+            OFstream* towerPointLiftFile_;
+            OFstream* towerPointDragFile_;
+
+            OFstream* towerPointAxialForceFile_;
+            OFstream* towerPointHorizontalForceFile_;
+            OFstream* towerPointVerticalForceFile_;
+
+
+
+            //- List of output files for the rotor.
             OFstream* rotorTorqueFile_;
-
-            //- List of output files for generator torque/density.
-            OFstream* generatorTorqueFile_;
-
-            //- List of output files for total rotorThrust/density.
-            OFstream* rotorThrustFile_;
-
-            //- List of output files for total power/density.
+            OFstream* rotorAxialForceFile_;
+            OFstream* rotorHorizontalForceFile_;
+            OFstream* rotorVerticalForceFile_;
             OFstream* rotorPowerFile_;
-
-            //- List of output files for rotation rate.
             OFstream* rotorSpeedFile_;
-
-            //- List of output files for filtered rotation rate.
             OFstream* rotorSpeedFFile_;
-
-            //- List of output files for blade 1 rotorAzimuth angle.
             OFstream* rotorAzimuthFile_;
+
+
+
+            //- List of output files for the nacelle.
+            OFstream* nacelleAxialForceFile_;
+            OFstream* nacelleHorizontalForceFile_;
+            OFstream* nacelleVerticalForceFile_;
+            OFstream* nacelleYawFile_;
+
+
+
+            //- List of output files for the tower.
+            OFstream* towerAxialForceFile_;
+            OFstream* towerHorizontalForceFile_;
+
+
 
             //- List of output files for blade bladePitch angle.
             OFstream* bladePitchFile_;
 
-            //- List of output files for nacelle yaw angle.
-            OFstream* nacYawFile_;
+
+
+            //- List of output files for the generator.
+            OFstream* generatorTorqueFile_;
 
             
 
