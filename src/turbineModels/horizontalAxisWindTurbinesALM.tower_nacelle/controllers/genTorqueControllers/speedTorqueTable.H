@@ -1,4 +1,4 @@
             // Use a rotor speed vs. generator torque look-up table.
             
-            torqueGenCommanded = interpolate(genSpeedF,SpeedGenProfile[j],TorqueGenProfile[j]);
-            torqueGenCommanded = min(max(0.0,torqueGenCommanded),max(TorqueGenProfile[j]));
+            generatorTorqueCommanded = interpolate(genSpeedF,SpeedGenProfile[j],TorqueGenProfile[j]);
+            generatorTorqueCommanded = min(max(0.0,generatorTorqueCommanded),max(TorqueGenProfile[j]));

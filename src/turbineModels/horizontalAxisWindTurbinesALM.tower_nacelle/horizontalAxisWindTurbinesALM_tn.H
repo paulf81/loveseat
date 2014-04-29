@@ -617,7 +617,7 @@ private:
             //- Wind magnitude (not including radial wind) at each actuator point.
             DynamicList<List<List<scalar> > > bladePointVmag;
             DynamicList<List<scalar> > towerPointVmag;
-            DynamicList<scalar> nacellePointVmag;
+            DynamicList<List<scalar> > nacellePointVmag;
 
             //- Coefficient of lift at each actuator point. 
             DynamicList<List<List<scalar> > > bladePointCl; 
@@ -626,7 +626,7 @@ private:
             //- Coefficient of drag at each actuator point. 
             DynamicList<List<List<scalar> > > bladePointCd; 
             DynamicList<List<scalar> > towerPointCd; 
-            DynamicList<scalar> nacellePointCd;
+            DynamicList<List<scalar> > nacellePointCd;
 
             //- Lift/density at each actuator point. 
             DynamicList<List<List<scalar> > > bladePointLift;
@@ -634,14 +634,14 @@ private:
 
             //- Drag/density at each actuator point. 
             DynamicList<List<List<scalar> > > bladePointDrag;
-            DynamicList<List<scalar> > nacellePointDrag;
             DynamicList<List<scalar> > towerPointDrag;
+            DynamicList<List<scalar> > nacellePointDrag;
 
             //- Axial force/density at each actuator point (not pointed in blade-local
             //  axial, but rather along horizontal component of shaft). 
             DynamicList<List<List<scalar> > > bladePointAxialForce;
-	    DynamicList<List<scalar> > nacellePointAxialForce;
 	    DynamicList<List<scalar> > towerPointAxialForce;
+	    DynamicList<List<scalar> > nacellePointAxialForce;
 
             //- Torque/density at each actuator point.
             DynamicList<List<List<scalar> > > bladePointTorque;
@@ -649,8 +649,8 @@ private:
 	    //- Horizontal force/density at each actuator point (horizontal and perpendicular
 	    //  to shaft axis).
 	    DynamicList<List<List<scalar> > > bladePointHorizontalForce;
-	    DynamicList<List<scalar> > nacellePointHorizontalForce;
 	    DynamicList<List<scalar> > towerPointHorizontalForce;
+	    DynamicList<List<scalar> > nacellePointHorizontalForce;
 
 
 	    //- Vertical force/density at each actuator point (horizontal and perpendicular
@@ -684,7 +684,7 @@ private:
 
         //- Output Data File Information.
             //- List of output files for blade points.
-            OFstream* bladePointAlphaFile_;.
+            OFstream* bladePointAlphaFile_;
 
             OFstream* bladePointVmagFile_;
             OFstream* bladePointVaxialFile_;
@@ -723,7 +723,7 @@ private:
 
 	    
             //- List of output files for tower points.
-            OFstream* towerPointAlphaFile_;.
+            OFstream* towerPointAlphaFile_;
 
             OFstream* towerPointVmagFile_;
             OFstream* towerPointVaxialFile_;

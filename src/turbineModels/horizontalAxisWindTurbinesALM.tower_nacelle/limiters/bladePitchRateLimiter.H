@@ -1,5 +1,5 @@
             // Limit the change in blade pitch.
 
-            scalar pitchRateCommanded = (pitchCommanded - (pitch[i]*degRad)) / dt;
+            scalar pitchRateCommanded = (bladePitchCommanded - (bladePitch[i]*degRad)) / dt;
             pitchRateCommanded = min(max(pitchRateCommanded, -(RateLimitBladePitch[j]*degRad)), (RateLimitBladePitch[j]*degRad));
-            pitchCommanded = (pitch[i]*degRad) + (pitchRateCommanded * dt);
+            bladePitchCommanded = (bladePitch[i]*degRad) + (pitchRateCommanded * dt);
