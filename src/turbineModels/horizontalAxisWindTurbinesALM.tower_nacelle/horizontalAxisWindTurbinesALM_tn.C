@@ -285,6 +285,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         OverHang.append(scalar(readScalar(turbineProperties.lookup("OverHang"))));
         NacelleLength.append(scalar(readScalar(turbineProperties.lookup("NacelleLength"))));
         NacelleFrontalArea.append(scalar(readScalar(turbineProperties.lookup("NacelleFrontalArea"))));
+        NacelleCd.append(scalar(readScalar(turbineProperties.lookup("NacelleCd"))));
         TowerHt.append(scalar(readScalar(turbineProperties.lookup("TowerHt"))));
         Twr2Shft.append(scalar(readScalar(turbineProperties.lookup("Twr2Shft"))));
         ShftTilt.append(scalar(readScalar(turbineProperties.lookup("ShftTilt"))));
@@ -1570,6 +1571,71 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
 
 
+    // Compute the nacelle forces at each actuator point.
+    forAll(nacelleWindVectors, i)
+    {
+        if (includeNacelle[i])
+        {
+            int m = turbineTypeID[i];
+
+            // Set the total tower forces of the turbine to zero.  They will be summed on a tower-element-
+            // wise basis.
+	    nacelleAxialForce[i] = 0.0;
+            nacelleHorizontalForce[i] = 0.0;
+            nacelleVerticalForce[i] = 0.0;
+
+            // Get necessary axes.
+            vector axialVector = uvShaft[i];
+            axialVector.z() = 0.0;
+            axialVector = axialVector / mag(axialVector);
+            vector verticalVector = vector::zero;
+            verticalVector.z() = 1.0;
+            vector horizontalVector = -(axialVector ^ verticalVector);
+            horizontalVector = horizontalVector / mag(horizontalVector);
+
+
+            // Find the local velocity magnitude.
+            nacellePointVmag[i] = Foam::pow((Foam::pow(nacelleWindVector[i].x(),2) + 
+				             Foam::pow(nacelleWindVector[i].y(),2) +
+					     Foam::pow(nacelleWindVector[i].z(),2)),0.5);
+
+            // Using Cd, wind velocity, chord, and actuator element width, calculate the
+            // total nacelle drag per density.
+	    scalar nacelleDrag = 0.5 * NacelleCd[m] * towerPointVmag[i] * towerPointVmag[i] * NacelleFrontalArea[m];
+
+	    // Now go point by point to find each points contribution to the total drag.
+            forAll(nacellePoints[i], j)
+            {
+                // We assume the nacelle creates drag only.  Divide the drag up into portions
+		// for each nacelle point based on the ratio of nacelle element length to total
+		// nacelle length.
+		scalar contribution = nacelleDs[i][j] / NacelleLength[i];
+		nacellePointDrag[i][j] = contribution * nacelleDrag;
+                vector dragVector = nacelleWindVector[i];
+                dragVector = dragVector/mag(dragVector);
+
+                dragVector = -nacellePointDrag[i][j] * dragVector;
+
+                // Add up bladePointLift and drag to get the resultant force/density applied to this blade element.
+                nacellePointForce[i][j] = dragVector;
+
+                // Find the component of the tower element force/density in the different directions.
+                // Axial is horizontal but aligned with the shaft.
+	        // Horizontal is horizontal but perpendicular to axial.
+                nacellePointAxialForce[i][j] = -nacellePointForce[i][j] & axialVector;
+	        nacellePointHorzontalForce[i][j] = -nacellePointForce[i][j] & horizontalVector;
+	        nacellePointVerticalForce[i][j] = -nacellePointForce[i][j] & verticalVector;
+            }
+
+            // Add this blade element's contribution to the total turbine forces/moments.
+            nacelleAxialForce[i] = nacelleDrag & axialVector;
+            nacelleHorizontalForce[i] = nacelleDrag & horizontalVector;
+            nacelleVerticalForce[i] = nacelleDrag & verticalVector;
+        }
+    }
+
+
+
     // Compute the tower forces at each actuator point.
     forAll(towerWindVectors, i)
     {
@@ -1577,33 +1643,77 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
         {
             int m = turbineTypeID[i];
 
-            // Set the total tower thrust of the turbine to zero.  Thrust will be summed on a tower-element-
+            // Set the total tower forces of the turbine to zero.  They will be summed on a tower-element-
             // wise basis.
-            towerThrust[i] = 0.0;
-
-            // Set the total tower sideways force of the turbine to zero.  The force will be summed on a tower-element-
-            // wise basis.
+            towerAxialForce[i] = 0.0;
             towerHorizontalForce[i] = 0.0;
 
+            // Get necessary axes.
+            vector axialVector = uvShaft[i];
+            axialVector.z() = 0.0;
+            axialVector = axialVector / mag(axialVector);
+            vector verticalVector = vector::zero;
+            verticalVector.z() = 1.0;
+            vector horizontalVector = -(axialVector ^ verticalVector);
+            horizontalVector = horizontalVector / mag(horizontalVector);
+
+
+            // Proceed point by point.
             forAll(towerWindVectors[i], j)
             {
-                // Find the flow angle.
-
                 // Interpolate the local twist angle.
                 scalar twistAng = interpolate(towerPointHeight[i][j], TowerStation[m], TowerTwist[m]);
-
+ 
                 // Interpolate the local chord.
                 scalar chord = interpolate(towerPointHeight[i][j], TowerStation[m], TowerChord[m]);
 
-	        // Find the local airfoil type.
+                // Find the local airfoil type.
                 label airfoil = interpolate(towerPointHeight[i][j], TowerStation[m], TowerAirfoilTypeID[m]);
 
-                // Find the local velocity magnitude composed of only the axial flow (do not include the
-                // flow along the tower axis).
+                // Find the local velocity magnitude composed of only the horizontal part of the flow.
                 towerPointVmag[i][j] = Foam::pow((Foam::pow(towerWindVectors[i][j].x(),2) + Foam::pow(towerWindVectors[i][j].y(),2)),0.5);
 
-	        // Get the angle of the wind with respect to rotor plane tangent direction.
-                scalar windAng = Foam::atan2(towerWindVectors[i][j][k].x(),towerWindVectors[i][j][k].y())/degRad;	
+                // Get the angle of the wind.
+                scalar windAng = Foam::atan2(towerWindVectors[i][j].y(),towerWindVectors[i][j].x())/degRad; 
+
+                // Get the angle of the nacelle.
+	        scalar nacelleAng = Foam::atan2(-axialVector.y(),-axialVector.x())/degRad;
+
+                // Angle of attack.
+                towerPointAlpha[i][j] = windAng - nacelleAng + twistAng;
+
+                // Use airfoil look-up tables to get coefficient of bladePointLift and drag.
+                towerPointCl[i][j] = interpolate(towerPointAlpha[i][j], airfoilAlpha[airfoil], airfoilCl[airfoil]);
+                towerPointCd[i][j] = interpolate(towerPointAlpha[i][j], airfoilAlpha[airfoil], airfoilCd[airfoil]);
+
+                // Using Cl, Cd, wind velocity, chord, and actuator element width, calculate the
+                // lift and drag per density.
+                towerPointLift[i][j] = 0.5 * towerPointCl[i][j] * towerPointVmag[i][j] * towerPointVmag[i][j] * chord * towerDs[i][j];
+                towerPointDrag[i][j] = 0.5 * towerPointCd[i][j] * towerPointVmag[i][j] * towerPointVmag[i][j] * chord * towerDs[i][j];
+
+                // Make the scalar lift and drag quantities vectors in the Cartesian coordinate system.
+                vector dragVector = towerWindVectors[i][j];
+	        dragVector.z() = 0.0;
+                dragVector = dragVector/mag(dragVector);
+
+                vector liftVector = -dragVector^verticalVector;
+                liftVector = liftVector/mag(liftVector);
+ 
+                liftVector = -towerPointLift[i][j] * liftVector;
+                dragVector = -towerPointDrag[i][j] * dragVector;
+
+                // Add up bladePointLift and drag to get the resultant force/density applied to this blade element.
+                towerPointForce[i][j] = liftVector + dragVector;
+
+                // Find the component of the tower element force/density in the different directions.
+                // Axial is horizontal but aligned with the shaft.
+	        // Horizontal is horizontal but perpendicular to axial.
+                towerPointAxialForce[i][j] = -towerPointForce[i][j] & axialVector;
+	        towerPointHorzontalForce[i][j] = -towerPointForce[i][j] & horizontalVector;
+
+                // Add this blade element's contribution to the total turbine forces/moments.
+                towerAxialForce[i] += towerPointAxialForce[i][j];
+                towerHorizontalForce[i] += towerPointHorizontalForce[i][j];
             }
         }
     }
@@ -1684,8 +1794,8 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                     F = Ftip * Froot;
                 }
 
-                // Using bladePointCl, bladePointCd, wind velocity, chord, and actuator element width, calculate the
-                // bladePointLift and drag per density.
+                // Using Cl, Cd, wind velocity, chord, and actuator element width, calculate the
+                // lift and drag per density.
                 bladePointCl[i][j][k] *= F;
                 bladePointCd[i][j][k] *= F;
                 bladePointLift[i][j][k] = 0.5 * bladePointCl[i][j][k] * bladePointVmag[i][j][k] * bladePointVmag[i][j][k] * chord * bladeDs[i][k];
@@ -1699,10 +1809,10 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 liftVector = liftVector/mag(liftVector);
 
                 liftVector = -bladePointLift[i][j][k] * liftVector;
-                dragVector = -drag[i][j][k] * dragVector;
+                dragVector = -bladePointDrag[i][j][k] * dragVector;
 
                 // Add up bladePointLift and drag to get the resultant force/density applied to this blade element.
-                bladePointForce[i][j][k] = bladePointLiftVector + dragVector;
+                bladePointForce[i][j][k] = liftVector + dragVector;
 
                 // Find the component of the blade element force/density in the different directions.
 		// Axial is horizontal but aligned with the shaft.

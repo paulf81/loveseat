@@ -322,6 +322,9 @@ private:
 	    //- Equivalent nacelle radius (m), based on frontal area.
 	    DynamicList<scalar> NacelleEquivalentRadius;
 
+	    //- Nacelle coefficient of drag.
+	    DynamicList<scalar> NacelleCd;
+
             //- Height of tower top above ground (m).
             DynamicList<scalar> TowerHt;
 
