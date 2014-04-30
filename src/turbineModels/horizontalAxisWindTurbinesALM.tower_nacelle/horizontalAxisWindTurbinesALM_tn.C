@@ -847,6 +847,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         towerWindVectors.append(List<vector>(numTowerPoints[i],vector::zero));
         nacelleWindVector.append(List<vector>(numNacellePoints[i],vector::zero));
 
+
         // Define the size of the deltaNacYaw, deltaAzimuth, and deltaPitch lists and set to zero.
         deltaNacYaw.append(0.0);
         deltaAzimuth.append(0.0);
