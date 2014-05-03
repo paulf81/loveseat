@@ -151,8 +151,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     forAll(turbineName,i)
     {
         turbineType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("turbineType")));
-	includeNacelle.append(bool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeNacelle")));
-	includeTower.append(bool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeTower")));
+	includeNacelle.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeNacelle")));
+	includeTower.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeTower")));
 
         baseLocation.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("baseLocation")));
 
@@ -786,6 +786,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         towerPointHeight.append(List<scalar>(numTowerPoints[i],0.0));
         {
 	   towerPoints[i][0] = baseLocation[i];
+         //towerPoints[i][0].z() += 0.5*towerDs[i][0];
 	   towerSamplePoints[i][0] = towerPoints[i][0];
 	   towerSamplePoints[i][0].x() -= towerSampleDistance[i];
            totTowerPoints++;
@@ -845,8 +846,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         // Define the actuator element wind vector arrays and set them to zero.
         bladeWindVectors.append(List<List<vector> >(NumBl[j],List<vector>(numBladePoints[i],vector::zero)));
         towerWindVectors.append(List<vector>(numTowerPoints[i],vector::zero));
-        nacelleWindVector.append(List<vector>(numNacellePoints[i],vector::zero));
-
+        nacelleWindVector.append(vector::zero);
 
         // Define the size of the deltaNacYaw, deltaAzimuth, and deltaPitch lists and set to zero.
         deltaNacYaw.append(0.0);
@@ -1289,8 +1289,8 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
                     }
                     minDis = mag(mesh_.C()[cellID] - towerSamplePoints[i][j]);
                 }
-                minDisLocalTower[iterBlade] = minDis;
-                minDisGlobalTower[iterBlade] = minDis;
+                minDisLocalTower[iterTower] = minDis;
+                minDisGlobalTower[iterTower] = minDis;
                 towerMinDisCellID[i][j] = cellID;
                 iterTower++;
             }
@@ -1674,9 +1674,9 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 	        nacellePointVerticalForce[i][j] = -nacellePointForce[i][j] & verticalVector;
 
                 // Add this blade element's contribution to the total turbine forces/moments.
-                nacelleAxialForce[i] += -nacellePointAxialForce[i][j];
-                nacelleHorizontalForce[i] += -nacellePointHorizontalForce[i][j];
-                nacelleVerticalForce[i] += -nacellePointVerticalForce[i][j];
+                nacelleAxialForce[i] += nacellePointAxialForce[i][j];
+                nacelleHorizontalForce[i] += nacellePointHorizontalForce[i][j];
+                nacelleVerticalForce[i] += nacellePointVerticalForce[i][j];
             }
         }
     }
@@ -2335,28 +2335,28 @@ void horizontalAxisWindTurbinesALM_tn::update()
     computeBodyForce();
 
     // Print turbine output to file.
-        outputIndex++;
+    outputIndex++;
 
-        if (outputControl == "timeStep")
+    if (outputControl == "timeStep")
+    {
+        if (outputIndex >= outputInterval)
         {
-            if (outputIndex >= outputInterval)
-    	    {
-	        outputIndex = 0;
-	        printOutputFiles();
-	    }
-        }
-        else if (outputControl == "runTime")
+            outputIndex = 0;
+            printOutputFiles();
+	}
+    }
+    else if (outputControl == "runTime")
+    {
+        if ((runTime_.value() - lastOutputTime) >= outputInterval)
         {
-            if ((runTime_.value() - lastOutputTime) >= outputInterval)
-            {
-    	        lastOutputTime += outputInterval;
-	        printOutputFiles();
-            }
-        }
-        else
-        {
+            lastOutputTime += outputInterval;
             printOutputFiles();
         }
+    }
+    else
+    {
+        printOutputFiles();
+    }
 
     // Now that at least the first time step is finished, set pastFirstTimeStep
     // to true.
