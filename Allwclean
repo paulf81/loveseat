@@ -11,6 +11,11 @@ rmdepall
 wclean
 cd ../../
 
+cd src/finiteVolume
+rmdepall
+wclean
+cd ../../
+
 cd applications/utilities/setFieldsABL
 rmdepall
 wclean

@@ -103,8 +103,8 @@
        // Compute the planetar rotation vector
        vector Omega_;
        Omega_.x() = 0.0;
-       Omega_.y() = ((2.0 * Foam::constant::mathematical::pi) / (planetaryRotationPeriod*3600.0)) * Foam::cos(latitude*Foam::constant::mathematical::pi/180.0);
-       Omega_.z() = ((2.0 * Foam::constant::mathematical::pi) / (planetaryRotationPeriod*3600.0)) * Foam::sin(latitude*Foam::constant::mathematical::pi/180.0);
+       Omega_.y() = ((2.0 * Foam::constant::mathematical::pi) / (max(1.0E-5,planetaryRotationPeriod)*3600.0)) * Foam::cos(latitude*Foam::constant::mathematical::pi/180.0);
+       Omega_.z() = ((2.0 * Foam::constant::mathematical::pi) / (max(1.0E-5,planetaryRotationPeriod)*3600.0)) * Foam::sin(latitude*Foam::constant::mathematical::pi/180.0);
        uniformDimensionedVectorField Omega
        (
            IOobject

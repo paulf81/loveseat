@@ -2404,19 +2404,19 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
 	// BLADE-POINT RELATED FILES
         bladePointAlphaFile_ = new OFstream(rootDir/time/"bladePointAlpha");
-       *bladePointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
+       *bladePointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack (degrees)" << endl;
 
         bladePointVmagFile_ = new OFstream(rootDir/time/"bladePointVmag");
-       *bladePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+       *bladePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag (m/s)" << endl;
     
         bladePointVaxialFile_ = new OFstream(rootDir/time/"bladePointVaxial");
-       *bladePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+       *bladePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial (m/s)" << endl;
 
         bladePointVtangentialFile_ = new OFstream(rootDir/time/"bladePointVtangential");
-       *bladePointVtangentialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vtangential(m/s)" << endl;
+       *bladePointVtangentialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vtangential (m/s)" << endl;
 
         bladePointVradialFile_ = new OFstream(rootDir/time/"bladePointVradial");
-       *bladePointVradialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vradial(m/s)" << endl;
+       *bladePointVradialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vradial (m/s)" << endl;
 
         bladePointClFile_ = new OFstream(rootDir/time/"bladePointCl");
        *bladePointClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
@@ -2443,79 +2443,79 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
        *bladePointTorqueFile_ << "#Turbine    Blade    Time(s)    dt(s)    torque (N-m)" << endl;
 
         bladePointXFile_ = new OFstream(rootDir/time/"bladePointX");
-       *bladePointXFile_ << "#Turbine    Blade    Time(s)    dt(s)    x-location(m)" << endl;
+       *bladePointXFile_ << "#Turbine    Blade    Time(s)    dt(s)    x-location (m)" << endl;
 
         bladePointYFile_ = new OFstream(rootDir/time/"bladePointY");
-       *bladePointYFile_ << "#Turbine    Blade    Time(s)    dt(s)    y-location(m)" << endl;
+       *bladePointYFile_ << "#Turbine    Blade    Time(s)    dt(s)    y-location (m)" << endl;
 
         bladePointZFile_ = new OFstream(rootDir/time/"bladePointZ");
-       *bladePointZFile_ << "#Turbine    Blade    Time(s)    dt(s)    z-location(m)" << endl;
+       *bladePointZFile_ << "#Turbine    Blade    Time(s)    dt(s)    z-location (m)" << endl;
 
 
 
 	// NACELLE-POINT RELATED FILES
         nacellePointVmagFile_ = new OFstream(rootDir/time/"nacellePointVmag");
-       *nacellePointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+       *nacellePointVmagFile_ << "#Turbine    Time(s)    dt(s)    Vmag (m/s)" << endl;
     
         nacellePointVaxialFile_ = new OFstream(rootDir/time/"nacellePointVaxial");
-       *nacellePointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+       *nacellePointVaxialFile_ << "#Turbine    Time(s)    dt(s)    Vaxial (m/s)" << endl;
 
         nacellePointVhorizontalFile_ = new OFstream(rootDir/time/"nacellePointVhorizontal");
-       *nacellePointVhorizontalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vhorizontal(m/s)" << endl;
+       *nacellePointVhorizontalFile_ << "#Turbine    Time(s)    dt(s)    Vhorizontal (m/s)" << endl;
 
         nacellePointVverticalFile_ = new OFstream(rootDir/time/"nacellePointVvertical");
-       *nacellePointVverticalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vvertical(m/s)" << endl;
+       *nacellePointVverticalFile_ << "#Turbine    Time(s)    dt(s)    Vvertical (m/s)" << endl;
 
         nacellePointDragFile_ = new OFstream(rootDir/time/"nacellePointDrag");
-       *nacellePointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+       *nacellePointDragFile_ << "#Turbine    Time(s)    dt(s)    drag (N)" << endl;
 
         nacellePointAxialForceFile_ = new OFstream(rootDir/time/"nacellePointAxialForce");
-       *nacellePointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+       *nacellePointAxialForceFile_ << "#Turbine    Time(s)    dt(s)    axial force (N)" << endl;
 
         nacellePointHorizontalForceFile_ = new OFstream(rootDir/time/"nacellePointHorizontalForce");
-       *nacellePointHorizontalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    horizontal force (N)" << endl;
+       *nacellePointHorizontalForceFile_ << "#Turbine    Time(s)    dt(s)    horizontal force (N)" << endl;
 
         nacellePointVerticalForceFile_ = new OFstream(rootDir/time/"nacellePointVerticalForce");
-       *nacellePointVerticalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    vertical force (N)" << endl;
+       *nacellePointVerticalForceFile_ << "#Turbine    Time(s)    dt(s)    vertical force (N)" << endl;
 
 
 
 	// TOWER-POINT RELATED FILES
         towerPointAlphaFile_ = new OFstream(rootDir/time/"towerPointAlpha");
-       *towerPointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(deg)" << endl;
+       *towerPointAlphaFile_ << "#Turbine    Time(s)    dt(s)    angle-of-attack (deg)" << endl;
 
         towerPointVmagFile_ = new OFstream(rootDir/time/"towerPointVmag");
-       *towerPointVmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+       *towerPointVmagFile_ << "#Turbine    Time(s)    dt(s)    Vmag (m/s)" << endl;
     
         towerPointVaxialFile_ = new OFstream(rootDir/time/"towerPointVaxial");
-       *towerPointVaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+       *towerPointVaxialFile_ << "#Turbine    Time(s)    dt(s)    Vaxial (m/s)" << endl;
 
         towerPointVhorizontalFile_ = new OFstream(rootDir/time/"towerPointVhorizontal");
-       *towerPointVhorizontalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vhorizontal(m/s)" << endl;
+       *towerPointVhorizontalFile_ << "#Turbine    Time(s)    dt(s)    Vhorizontal (m/s)" << endl;
 
         towerPointVverticalFile_ = new OFstream(rootDir/time/"towerPointVvertical");
-       *towerPointVverticalFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vvertical(m/s)" << endl;
+       *towerPointVverticalFile_ << "#Turbine    Time(s)    dt(s)    Vvertical (m/s)" << endl;
        
         towerPointClFile_ = new OFstream(rootDir/time/"towerPointCl");
-       *towerPointClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
+       *towerPointClFile_ << "#Turbine    Time(s)    dt(s)    Cl" << endl;
 
         towerPointCdFile_ = new OFstream(rootDir/time/"towerPointCd");
-       *towerPointCdFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cd" << endl;
+       *towerPointCdFile_ << "#Turbine    Time(s)    dt(s)    Cd" << endl;
 
         towerPointLiftFile_ = new OFstream(rootDir/time/"towerPointLift");
-       *towerPointLiftFile_ << "#Turbine    Blade    Time(s)    dt(s)    lift (N)" << endl;
+       *towerPointLiftFile_ << "#Turbine    Time(s)    dt(s)    lift (N)" << endl;
 
         towerPointDragFile_ = new OFstream(rootDir/time/"towerPointDrag");
-       *towerPointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+       *towerPointDragFile_ << "#Turbine    Time(s)    dt(s)    drag (N)" << endl;
 
         towerPointAxialForceFile_ = new OFstream(rootDir/time/"towerPointAxialForce");
-       *towerPointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+       *towerPointAxialForceFile_ << "#Turbine    Time(s)    dt(s)    axial force (N)" << endl;
 
         towerPointHorizontalForceFile_ = new OFstream(rootDir/time/"towerPointHorizontalForce");
-       *towerPointHorizontalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    horizontal force (N)" << endl;
+       *towerPointHorizontalForceFile_ << "#Turbine    Time(s)    dt(s)    horizontal force (N)" << endl;
 
         towerPointVerticalForceFile_ = new OFstream(rootDir/time/"towerPointVerticalForce");
-       *towerPointVerticalForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    vertical force (N)" << endl;
+       *towerPointVerticalForceFile_ << "#Turbine    Time(s)    dt(s)    vertical force (N)" << endl;
 
 
 
