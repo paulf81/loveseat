@@ -2,5 +2,6 @@ fvPatchFields = fields/fvPatchFields
 derivedFvPatchFields = $(fvPatchFields)/derived
 $(derivedFvPatchFields)/buoyantPressureMod/buoyantPressureModFvPatchScalarField.C
 $(derivedFvPatchFields)/turbulentABLVelocityControlled/turbulentABLVelocityControlledFvPatchField.C
+$(derivedFvPatchFields)/turbulentABLTemperatureControlled/turbulentABLTemperatureControlledFvPatchField.C
 
 LIB = $(FOAM_USER_LIBBIN)/libuserfiniteVolume
