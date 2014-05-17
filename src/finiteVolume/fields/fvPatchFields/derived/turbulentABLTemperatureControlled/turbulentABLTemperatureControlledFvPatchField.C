@@ -46,10 +46,12 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     printOn_(false),
     zInversion_(700.0),
     widthInversion_(100.0),
-    Tbelow_(300.0),
-    Tabove_(308.0),
-    TgradBelow_(0.0),
-    TgradAbove_(0.003),
+    TInvBelow_(300.0),
+    TInvAbove_(308.0),
+    TSurface_(300.4),
+    TSurfRate_(8.4E-5),
+    TGradBelow_(0.0),
+    TGradAbove_(0.003),
     alphaTurbulent_(0.1),
     fluctScale_(0.0003),
     zPeak_(100.0),
@@ -57,7 +59,11 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     counter_(0),
     turbField_(p.size()),
     turbFieldOld_(p.size()),
-    ranGen_(label(0))
+    ranGen_(label(0)),
+    zInvBottom_(650.0),
+    zInvTop_(750.0),
+    TGradInv_(0.08),
+    TSurfaceOld_(TSurface_)
 {}
 
 
@@ -73,10 +79,12 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     printOn_(ptf.printOn_),
     zInversion_(ptf.zInversion_),
     widthInversion_(ptf.widthInversion_),
-    Tbelow_(ptf.Tbelow_),
-    Tabove_(ptf.Tabove_),
-    TgradBelow_(ptf.TgradBelow_),
-    TgradAbove_(ptf.TgradAbove_),
+    TInvBelow_(ptf.TInvBelow_),
+    TInvAbove_(ptf.TInvAbove_),
+    TSurface_(ptf.TSurface_),
+    TSurfRate_(ptf.TSurfRate_),
+    TGradBelow_(ptf.TGradBelow_),
+    TGradAbove_(ptf.TGradAbove_),
     alphaTurbulent_(ptf.alphaTurbulent_),
     fluctScale_(ptf.fluctScale_),
     zPeak_(ptf.zPeak_),
@@ -84,7 +92,11 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     counter_(0),
     turbField_(ptf.turbField_,mapper),
     turbFieldOld_(ptf.turbFieldOld_,mapper),
-    ranGen_(label(0))
+    ranGen_(label(0)),
+    zInvBottom_(650.0),
+    zInvTop_(750.0),
+    TGradInv_(0.08),
+    TSurfaceOld_(TSurface_)
 {}
 
 
@@ -99,10 +111,12 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     printOn_(dict.lookupOrDefault<bool>("print", false)),
     zInversion_(readScalar(dict.lookup("zInversion"))),
     widthInversion_(readScalar(dict.lookup("widthInversion"))),
-    Tbelow_(readScalar(dict.lookup("Tbelow"))),
-    Tabove_(readScalar(dict.lookup("Tabove"))),
-    TgradBelow_(readScalar(dict.lookup("TgradBelow"))),
-    TgradAbove_(readScalar(dict.lookup("TgradAbove"))),
+    TInvBelow_(readScalar(dict.lookup("TInvBelow"))),
+    TInvAbove_(readScalar(dict.lookup("TInvAbove"))),
+    TSurface_(readScalar(dict.lookup("TSurface"))),
+    TSurfRate_(readScalar(dict.lookup("TSurfRate"))),
+    TGradBelow_(readScalar(dict.lookup("TGradBelow"))),
+    TGradAbove_(readScalar(dict.lookup("TGradAbove"))),
     alphaTurbulent_(readScalar(dict.lookup("alphaTurbulent"))),
     fluctScale_(readScalar(dict.lookup("fluctScale"))),
     zPeak_(readScalar(dict.lookup("fluctPeakZ"))),
@@ -110,7 +124,11 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     counter_(0),
     turbField_("turbField", dict, p.size()),
     turbFieldOld_(p.size()),
-    ranGen_(label(0))
+    ranGen_(label(0)),
+    zInvBottom_(zInversion_-0.5*widthInversion_),
+    zInvTop_(zInversion_+0.5*widthInversion_),
+    TGradInv_((TInvAbove_-TInvBelow_)/widthInversion_),
+    TSurfaceOld_(TSurface_)
 {}
 
 
@@ -123,10 +141,12 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     printOn_(ptf.printOn_),
     zInversion_(ptf.zInversion_),
     widthInversion_(ptf.widthInversion_),
-    Tbelow_(ptf.Tbelow_),
-    Tabove_(ptf.Tabove_),
-    TgradBelow_(ptf.TgradBelow_),
-    TgradAbove_(ptf.TgradAbove_),
+    TInvBelow_(ptf.TInvBelow_),
+    TInvAbove_(ptf.TInvAbove_),
+    TSurface_(ptf.TSurface_),
+    TSurfRate_(ptf.TSurfRate_),
+    TGradBelow_(ptf.TGradBelow_),
+    TGradAbove_(ptf.TGradAbove_),
     alphaTurbulent_(ptf.alphaTurbulent_),
     fluctScale_(ptf.fluctScale_),
     zPeak_(ptf.zPeak_),
@@ -134,7 +154,11 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     counter_(0),
     turbField_(ptf.turbField_),
     turbFieldOld_(ptf.turbFieldOld_),
-    ranGen_(label(0))
+    ranGen_(ptf.ranGen_),
+    zInvBottom_(ptf.zInvBottom_),
+    zInvTop_(ptf.zInvTop_),
+    TGradInv_(ptf.TGradInv_),
+    TSurfaceOld_(ptf.TSurfaceOld_)
 {}
 
 
@@ -148,10 +172,12 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     printOn_(ptf.printOn_),
     zInversion_(ptf.zInversion_),
     widthInversion_(ptf.widthInversion_),
-    Tbelow_(ptf.Tbelow_),
-    Tabove_(ptf.Tabove_),
-    TgradBelow_(ptf.TgradBelow_),
-    TgradAbove_(ptf.TgradAbove_),
+    TInvBelow_(ptf.TInvBelow_),
+    TInvAbove_(ptf.TInvAbove_),
+    TSurface_(ptf.TSurface_),
+    TSurfRate_(ptf.TSurfRate_),
+    TGradBelow_(ptf.TGradBelow_),
+    TGradAbove_(ptf.TGradAbove_),
     alphaTurbulent_(ptf.alphaTurbulent_),
     fluctScale_(ptf.fluctScale_),
     zPeak_(ptf.zPeak_),
@@ -159,7 +185,11 @@ turbulentABLTemperatureControlledFvPatchField::turbulentABLTemperatureControlled
     counter_(0),
     turbField_(ptf.turbField_),
     turbFieldOld_(ptf.turbFieldOld_),
-    ranGen_(label(0))
+    ranGen_(ptf.ranGen_),
+    zInvBottom_(ptf.zInvBottom_),
+    zInvTop_(ptf.zInvTop_),
+    TGradInv_(ptf.TGradInv_),
+    TSurfaceOld_(ptf.TSurfaceOld_)
 {}
 
 
@@ -179,36 +209,49 @@ void turbulentABLTemperatureControlledFvPatchField::updateCoeffs()
 //  Compute the new inflow velocity.
     if (curTimeIndex_ != this->db().time().timeIndex())
     {
-
+ 
+        scalar dt = this->db().time().deltaT().value();
 
         scalarField TLocal(patch().size(),0.0);
+
+        zInvBottom_ += dt*TSurfRate_/TGradInv_;
 
         forAll(patch(), faceI)
         {
             scalar z = patch().Cf()[faceI].z();
             scalar T = 0.0;
 
-            if (z < (zInversion_ - (0.5 * widthInversion_)))
+            if (z < zInvBottom_)
             {
-                T = Tbelow_ + TgradBelow_ * (z - (zInversion_ - (0.5 * widthInversion_)));
+                T = TInvBelow_ + TGradBelow_ * (z - zInvBottom_);
             }
-            else if ( (z >= (zInversion_ - (0.5 * widthInversion_))) && 
-                      (z <= (zInversion_ + (0.5 * widthInversion_))) )
+            else if ( (z >= zInvBottom_) && 
+                      (z <= zInvTop_) )
             {
-                scalar slope = (Tabove_ - Tbelow_) / max(1.0E-6,widthInversion_);
-                T = Tbelow_ + slope * (z - (zInversion_ - (0.5 * widthInversion_)));
+                T = TInvAbove_ + TGradInv_ * (z - zInvTop_);
             }
-            else if (z > (zInversion_ + (0.5 * widthInversion_)))
+            else if (z > zInvTop_)
             {
-                T = Tabove_ + TgradAbove_ * (z - (zInversion_ + (0.5 * widthInversion_)));
+                T = TInvAbove_ + TGradAbove_ * (z - zInvTop_);
             }
+
+            scalar Tdiff = TSurface_ - T;
+            scalar blend = Foam::exp(-30.0*(z/zInvTop_));
+            T += Tdiff * blend;
 
             TLocal[faceI] = T;
         }
 
+        TSurfaceOld_ = TSurface_;
+        TSurface_ += dt*TSurfRate_;
+        TInvBelow_ += dt*TSurfRate_;
+        //Info << "TSurfaceOld = " << TSurfaceOld_ << endl <<
+        //        "TSurface    = " << TSurface_ << endl;
+
 
         Field<scalar> randomField(this->size());
         Field<scalar> mask(this->size());
+        Field<scalar> turbFieldNew(this->size());
 
         forAll(patch(), faceI)
         {
@@ -221,8 +264,10 @@ void turbulentABLTemperatureControlledFvPatchField::updateCoeffs()
 
         turbFieldOld_ = turbField_;
 
-        turbField_ = (1 - alphaTurbulent_) * turbFieldOld_ + 
-                     alphaTurbulent_ * mask * rmsCorr * (randomField - 0.5) * fluctScale_ * TLocal;
+        turbFieldNew = mask * rmsCorr * (randomField - 0.5) * fluctScale_ * TLocal;
+
+        turbField_ = (1 - alphaTurbulent_) * turbFieldOld_ + (alphaTurbulent_) * turbFieldNew;
+
         TLocal += turbField_;
     
         this->operator==(TLocal);
@@ -246,10 +291,12 @@ void turbulentABLTemperatureControlledFvPatchField::write(Ostream& os) const
     os.writeKeyword("print")     << printOn_   << token::END_STATEMENT << nl;
     os.writeKeyword("zInversion") << zInversion_ << token::END_STATEMENT << nl;
     os.writeKeyword("widthInversion") << widthInversion_ << token::END_STATEMENT << nl;
-    os.writeKeyword("Tbelow") << Tbelow_ << token::END_STATEMENT << nl;
-    os.writeKeyword("Tabove") << Tabove_ << token::END_STATEMENT << nl;
-    os.writeKeyword("TgradBelow") << TgradBelow_ << token::END_STATEMENT << nl;
-    os.writeKeyword("TgradAbove") << TgradAbove_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TInvBelow") << TInvBelow_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TInvAbove") << TInvAbove_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TSurface") << TSurfaceOld_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TSurfRate") << TSurfRate_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TGradBelow") << TGradBelow_ << token::END_STATEMENT << nl;
+    os.writeKeyword("TGradAbove") << TGradAbove_ << token::END_STATEMENT << nl;
     os.writeKeyword("alphaTurbulent") << alphaTurbulent_ << token::END_STATEMENT << nl;
     os.writeKeyword("fluctScale") << fluctScale_ << token::END_STATEMENT << nl;
     os.writeKeyword("fluctPeakZ") << zPeak_ << token::END_STATEMENT << nl;

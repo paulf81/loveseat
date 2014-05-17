@@ -200,6 +200,8 @@ IOdictionary setFieldsABLDict
 // Read in the setFieldsABLDict entries.
 word velocityInitType(setFieldsABLDict.lookup("velocityInitType"));
 word temperatureInitType(setFieldsABLDict.lookup("temperatureInitType"));
+word tableInterpTypeU(setFieldsABLDict.lookupOrDefault<word>("tableInterpTypeU","linear"));
+word tableInterpTypeT(setFieldsABLDict.lookupOrDefault<word>("tableInterpTypeT","linear"));
 scalar deltaU(setFieldsABLDict.lookupOrDefault<scalar>("deltaU",1.0));
 scalar deltaV(setFieldsABLDict.lookupOrDefault<scalar>("deltaV",1.0));
 scalar zPeak(setFieldsABLDict.lookupOrDefault<scalar>("zPeak",0.03));
@@ -291,8 +293,16 @@ if (updateInternalFields)
         }
         else if (velocityInitType == "table")
         {
-            U[cellI].x() = interpolateSplineXY(z,zProfile,UProfile);
-            U[cellI].y() = interpolateSplineXY(z,zProfile,VProfile);
+            if (tableInterpTypeU == "cubic")
+            {
+                U[cellI].x() = interpolateSplineXY(z,zProfile,UProfile);
+                U[cellI].y() = interpolateSplineXY(z,zProfile,VProfile);
+            }
+            else
+            {
+                U[cellI].x() = interpolateXY(z,zProfile,UProfile);
+                U[cellI].y() = interpolateXY(z,zProfile,VProfile);
+            }
         }
 
         U[cellI] += UPrime;
@@ -315,7 +325,14 @@ if (updateInternalFields)
         }
         else if (temperatureInitType == "table")
         {
-            T[cellI] = interpolateSplineXY(z,zProfile,TProfile);
+            if (tableInterpTypeT == "cubic")
+            {
+                T[cellI] = interpolateSplineXY(z,zProfile,TProfile);
+            }
+            else
+            {
+                T[cellI] = interpolateXY(z,zProfile,TProfile);
+            }
         }
 
         if (z/zMax < zPeak)

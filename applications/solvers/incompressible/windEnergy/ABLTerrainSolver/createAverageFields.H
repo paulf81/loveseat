@@ -78,6 +78,37 @@
         dimensionedSymmTensor("uuPrime2",dimensionSet(0, 2, -2, 0, 0, 0, 0),symmTensor::zero)
     );
 
+    // Create the resolved scale TKE
+    Info<< "Creating the resolved scale turbulent kinetic energy field, kResolved..." << endl;
+    volScalarField kResolved
+    (
+        IOobject
+        (
+            "kResolved",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("kResolved",dimensionSet(0, 2, -2, 0, 0, 0, 0),0.0)
+    );
+
+    // Create the mean SGS TKE
+    Info<< "Creating the mean SGS turbulent kinetic energy field, kResolved..." << endl;
+    volScalarField kSGSmean
+    (
+        IOobject
+        (
+            "kSGSmean",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        turbulence->k()
+    );
+
     // Create the time-averaged temperature-temperature correlation field.
     Info<< "Creating the time-averaged temperature-temperature correlation field, TTPrime2..." << endl;
     volScalarField TTPrime2

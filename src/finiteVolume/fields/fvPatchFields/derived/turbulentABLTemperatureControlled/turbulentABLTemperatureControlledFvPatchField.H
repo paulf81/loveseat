@@ -87,10 +87,12 @@ protected:
         bool printOn_;
         scalar zInversion_;
         scalar widthInversion_;
-        scalar Tbelow_;
-        scalar Tabove_;
-        scalar TgradBelow_;
-        scalar TgradAbove_;
+        scalar TInvBelow_;
+        scalar TInvAbove_;
+        scalar TSurface_;
+        scalar TSurfRate_;
+        scalar TGradBelow_;
+        scalar TGradAbove_;
         scalar alphaTurbulent_;
         scalar fluctScale_;
         scalar zPeak_;
@@ -99,6 +101,10 @@ protected:
         Field<scalar> turbField_;
         Field<scalar> turbFieldOld_;
         Random ranGen_;
+        scalar zInvBottom_;
+        scalar zInvTop_;
+        scalar TGradInv_;
+        scalar TSurfaceOld_;
 
 public:
 

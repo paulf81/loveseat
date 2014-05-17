@@ -276,7 +276,6 @@ void turbulentABLVelocityControlledFvPatchField::updateCoeffs()
     {
        oldTimeIndex_ = curTimeIndex_;
        uStarOld_ = uStar_;
-       turbFieldOld_ = turbField_;
        counter_++;
     }
 
@@ -348,8 +347,8 @@ void turbulentABLVelocityControlledFvPatchField::updateCoeffs()
 //  }
 //  UmeasAvg /= counter_;
 
-    Info << counter_ << tab << avgWindow_ << tab << "Umeas = " << Umeas << tab << "UmeasAvg = " << UmeasAvg << endl;
-    Info << uHist << endl;
+//  Info << counter_ << tab << avgWindow_ << tab << "Umeas = " << Umeas << tab << "UmeasAvg = " << UmeasAvg << endl;
+//  Info << uHist << endl;
 
 
 //  Compute the new inflow velocity.
@@ -359,7 +358,8 @@ void turbulentABLVelocityControlledFvPatchField::updateCoeffs()
         scalar uStarDesired = uStar_;
         uStar_ = alphaMean_*uStar_ + (1.0 - alphaMean_)*uStarOld_;
     }
-    Info << curTimeIndex_ << tab << uStar_ << tab << windDir_ << endl;
+//  Info << curTimeIndex_ << tab << uStar_ << tab << windDir_ << endl;
+    Info << counter_ << tab << avgWindow_ << tab << "Umeas = " << Umeas << tab << "UmeasAvg = " << UmeasAvg << tab << "uStar = " << uStar_ << endl;
 
 
 
@@ -387,6 +387,9 @@ void turbulentABLVelocityControlledFvPatchField::updateCoeffs()
 
         Field<vector> randomField(this->size());
         Field<scalar> mask(this->size());
+        Field<vector> turbFieldNew(this->size());
+       
+        turbFieldOld_ = turbField_;
 
         forAll(patch(), faceI)
         {
@@ -396,10 +399,20 @@ void turbulentABLVelocityControlledFvPatchField::updateCoeffs()
         }
 
         scalar rmsCorr = sqrt(12.0*(2.0*alphaTurbulent_ - sqr(alphaTurbulent_)))/alphaTurbulent_;
-
-        turbField_ = (1 - alphaTurbulent_) * turbFieldOld_ + 
-                     alphaTurbulent_ * mask * (rmsCorr * cmptMultiply(randomField - 0.5 * pTraits<vector>::one,fluctScale_) * mag(ULocal));
+       
+        turbFieldNew = mask * (rmsCorr * cmptMultiply(randomField - 0.5 * pTraits<vector>::one,fluctScale_) * mag(ULocal));
+        
+        turbField_ = (1 - alphaTurbulent_) * turbFieldOld_ + (alphaTurbulent_) * turbFieldNew;
+        
         ULocal += turbField_;
+
+//      if (this->size() > 0)
+//      {
+//         Pout << "turbFieldOld_= " << turbFieldOld_[0] << endl
+//              << "turbFieldNew_= " << turbFieldNew[0] << endl
+//              << "turbField_= " << turbField_[0] << endl
+//              << "alphaT_= " << alphaTurbulent_ << endl;
+//      }
     }
 
 
