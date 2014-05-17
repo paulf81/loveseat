@@ -28,29 +28,28 @@ Group
     grpGenericBoundaryConditions
 
 Description
-    Wall boundary condition for velocity at the ground in atmospheric boundary  
-    layer incompressible flow in which there is wall roughness.  The velocity
-    at the surface is specified such that the velocity gradient normal to the 
-    surface is equal to the normal velocity gradient at the cell face opposite
-    to the boundary face, but there is no wall normal flow.  The purpose of this
-    is to supply a proper vertical gradient for use in the turbulence model
-    equation.
+    An inflow boundary condition for temperature.  It imposes a temperature
+    profile with a capping inversion.  The entire profile below the inversion
+    can heat up at a certain rate.  Also, temperature fluctuations can be
+    applied to aid in the spin-up of turbulence.
 
-    \heading Patch usage
 
-    \table
-        Property     | Description             | Required    | Default value
-        print        | print output to screen  | no          | false
-    endtable
+        type              turbulentABLTemperatureControlled;
+        print             false;
+        zInversion        700.0;                        Inversion height
+        widthInversion    100.0;                        Inversion width
+        TInvBelow         300.0;                        T just below inversion
+        TInvAbove         308.0;                        T just above inversion
+        TSurface          300.5;                        T at first cell above surface
+        TSurfRate         2.7778E-4;                    Rate at which the entire profile below the inversion changes
+        TGradBelow        0.0;                          Gradient of temperature below inversion
+        TGradAbove        0.003;			Gradient of temperature above inversion
+        alphaTurbulent    0.25;				Relaxation factor on application of temperature fluctuations
+        fluctScale        0.003;			Scale of fluctuations relative to mean temperature at particular patch face
+        fluctPeakZ        60.0;				Height (m) above surface of peak fluctuations
+        turbField         uniform 0;			Initial turbulent field
+        value             uniform $T0;			Initial T field
 
-    Example of the boundary condition specification:
-    \verbatim
-        lower
-        {
-           type            turbulentABLTemperatureControlled;
-           print           true;                       //-print output (true/false)
-        }
-    \endverbatim
 
 SeeAlso
     Foam::fixedValueFvPatchField

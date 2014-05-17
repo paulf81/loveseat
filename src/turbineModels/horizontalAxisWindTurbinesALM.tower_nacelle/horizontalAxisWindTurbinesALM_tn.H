@@ -38,6 +38,10 @@ Class
     horizontalAxisWindTurbinesALM_tn
 
 Description
+    Version of the older actuator line model that includes acutator tower and
+    nacelle.  This will eventually become the standard version, but is relatively
+    untested, so this is an ALPHA version.
+
     This is the horizontal-axis wind turbine array actuator line model class.
     It will set up an array of various kinds of turbines (currently blades 
     only) within a flow field.  The blade rotation rate is set or calculated

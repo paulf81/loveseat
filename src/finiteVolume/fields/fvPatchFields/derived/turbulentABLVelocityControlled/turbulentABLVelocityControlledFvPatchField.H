@@ -28,29 +28,30 @@ Group
     grpGenericBoundaryConditions
 
 Description
-    Wall boundary condition for velocity at the ground in atmospheric boundary  
-    layer incompressible flow in which there is wall roughness.  The velocity
-    at the surface is specified such that the velocity gradient normal to the 
-    surface is equal to the normal velocity gradient at the cell face opposite
-    to the boundary face, but there is no wall normal flow.  The purpose of this
-    is to supply a proper vertical gradient for use in the turbulence model
-    equation.
+    Inflow velocity boundary condition for atmospheric flows.  The condition
+    applies a logarithmic profile up to a certain height (typically, the height
+    of the inversion).  Velocity is sampled at a specified point in the flow,
+    and the log profile is scaled to try to achieve that desired velocity
+    at that point (for example if trying to match mean speed at a met mast).
+    Random fluctuations can also be added to try to initiate turbulence.
 
-    \heading Patch usage
+        type            turbulentABLVelocityControlled;
+        print           0;
+        zConst          700;					Height above which velocity is constant
+        z0              0.1;					Surface roughness
+        refLoc          $refLoc0;				Velocity sampling location
+        refU            $refU0;					Desired wind speed at sampling location
+        avgWindow       1;					Size of backwards averaging window for velocity sampling
+        alphaTurbulent  0.25;					Relaxation factor on fluctuation application each new time step
+        alphaMean       0.1;					Relaxation factor on log profile scaling to match desired speed at refLoc
+        fluctScale      (0.0 0.0 0.0);				Scale of fluctuations in each direction relative to velocity at particular patch face
+        fluctPeakZ      100.0;					Height of maximum fluctuation amplitude
+        uStar           0.5;					Initial friction velocity
+        kappa           0.4;					von Karmann constant
+        windDir         190;					Direction of wind that flows into domain
+        turbField       uniform (0 0 0);			Initial turbulence field
+        value           uniform $U0;				Initial velocity field
 
-    \table
-        Property     | Description             | Required    | Default value
-        print        | print output to screen  | no          | false
-    endtable
-
-    Example of the boundary condition specification:
-    \verbatim
-        lower
-        {
-           type            turbulentABLVelocityControlled;
-           print           true;                       //-print output (true/false)
-        }
-    \endverbatim
 
 SeeAlso
     Foam::fixedValueFvPatchField
