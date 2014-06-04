@@ -58,7 +58,7 @@ Description
             //perturb              0.0;
             
             // Period of time before fluctuations update
-            fluctUpdateTime        5.0;
+            fluctUpdatePeriod        5.0;
 
             // Fluctuation magnitude (fluctuations will be applied as 
             // +/-0.5*fluctMag
@@ -72,14 +72,23 @@ Description
 
             // The fluctuations may decay with height following a function.
             // The choices are:
-            //     "constant" - fluctuations are applied without decay up to 
-            //                  the fluctVertDecayHeight level
-            //     "exp"      - fluctuations are applied with 1/z*exp(-z) type
-            //                  of function with a peak at fluctVertDecayHeight
+            //     "constant"    - fluctuations are applied without decay up to 
+            //                     the fluctVertDecayHeight level
+            //     "exp"         - fluctuations are applied with the form 
+            //                     1.65 * z/zPeak * exp(-0.5*(z/zPeak)^2)
+            //                     with zPeak at fluctVertDecayHeight
+            //     "expConstant" - constant up to fluctVertDecayHeight, then
+            //                     follows the exponential decay of above
             fluctVertDecayType     "constant";
 
             // The height parameter for the vertical decay function
             fluctVertDecayHeight   100.0;
+
+            // Optional: the last time at which the fluctuations were updated
+            //fluctUpdateTimeLast  0.0;
+            
+            // Optional: the fluctuation field
+            //fluctField           list of values for every patach face
 
             // Optional: use name instead of patchname for location of data
             //fieldTableName       samples;
@@ -101,6 +110,7 @@ SourceFiles
 #include "coordinateSystem.H"
 #include "FixedList.H"
 #include "instantList.H"
+#include "Random.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -135,12 +145,13 @@ class timeVaryingMappedFluctuatingFixedValueFvPatchField
         //- Additions to add fluctuations to inflow field. - MJC - 3 June 2014
 
         //- Fluctuation time scale (how long before a new fluctuation is added)
-        scalar fluctUpdateTime_;
+        scalar fluctUpdatePeriod_;
 
         //- Type of vertical decay function for fluctuations
         //    Choice are:
         //       "constant" - constant up to fluctVertDecayHeight
-        //       "exp" - 1/z * exp(-z) where peak is at fluctVertDecayHeight
+        //       "exp" - of the form 1.65 * z/zPeak * exp(-0.5*(z/zPeak)^2) where zPeak is at fluctVertDecayHeight
+        //       "expConst" - constant up to fluctVertCecayHeight, then follows exponential form of above
         word fluctVertDecayType_;
 
         //- Height parameter for vertical decay function of fluctuations
@@ -152,6 +163,15 @@ class timeVaryingMappedFluctuatingFixedValueFvPatchField
         //- Fluctuation space scale (how wide and tall are pockets of constant fluctuation)
         scalar fluctResVert_;
         scalar fluctResHoriz_;
+
+        //- Time of last update of fluctuations
+        scalar fluctUpdateTimeLast_;
+
+        //- Fluctuation field
+        Field<Type> fluctField_;
+
+        //- Random number generator
+        Random fluctRanGen_;
 
 
 

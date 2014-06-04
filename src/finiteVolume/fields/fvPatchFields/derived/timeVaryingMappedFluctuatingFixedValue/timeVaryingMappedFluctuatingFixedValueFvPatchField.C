@@ -30,7 +30,6 @@ License
 #include "vector2D.H"
 #include "OFstream.H"
 #include "AverageIOField.H"
-#include "Random.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -51,12 +50,15 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(iF.name()),
     setAverage_(false),
     perturb_(0),
-    fluctUpdateTime_(10.0),
+    fluctUpdatePeriod_(10.0),
     fluctVertDecayType_("constant"),
     fluctVertDecayHeight_(100.0),
     fluctMag_(pTraits<Type>::zero),
     fluctResVert_(30.0),
     fluctResHoriz_(30.0),
+    fluctUpdateTimeLast_(-1),
+    fluctField_(p.size()),
+    fluctRanGen_(label(0)),
     referenceCS_(NULL),
     nearestVertex_(0),
     nearestVertexWeight_(0),
@@ -84,12 +86,15 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
-    fluctUpdateTime_(ptf.fluctUpdateTime_),
+    fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
     fluctMag_(ptf.fluctMag_),
     fluctResVert_(ptf.fluctResVert_),
     fluctResHoriz_(ptf.fluctResHoriz_),
+    fluctUpdateTimeLast_(ptf.fluctUpdateTimeLast_),
+    fluctField_(ptf.fluctField_,mapper),
+    fluctRanGen_(label(0)),
     referenceCS_(NULL),
     nearestVertex_(0),
     nearestVertexWeight_(0),
@@ -116,12 +121,15 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(iF.name()),
     setAverage_(readBool(dict.lookup("setAverage"))),
     perturb_(dict.lookupOrDefault("perturb", 1E-5)),
-    fluctUpdateTime_(readScalar(dict.lookup("fluctUpdateTime"))),
+    fluctUpdatePeriod_(readScalar(dict.lookup("fluctUpdatePeriod"))),
     fluctVertDecayType_(dict.lookup("fluctVertDecayType")),
     fluctVertDecayHeight_(readScalar(dict.lookup("fluctVertDecayHeight"))),
     fluctMag_(pTraits<Type>(dict.lookup("fluctMag"))),
     fluctResVert_(readScalar(dict.lookup("fluctResVert"))),
-    fluctResHoriz_(readScalar(dict.lookup("fluctResHoriz_"))),
+    fluctResHoriz_(readScalar(dict.lookup("fluctResHoriz"))),
+    fluctUpdateTimeLast_(dict.lookupOrDefault<scalar>("fluctUpdateTimeLast", -1)),
+    fluctField_("fluctField", dict, p.size()),
+    fluctRanGen_(label(0)),
     referenceCS_(NULL),
     nearestVertex_(0),
     nearestVertexWeight_(0),
@@ -157,12 +165,15 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
-    fluctUpdateTime_(ptf.fluctUpdateTime_),
+    fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
     fluctMag_(ptf.fluctMag_),
     fluctResVert_(ptf.fluctResVert_),
     fluctResHoriz_(ptf.fluctResHoriz_),
+    fluctUpdateTimeLast_(ptf.fluctUpdateTimeLast_),
+    fluctField_(ptf.fluctField_),
+    fluctRanGen_(ptf.fluctRanGen_),
     referenceCS_(ptf.referenceCS_),
     nearestVertex_(ptf.nearestVertex_),
     nearestVertexWeight_(ptf.nearestVertexWeight_),
@@ -189,12 +200,15 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
-    fluctUpdateTime_(ptf.fluctUpdateTime_),
+    fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
     fluctMag_(ptf.fluctMag_),
     fluctResVert_(ptf.fluctResVert_),
     fluctResHoriz_(ptf.fluctResHoriz_),
+    fluctUpdateTimeLast_(ptf.fluctUpdateTimeLast_),
+    fluctField_(ptf.fluctField_),
+    fluctRanGen_(ptf.fluctRanGen_),
     referenceCS_(ptf.referenceCS_),
     nearestVertex_(ptf.nearestVertex_),
     nearestVertexWeight_(ptf.nearestVertexWeight_),
@@ -702,6 +716,16 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
         return;
     }
 
+    // If this is the first time the boundary condition i called, and 
+    // fluctUpdateTimeLast_ was not set by the user or was set to a value further
+    // into the past than the fluctuation update period, then set the 
+    // fluctUpdateTimeLast_ variable to match the simulation start time.
+    if ((fluctUpdateTimeLast_ == -1) ||
+        (this->db().time().startTime().value() - fluctUpdateTimeLast_ > fluctUpdatePeriod_))
+    {
+        fluctUpdateTimeLast_ = this->db().time().startTime().value();
+    }
+
     checkTable();
 
     // Interpolate between the sampled data
@@ -750,7 +774,120 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
 
 
     // Add fluctuations to the field -- MJC -- 3 June 2014
-    
+    // Create new fluctuations if a period of time greater than the fluctuation
+    // update period has elapsed.
+    Info << "fluctUpdateTimeLast: " << fluctUpdateTimeLast_ << endl;
+    //Info << this->patch().patch().faceCentres() << endl;
+
+    if (this->db().time().value() - fluctUpdateTimeLast_ >= fluctUpdatePeriod_)
+    {
+        // Find the bounding box of the patch so that the horizontal and
+        // vertical extents can be found.
+        boundBox bb(this->patch().patch().localPoints(), false);
+        scalar bbMinX = bb.min().x();
+        scalar bbMinY = bb.min().y();
+        scalar bbMinZ = bb.min().z();
+        scalar bbMaxX = bb.max().x();
+        scalar bbMaxY = bb.max().y();
+        scalar bbMaxZ = bb.max().z();
+        reduce(bbMinX,minOp<scalar>());
+        reduce(bbMinY,minOp<scalar>());
+        reduce(bbMinZ,minOp<scalar>());
+        reduce(bbMaxX,maxOp<scalar>());
+        reduce(bbMaxY,maxOp<scalar>());
+        reduce(bbMaxZ,maxOp<scalar>());
+
+        scalar extentHoriz = sqrt(sqr(bbMaxX - bbMinX) + sqr(bbMaxY - bbMinY));
+        scalar extentVert = bbMaxZ - bbMinZ;
+
+        Info << "bb = (" << bbMinX << " " << bbMinY << " " << bbMinZ << ") (" << bbMaxX << " " << bbMaxY << " " << bbMaxZ << ")" << endl;    
+        Info << "extentHoriz = " << extentHoriz << endl;
+        Info << "extentVert = " << extentVert << endl;
+
+        
+        // Compute how many fluctuation "cells" there will be in the
+        // horizontal and vertical directions.
+        label nFluctHoriz = extentHoriz/fluctResHoriz_;
+        label nFluctVert = extentVert/fluctResVert_;
+
+        Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
+
+
+        // Create the fluctuation array.
+        DynamicList<List<Type> > randomField;
+        for (int i = 0; i < nFluctHoriz; i++)
+        {
+           DynamicList<Type> randomFieldI;
+           for (int j = 0; j < nFluctVert; j++)
+           {
+              Type fluctVal;
+              fluctRanGen_.randomise(fluctVal);
+              randomFieldI.append(cmptMultiply(fluctMag_,(fluctVal - 0.5*pTraits<Type>::one)));
+           }
+           randomField.append(randomFieldI);
+        }
+        
+        Info << "randomField size: " << randomField.size() << endl;
+        Info << randomField << endl;
+
+
+        // Parallel communicate the master fluctuation list so that all 
+        // processors have the same list.
+        //Pstream::scatter(randomField);
+
+
+        // Apply the random field to the patch faces.
+        forAll(fluctField_,i)
+        {
+           vector faceCentre = this->patch().patch().faceCentres()[i];
+           scalar distHoriz = sqrt(sqr(faceCentre.x() - bbMinX) + sqr(faceCentre.y() - bbMinY));
+           scalar distVert = faceCentre.z();
+           label ii = ceil(distHoriz / fluctResHoriz_) - 1;
+           label jj = ceil(distVert / fluctResVert_) - 1;
+           
+           // Compute how the fluctuations decay with height
+           scalar decayFunction = 0.0;
+
+           // - decay function is 1 up to a certain height, then 0.
+           if (fluctVertDecayType_ == "constant")
+           {
+               if (distVert <= fluctVertDecayHeight_)
+               {
+                   decayFunction = 1.0;
+               }
+           }
+
+           // - decay function follows a function of the form 1.65 * z/zPeak * exp(-0.5*(z/zPeak)^2)
+           else if (fluctVertDecayType_ == "exp")
+           {
+               decayFunction = 1.65 * (distVert/fluctVertDecayHeight_) * Foam::exp(-0.5*Foam::pow((distVert/fluctVertDecayHeight_),2));
+           }
+
+           // - decay function is 1 up to a certain height then follows the exponential decay function above.
+           else if (fluctVertDecayType_ == "expConstant")
+           {
+               if (distVert <= fluctVertDecayHeight_)
+               {
+                   decayFunction = 1.0;
+               }
+               else
+               {
+                   decayFunction = 1.65 * (distVert/fluctVertDecayHeight_) * Foam::exp(-0.5*Foam::pow((distVert/fluctVertDecayHeight_),2));
+               }
+           }
+
+           // Multiply the decay function by the random number corresponding to this "fluctuation cell."
+           fluctField_[i] = decayFunction * randomField[ii][jj];     
+        }
+       
+
+        // Update the last time the fluctuations were updated.   
+        fluctUpdateTimeLast_ += fluctUpdatePeriod_;
+    }
+
+    // Add the fluctuations to the base field.
+    const Field<Type>& fld = *this;
+    this->operator==(fld + fluctField_);
 
 
 
@@ -836,6 +973,14 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::write(Ostream& os
     fvPatchField<Type>::write(os);
     os.writeKeyword("setAverage") << setAverage_ << token::END_STATEMENT << nl;
     os.writeKeyword("perturb") << perturb_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctUpdatePeriod") << fluctUpdatePeriod_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctVertDecayType") << fluctVertDecayType_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctVertDecayHeight") << fluctVertDecayHeight_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctMag") << fluctMag_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctResVert") << fluctResVert_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctResHoriz") << fluctResHoriz_ << token::END_STATEMENT << nl;
+    os.writeKeyword("fluctUpdateTimeLast") << fluctUpdateTimeLast_ << token::END_STATEMENT << nl;
+    fluctField_.writeEntry("fluctField", os);
 
     if (fieldTableName_ != this->dimensionedInternalField().name())
     {
