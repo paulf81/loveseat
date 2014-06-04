@@ -776,10 +776,10 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
     // Add fluctuations to the field -- MJC -- 3 June 2014
     // Create new fluctuations if a period of time greater than the fluctuation
     // update period has elapsed.
-    Info << "fluctUpdateTimeLast: " << fluctUpdateTimeLast_ << endl;
-    //Info << this->patch().patch().faceCentres() << endl;
+  //Info << "fluctUpdateTimeLast: " << fluctUpdateTimeLast_ << endl;
 
-    if (this->db().time().value() - fluctUpdateTimeLast_ >= fluctUpdatePeriod_)
+    if ((this->db().time().value() - fluctUpdateTimeLast_ >= fluctUpdatePeriod_) &&
+        (Foam::mag(fluctMag_) > 0.0))
     {
         // Find the bounding box of the patch so that the horizontal and
         // vertical extents can be found.
@@ -800,9 +800,9 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
         scalar extentHoriz = sqrt(sqr(bbMaxX - bbMinX) + sqr(bbMaxY - bbMinY));
         scalar extentVert = bbMaxZ - bbMinZ;
 
-        Info << "bb = (" << bbMinX << " " << bbMinY << " " << bbMinZ << ") (" << bbMaxX << " " << bbMaxY << " " << bbMaxZ << ")" << endl;    
-        Info << "extentHoriz = " << extentHoriz << endl;
-        Info << "extentVert = " << extentVert << endl;
+      //Info << "bb = (" << bbMinX << " " << bbMinY << " " << bbMinZ << ") (" << bbMaxX << " " << bbMaxY << " " << bbMaxZ << ")" << endl;    
+      //Info << "extentHoriz = " << extentHoriz << endl;
+      //Info << "extentVert = " << extentVert << endl;
 
         
         // Compute how many fluctuation "cells" there will be in the
@@ -810,7 +810,7 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
         label nFluctHoriz = extentHoriz/fluctResHoriz_;
         label nFluctVert = extentVert/fluctResVert_;
 
-        Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
+      //Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
 
 
         // Create the fluctuation array.
@@ -827,13 +827,13 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
            randomField.append(randomFieldI);
         }
         
-        Info << "randomField size: " << randomField.size() << endl;
-        Info << randomField << endl;
+      //Info << "randomField size: " << randomField.size() << endl;
+      //Info << randomField << endl;
 
 
         // Parallel communicate the master fluctuation list so that all 
         // processors have the same list.
-        //Pstream::scatter(randomField);
+      //Pstream::scatter(randomField);
 
 
         // Apply the random field to the patch faces.
@@ -888,28 +888,6 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
     // Add the fluctuations to the base field.
     const Field<Type>& fld = *this;
     this->operator==(fld + fluctField_);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
