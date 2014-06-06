@@ -157,6 +157,39 @@
         turbulence->nut()
     );
 
+    // Create the resolved-scale tke field.
+    Info<< "Creating the resolved scale turbulent kinetic energy field, kResolved..." << endl;
+    volScalarField kResolved
+    (
+        IOobject
+        (
+            "kResolved",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("kResolved",dimensionSet(0, 2, -2, 0, 0, 0, 0),0.0)
+    );
+
+    // Create the mean SGS tke field
+    Info<< "Creating the mean SGS turbulent kinetic energy field, kSGSMean..." << endl;
+    volScalarField kSGSmean
+    (
+        IOobject
+        (
+            "kSGSmean",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        turbulence->k()
+    );
+ 
+
+
 
     // Declare total averaging times for average fields and correlation fields.
     scalar avgTimeSum = 0.0;
