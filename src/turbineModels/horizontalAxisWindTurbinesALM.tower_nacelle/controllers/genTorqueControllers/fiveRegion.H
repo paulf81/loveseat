@@ -2,7 +2,7 @@
             // NREL 5 MW Reference turbine model.      
 
 
-            scalar RatedGenSpeed = (RatedRotSpeed[i]/rpmRadSec)*GBRatio[j];
+            scalar RatedGenSpeed = (RatedRotSpeed[j]/rpmRadSec)*GBRatio[j];
 
 
             // Region 1.
