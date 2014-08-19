@@ -205,7 +205,7 @@ void velocityABLWallFunctionFvPatchField::updateCoeffs()
              oppFaceI -= mesh.boundary()[oppPatchID].patch().start();
              U1[faceI] = UFace.boundaryField()[oppPatchID][oppFaceI];
              snGradU1[faceI] = (U1[faceI] - UParallel12[faceI])/z12[faceI];
-             Pout << "here " << oppPatchID << endl;
+           //Pout << "here " << oppPatchID << endl;
          }
          else
          {
