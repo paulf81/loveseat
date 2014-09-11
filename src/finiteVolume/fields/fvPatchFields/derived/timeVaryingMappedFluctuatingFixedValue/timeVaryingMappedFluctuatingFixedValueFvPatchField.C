@@ -50,6 +50,9 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(iF.name()),
     setAverage_(false),
     perturb_(0),
+    rotateInflow_(false),
+    rotationAxis_((0 0 1)),
+    rotationAngle_(0.0),
     fluctUpdatePeriod_(10.0),
     fluctVertDecayType_("constant"),
     fluctVertDecayHeight_(100.0),
@@ -86,6 +89,9 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
+    rotateInflow_(ptf.rotateInflow_),
+    rotationAxis_(ptf.rotationAxis_),
+    rotationAngle_(ptf.rotationAngle_),
     fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
@@ -121,6 +127,9 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(iF.name()),
     setAverage_(readBool(dict.lookup("setAverage"))),
     perturb_(dict.lookupOrDefault("perturb", 1E-5)),
+    rotateInflow_(readBool(dict.lookup("rotateInflow"))),
+    rotationAxis_(vector(dict.lookup("rotationAxis"))),
+    rotationAngle_(readScalar(dict.lookup("rotationAngle_"))),
     fluctUpdatePeriod_(readScalar(dict.lookup("fluctUpdatePeriod"))),
     fluctVertDecayType_(dict.lookup("fluctVertDecayType")),
     fluctVertDecayHeight_(readScalar(dict.lookup("fluctVertDecayHeight"))),
@@ -165,6 +174,9 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
+    rotateInflow_(ptf.rotateInflow_),
+    rotationAxis_(ptf.rotationAxis_),
+    rotationAngle_(ptf.rotationAngle_),
     fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
@@ -200,6 +212,9 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     fieldTableName_(ptf.fieldTableName_),
     setAverage_(ptf.setAverage_),
     perturb_(ptf.perturb_),
+    rotateInflow_(ptf.rotateInflow_),
+    rotationAxis_(ptf.rotationAxis_),
+    rotationAngle_(ptf.rotationAngle_),
     fluctUpdatePeriod_(ptf.fluctUpdatePeriod_),
     fluctVertDecayType_(ptf.fluctVertDecayType_),
     fluctVertDecayHeight_(ptf.fluctVertDecayHeight_),
@@ -892,6 +907,22 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
 
 
 
+    //- Apply rotation of inflow field.  MJC - 10 Sept 2014
+    if (rotateInflow_)
+    {
+        // Get access to inflow field.
+        const Field<Type>& fld = *this;
+
+        // Create rotation matrix.
+        tensor rotationMatrix = tensor::zero;
+
+        // Apply rotation.
+        this->operator==(rotationMaxtrix*fld);
+    }
+
+
+
+
 
     // Enforce average. Either by scaling (if scaling factor > 0.5) or by
     // offsetting.
@@ -934,6 +965,8 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
             this->operator==(scale*fld);
         }
     }
+
+
 
     if (debug)
     {
