@@ -53,12 +53,17 @@ Description
             // Maintain average to that of the supplied values
             setAverage             false;
 
+            // Apply a rotation of direction of inflow
+            rotateInflow           false;
+            rotationAxis           (0 0 1);
+            rotationAngle          15.0;
+
             // Optional: change perturbation (default 1E-5) to avoid any ties
             // in triangulating regular geometries.
             //perturb              0.0;
             
             // Period of time before fluctuations update
-            fluctUpdatePeriod        5.0;
+            fluctUpdatePeriod      5.0;
 
             // Fluctuation magnitude (fluctuations will be applied as 
             // +/-0.5*fluctMag
@@ -138,6 +143,17 @@ class timeVaryingMappedFluctuatingFixedValueFvPatchField
         scalar perturb_;
 
 
+
+        //- Additions to allow for rotation of inflow field. - MJC - 10 Sept 2014
+
+        //- If true, rotate the inflow angle
+        bool rotateInflow_;
+
+        //- If rotating the inflow, give the axis about which rotatio is applied
+        vector rotationAxis_;
+
+        //- If rotating the inflow, give the rotation angle
+        scalar rotationAngle_;
 
 
 
