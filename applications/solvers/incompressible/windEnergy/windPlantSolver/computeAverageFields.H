@@ -5,7 +5,7 @@
     volSymmTensorField R = turbulence->R();
     volVectorField q = -kappat * fvc::grad(T);
     volScalarField nuSGS = turbulence->nut();
-    volScalarField kSGS = turbulence->k();
+    kSGS = turbulence->k();
 
 
     // Compute the running time averages of the fields and then get the fluctuation.

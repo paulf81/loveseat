@@ -154,8 +154,25 @@
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        turbulence->nut()
+        mesh,
+        dimensionedScalar("nuSGSMean",dimensionSet(0, 2, -1, 0, 0, 0, 0),0.0)
     );
+
+    Info<< "Creating SGS energy field, kSGS..." << endl;
+    volScalarField kSGS
+    (
+        IOobject
+        (
+            "kSGS",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("kSGS",dimensionSet(0, 2, -2, 0, 0, 0, 0),0.0)
+    );
+
 
     // Create the resolved-scale tke field.
     Info<< "Creating the resolved scale turbulent kinetic energy field, kResolved..." << endl;
