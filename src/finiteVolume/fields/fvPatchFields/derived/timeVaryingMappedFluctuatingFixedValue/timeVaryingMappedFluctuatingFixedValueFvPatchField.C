@@ -30,6 +30,7 @@ License
 #include "vector2D.H"
 #include "OFstream.H"
 #include "AverageIOField.H"
+#include "transformGeometricField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -51,7 +52,7 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     setAverage_(false),
     perturb_(0),
     rotateInflow_(false),
-    rotationAxis_((0 0 1)),
+    rotationAxis_(vector::zero),
     rotationAngle_(0.0),
     fluctUpdatePeriod_(10.0),
     fluctVertDecayType_("constant"),
@@ -129,7 +130,7 @@ timeVaryingMappedFluctuatingFixedValueFvPatchField
     perturb_(dict.lookupOrDefault("perturb", 1E-5)),
     rotateInflow_(readBool(dict.lookup("rotateInflow"))),
     rotationAxis_(vector(dict.lookup("rotationAxis"))),
-    rotationAngle_(readScalar(dict.lookup("rotationAngle_"))),
+    rotationAngle_(readScalar(dict.lookup("rotationAngle"))),
     fluctUpdatePeriod_(readScalar(dict.lookup("fluctUpdatePeriod"))),
     fluctVertDecayType_(dict.lookup("fluctVertDecayType")),
     fluctVertDecayHeight_(readScalar(dict.lookup("fluctVertDecayHeight"))),
@@ -796,6 +797,8 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
     if ((this->db().time().value() - fluctUpdateTimeLast_ >= fluctUpdatePeriod_) &&
         (Foam::mag(fluctMag_) > 0.0))
     {
+
+        Info << "A!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         // Find the bounding box of the patch so that the horizontal and
         // vertical extents can be found.
         boundBox bb(this->patch().patch().localPoints(), false);
@@ -827,7 +830,7 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
 
       //Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
 
-
+        Info << "B!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         // Create the fluctuation array.
         DynamicList<List<Type> > randomField;
         for (int i = 0; i < nFluctHoriz; i++)
@@ -850,7 +853,7 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
         // processors have the same list.
       //Pstream::scatter(randomField);
 
-
+        Info << "C!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         // Apply the random field to the patch faces.
         forAll(fluctField_,i)
         {
@@ -912,12 +915,30 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
     {
         // Get access to inflow field.
         const Field<Type>& fld = *this;
+        Field<Type> fldNew = fld;
 
         // Create rotation matrix.
-        tensor rotationMatrix = tensor::zero;
+        vector u = rotationAxis_/mag(rotationAxis_);
+        tensor R = tensor::zero;
+        scalar phi = rotationAngle_ * Foam::constant::mathematical::pi / 180.0;
 
-        // Apply rotation.
-        this->operator==(rotationMaxtrix*fld);
+        // from http://en.wikipedia.org/wiki/Rotation_matrix -- "Rotation matrix from axis and angle"
+        R.xx() = Foam::cos(phi) + u.x()*u.x()*(1.0 - Foam::cos(phi));
+        R.xy() = u.x()*u.y()*(1.0 - Foam::cos(phi)) - u.z()*Foam::sin(phi);
+        R.xz() = u.x()*u.z()*(1.0 - Foam::cos(phi)) + u.y()*Foam::sin(phi);
+        R.yx() = u.y()*u.x()*(1.0 - Foam::cos(phi)) + u.z()*Foam::sin(phi);
+        R.yy() = Foam::cos(phi) + u.y()*u.y()*(1.0 - Foam::cos(phi));
+        R.yz() = u.y()*u.z()*(1.0 - Foam::cos(phi)) - u.x()*Foam::sin(phi);
+        R.zx() = u.z()*u.x()*(1.0 - Foam::cos(phi)) - u.y()*Foam::sin(phi);
+        R.zy() = u.z()*u.y()*(1.0 - Foam::cos(phi)) + u.x()*Foam::sin(phi);
+        R.zz() = Foam::cos(phi) + u.z()*u.z()*(1.0 - Foam::cos(phi));
+
+        forAll(fld, i)
+        {
+           fldNew[i] = transform(R,fld[i]);
+        }
+
+        this->operator==(fldNew);
     }
 
 
@@ -984,6 +1005,9 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::write(Ostream& os
     fvPatchField<Type>::write(os);
     os.writeKeyword("setAverage") << setAverage_ << token::END_STATEMENT << nl;
     os.writeKeyword("perturb") << perturb_ << token::END_STATEMENT << nl;
+    os.writeKeyword("rotateInflow") << rotateInflow_ << token::END_STATEMENT << nl;
+    os.writeKeyword("rotationAxis") << rotationAxis_ << token::END_STATEMENT << nl;
+    os.writeKeyword("rotationAngle") << rotationAngle_ << token::END_STATEMENT << nl;
     os.writeKeyword("fluctUpdatePeriod") << fluctUpdatePeriod_ << token::END_STATEMENT << nl;
     os.writeKeyword("fluctVertDecayType") << fluctVertDecayType_ << token::END_STATEMENT << nl;
     os.writeKeyword("fluctVertDecayHeight") << fluctVertDecayHeight_ << token::END_STATEMENT << nl;
