@@ -823,8 +823,8 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
         
         // Compute how many fluctuation "cells" there will be in the
         // horizontal and vertical directions.
-        label nFluctHoriz = extentHoriz/fluctResHoriz_;
-        label nFluctVert = extentVert/fluctResVert_;
+        label nFluctHoriz = ceil(extentHoriz/fluctResHoriz_);
+        label nFluctVert = ceil(extentVert/fluctResVert_);
 
       //Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
 
@@ -843,13 +843,13 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
            randomField.append(randomFieldI);
         }
         
-      Info << "randomField size: " << randomField.size() << endl;
-      Info << randomField << endl;
+      //Info << "randomField size: " << randomField.size() << endl;
+      //Info << randomField << endl;
 
 
         // Parallel communicate the master fluctuation list so that all 
         // processors have the same list.
-      //Pstream::scatter(randomField);
+        Pstream::scatter(randomField);
 
 
         // Apply the random field to the patch faces.
