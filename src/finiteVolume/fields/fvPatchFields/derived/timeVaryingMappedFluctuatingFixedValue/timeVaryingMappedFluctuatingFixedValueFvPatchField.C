@@ -797,8 +797,6 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
     if ((this->db().time().value() - fluctUpdateTimeLast_ >= fluctUpdatePeriod_) &&
         (Foam::mag(fluctMag_) > 0.0))
     {
-
-        Info << "A!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         // Find the bounding box of the patch so that the horizontal and
         // vertical extents can be found.
         boundBox bb(this->patch().patch().localPoints(), false);
@@ -830,7 +828,7 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
 
       //Info << "nFluctHoriz = " << nFluctHoriz << tab << "nFluctVert = " << nFluctVert << endl;        
 
-        Info << "B!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+
         // Create the fluctuation array.
         DynamicList<List<Type> > randomField;
         for (int i = 0; i < nFluctHoriz; i++)
@@ -845,15 +843,15 @@ void timeVaryingMappedFluctuatingFixedValueFvPatchField<Type>::updateCoeffs()
            randomField.append(randomFieldI);
         }
         
-      //Info << "randomField size: " << randomField.size() << endl;
-      //Info << randomField << endl;
+      Info << "randomField size: " << randomField.size() << endl;
+      Info << randomField << endl;
 
 
         // Parallel communicate the master fluctuation list so that all 
         // processors have the same list.
       //Pstream::scatter(randomField);
 
-        Info << "C!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+
         // Apply the random field to the patch faces.
         forAll(fluctField_,i)
         {

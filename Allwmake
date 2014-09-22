@@ -9,6 +9,10 @@ cd src/turbineModels
 wmake libso
 cd ../../
 
+cd src/finiteVolume
+wmake libso
+cd ../../
+
 cd applications/utilities/setFieldsABL
 wmake
 cd ../../../
