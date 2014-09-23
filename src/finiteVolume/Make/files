@@ -6,15 +6,15 @@ $(derivedFvPatchFields)/turbulentABLTemperatureControlled/turbulentABLTemperatur
 
 
 /* Surface Shear Stress Models */
-surfaceStressModels = derivedFvPatchFields/surfaceStressModels
+surfaceStressModels = $(derivedFvPatchFields)/surfaceStressModels
 $(surfaceStressModels)/SchumannGrotzbach/SchumannGrotzbachFvPatchField.C
 
 /* Surface Temperature Flux Models */
-surfaceTemperatureFluxModels = derivedFvPatchFields/surfaceTemperatureFluxModels
+surfaceTemperatureFluxModels = $(derivedFvPatchFields)/surfaceTemperatureFluxModels
 $(surfaceTemperatureFluxModels)/fixedHeatingRate/fixedHeatingRateFvPatchField.C
 
 /* Surface Velocity Models */
-surfaceVelocityModels = derivedFvPatchFields/surfaceVelocityModels
+surfaceVelocityModels = $(derivedFvPatchFields)/surfaceVelocityModels
 $(surfaceVelocityModels)/velocityABLWallFunction/velocityABLWallFunctionFvPatchField.C
 
 
