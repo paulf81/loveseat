@@ -25,7 +25,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "fixedHeatingRateFvPatchField.H"
-#include "LESModel.H"
 #include "singlePhaseTransportModel.H"
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
@@ -35,10 +34,6 @@ License
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
-{
-namespace incompressible
-{
-namespace LESModels
 {
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -242,8 +237,7 @@ void fixedHeatingRateFvPatchField::evaluate
     //    where U_|| is the parallel velocity vector, U_1 is the cell center velocity, and
     //    n_f is the surface face normal unit vector.
     //    Get the velocity in the cells adjacent to the boundary
-    const LESModel& lesModel = db().lookupObject<LESModel>("LESProperties");
-    const fvPatchVectorField& UPatch = lesModel.U().boundaryField()[patch().index()];
+    const fvPatchVectorField& UPatch = patch().lookupPatchField<volVectorField, vector>("U");
     vectorField UParallel = UPatch.patchInternalField();
     UParallel = UParallel - ((UParallel & normal) * normal);
     vector UParallelMean = gSum(UParallel * area) / areaTotal;
@@ -852,8 +846,6 @@ makePatchTypeField
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace LESModels
-} // End namespace incompressible
 } // End namespace Foam
 
 // ************************************************************************* //

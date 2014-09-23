@@ -44,10 +44,6 @@ SourceFiles
 
 namespace Foam
 {
-namespace incompressible
-{
-namespace LESModels
-{
 
 /*---------------------------------------------------------------------------*\
      Class fixedHeatingRateFvPatchField Declaration
@@ -243,8 +239,6 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace LESModels
-} // End namespace incompressible
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

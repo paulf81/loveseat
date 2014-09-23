@@ -44,10 +44,6 @@ SourceFiles
 
 namespace Foam
 {
-namespace incompressible
-{
-namespace LESModels
-{
 
 /*---------------------------------------------------------------------------*\
      Class SchumannGrotzbachFvPatchField Declaration
@@ -221,8 +217,6 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace LESModels
-} // End namespace incompressible
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
