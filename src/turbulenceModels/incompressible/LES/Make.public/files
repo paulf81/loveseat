@@ -1,0 +1,5 @@
+/* Subgrid-Stress Models */
+dynLagrangianCs/dynLagrangianCs.C
+dynLagrangianCsBound/dynLagrangianCsBound.C
+
+LIB = $(FOAM_USER_LIBBIN)/libuserincompressibleLESModels
