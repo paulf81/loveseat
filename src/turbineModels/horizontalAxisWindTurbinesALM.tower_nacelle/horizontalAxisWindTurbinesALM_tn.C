@@ -1963,9 +1963,9 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual rotor thrust and torque to the integrated body force.
     Info << "Rotor Axial Force from Body Force = " << rotorAxialForceBodySum << tab << "Rotor Axial Force from Actuator = " << rotorAxialForceSum << tab
-	 << "Ratio = " << rotorAxialForceBodySum/rotorAxialForceSum << endl;
+	 << "Ratio = " << rotorAxialForceBodySum/max(rotorAxialForceSum,1.0E-5) << endl;
     Info << "Rotor Torque from Body Force = " << rotorTorqueBodySum << tab << "Rotor Torque from Actuator = " << rotorTorqueSum << tab 
-	 << "Ratio = " << rotorTorqueBodySum/rotorTorqueSum << endl;
+	 << "Ratio = " << rotorTorqueBodySum/max(rotorTorqueSum,1.0E-5) << endl;
 
 
 
@@ -2022,7 +2022,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual tower thrust to the integrated body force.
     Info << "Tower Axial Force from BodyForce = " << towerAxialForceBodySum << tab << "Tower Axial Force from Actuator = " << towerAxialForceSum << tab
-	 << "Ratio = " << towerAxialForceBodySum/towerAxialForceSum << endl;
+	 << "Ratio = " << towerAxialForceBodySum/max(towerAxialForceSum,1.0E-5) << endl;
 
 
 
@@ -2078,7 +2078,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual tower thrust to the integrated body force.
     Info << "Nacelle Axial Force from BodyForce = " << nacelleAxialForceBodySum << tab << "Nacelle Axial Force from Actuator = " << nacelleAxialForceSum << tab
-	 << "Ratio = " << nacelleAxialForceBodySum/nacelleAxialForceSum << endl;
+	 << "Ratio = " << nacelleAxialForceBodySum/max(nacelleAxialForceSum,1E-5) << endl;
 
 }
 
@@ -2228,7 +2228,7 @@ label horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<sca
             indexP = index;
             indexM = indexP - 1;
         }
-        return yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]);
+        return round(yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]));
     }
     else if (xNew > xOld[index])
     {
@@ -2242,7 +2242,7 @@ label horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<sca
             indexP = index + 1;
             indexM = indexP - 1;
         }
-        return yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]);
+        return round(yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]));
     }
     else if (xNew == xOld[index])
     {

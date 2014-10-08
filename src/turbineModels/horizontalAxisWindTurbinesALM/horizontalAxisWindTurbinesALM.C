@@ -1423,7 +1423,7 @@ label horizontalAxisWindTurbinesALM::interpolate(scalar xNew, DynamicList<scalar
             indexP = index;
             indexM = indexP - 1;
         }
-        return yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]);
+        return round(yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]));
     }
     else if (xNew > xOld[index])
     {
@@ -1437,7 +1437,7 @@ label horizontalAxisWindTurbinesALM::interpolate(scalar xNew, DynamicList<scalar
             indexP = index + 1;
             indexM = indexP - 1;
         }
-        return yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]);
+        return round(yOld[indexM] + ((yOld[indexP] - yOld[indexM])/(xOld[indexP] - xOld[indexM]))*(xNew - xOld[indexM]));
     }
     else if (xNew == xOld[index])
     {
