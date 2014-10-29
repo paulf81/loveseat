@@ -6,6 +6,7 @@
     volVectorField q = -kappat * fvc::grad(T);
     volScalarField nuSGS = turbulence->nut();
     kSGS = turbulence->k();
+    volScalarField epsilonSGS = turbulence->epsilon();
 
 
     // Compute the running time averages of the fields and then get the fluctuation.
@@ -13,19 +14,24 @@
     {
         UAvg = (UAvg * avgTimeSum) + (runTime.deltaT().value() * U);
         TAvg = (TAvg * avgTimeSum) + (runTime.deltaT().value() * T);
+        p_rghAvg = (p_rghAvg * avgTimeSum) + (runTime.deltaT().value() * p_rgh);
         Rmean = (Rmean * avgTimeSum) + (runTime.deltaT().value() * R);
         qmean = (qmean * avgTimeSum) + (runTime.deltaT().value() * q);
         nuSGSmean = (nuSGSmean * avgTimeSum) + (runTime.deltaT().value() * nuSGS);
         kSGSmean = (kSGSmean * avgTimeSum) + (runTime.deltaT().value() * kSGS);
+        epsilonSGSmean = (epsilonSGSmean * avgTimeSum) + (runTime.deltaT().value() * epsilonSGS);
 
         avgTimeSum += runTime.deltaT().value();
+        Info << "avgTimeSum = " << avgTimeSum << endl;
 
         UAvg = UAvg / avgTimeSum;
         TAvg = TAvg / avgTimeSum;
+        p_rghAvg = p_rghAvg / avgTimeSum;
         Rmean = Rmean / avgTimeSum;
         qmean = qmean / avgTimeSum;
         nuSGSmean = nuSGSmean / avgTimeSum;
         kSGSmean = kSGSmean / avgTimeSum;
+        epsilonSGSmean = epsilonSGSmean / avgTimeSum;
     }
 
     // Compute the running time averages of the correlation fields.
@@ -39,6 +45,7 @@
         TTPrime2 = (TTPrime2 * corrTimeSum) + (runTime.deltaT().value() * Foam::sqr(TPrime));
 
         corrTimeSum += runTime.deltaT().value();
+        Info << "corrTimeSum = " << corrTimeSum << endl;
 
         uuPrime2 = uuPrime2 / corrTimeSum;
         uTPrime2 = uTPrime2 / corrTimeSum;

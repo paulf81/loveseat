@@ -21,7 +21,7 @@ rmdepall
 wclean
 cd ../../../
 
-cd applications/utilities/setFieldsABL2
+cd applications/utilities/rotateFields
 rmdepall
 wclean
 cd ../../../
@@ -31,7 +31,7 @@ rmdepall
 wclean
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/ABLSolverTerrain
+cd applications/solvers/incompressible/windEnergy/ABLTerrainSolver
 rmdepall
 wclean
 cd ../../../../../
@@ -41,12 +41,27 @@ rmdepall
 wclean
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.towerNacelle
+rmdepall
+wclean
+cd ../../../../../
+
 cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine
 rmdepall
 wclean
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.towerNacelle
+rmdepall
+wclean
+cd ../../../../../
+
 cd applications/solvers/incompressible/windEnergy/turbineTestHarness
+rmdepall
+wclean
+cd ../../../../../
+
+cd applications/solvers/incompressible/windEnergy/turbineTestHarness.towerNacelle
 rmdepall
 wclean
 cd ../../../../../
