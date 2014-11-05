@@ -46,7 +46,7 @@ namespace turbineModels
 horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 (
     const volVectorField& U
-)	      
+)
 :
     // Set the pointer to runTime
     runTime_(U.time()),
@@ -152,8 +152,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     forAll(turbineName,i)
     {
         turbineType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("turbineType")));
-	includeNacelle.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeNacelle")));
-	includeTower.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeTower")));
+        includeNacelle.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeNacelle")));
+        includeTower.append(readBool(turbineArrayProperties.subDict(turbineName[i]).lookup("includeTower")));
 
         baseLocation.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("baseLocation")));
 
@@ -206,7 +206,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         {
             includeNacelleSomeTrue = true;
         }
-	else   // set the number of nacelle points to 1, if the nacelle is not active.
+        else   // set the number of nacelle points to 1, if the nacelle is not active.
         {
             numNacellePoints[i] = 1;
         }
@@ -216,7 +216,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         {
             includeTowerSomeTrue = true;
         }
-	else   // set the number of tower points to 1, if the tower is not active.
+        else   // set the number of tower points to 1, if the tower is not active.
         {
             numTowerPoints[i] = 1;
         }
@@ -306,7 +306,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         BladePitchRateLimiter.append(bool(readBool(turbineProperties.lookup("BladePitchRateLimiter"))));
         SpeedFilterCornerFrequency.append(scalar(readScalar(turbineProperties.lookup("SpeedFilterCornerFrequency"))));
 
-	NacelleEquivalentRadius.append(Foam::sqrt(NacelleFrontalArea[i]/Foam::constant::mathematical::pi));
+    NacelleEquivalentRadius.append(Foam::sqrt(NacelleFrontalArea[i]/Foam::constant::mathematical::pi));
 
 
         RateLimitGenTorque.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("RateLimitGenTorque")));
@@ -408,12 +408,12 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 
 
-	TowerData.append(turbineProperties.lookup("TowerData"));
+        TowerData.append(turbineProperties.lookup("TowerData"));
         {
            DynamicList<scalar> height;
            DynamicList<scalar> chord;
            DynamicList<scalar> twist;
-	   DynamicList<label> id;
+           DynamicList<label> id;
            forAll(TowerData[i], j)
            {
                height.append(TowerData[i][j][0]);
@@ -637,7 +637,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
 
         // Calculate the sphere of influence radius (The sphere that 
-	// envelops the rotor at all yaw angles).
+    // envelops the rotor at all yaw angles).
         scalar sphereRadius = 0.0;
         forAll(PreCone[j],k)
         {
@@ -653,7 +653,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         DynamicList<label> influenceCellsI;
         forAll(U_.mesh().cells(),cellI)
         {
-	    if ((includeTower[i]) && (U_.mesh().C()[cellI].z() <= towerShaftIntersect[i].z()))
+        if ((includeTower[i]) && (U_.mesh().C()[cellI].z() <= towerShaftIntersect[i].z()))
             {
                 if ( Foam::sqrt(Foam::sqr(U_.mesh().C()[cellI].x() - baseLocation[i].x()) + 
                                 Foam::sqr(U_.mesh().C()[cellI].y() - baseLocation[i].y())) )
@@ -661,13 +661,13 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
                     influenceCellsI.append(cellI);
                 }
             }
-	    else if (((includeTower[i]) && (U_.mesh().C()[cellI].z() > towerShaftIntersect[i].z())) || (includeTower[i] != true))
+            else if (((includeTower[i]) && (U_.mesh().C()[cellI].z() > towerShaftIntersect[i].z())) || (includeTower[i] != true))
             {
-	        if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
+                if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
                 {
                     influenceCellsI.append(cellI);
                 }
-	    }
+            }
         }
         influenceCells.append(influenceCellsI);
         influenceCellsI.clear();
@@ -699,7 +699,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
         // Define which way the shaft points to distinguish between
         // upwind and downwind turbines.
-	uvShaftDir.append(OverHang[j]/mag(OverHang[j]));
+        uvShaftDir.append(OverHang[j]/mag(OverHang[j]));
 
         // Define the vector along the shaft pointing in the
         // direction of the wind.
@@ -708,8 +708,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
         // Define the vector aligned with the tower pointing from
         // the ground to the nacelle.
-	uvTower.append(towerShaftIntersect[i] - baseLocation[i]);
-	uvTower[i] = uvTower[i]/mag(uvTower[i]);
+        uvTower.append(towerShaftIntersect[i] - baseLocation[i]);
+        uvTower[i] = uvTower[i]/mag(uvTower[i]);
 
         // Now calculate the actuator section center points for each blade
         // of each turbine in the array.  All blades points will be calculated
@@ -728,8 +728,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             }
         }
         // Add other point distribution types here, such as cosine, tanh.
-	
-	// Calculate the actual locations of the blade actuator sections.
+    
+        // Calculate the actual locations of the blade actuator sections.
         bladePoints.append(List<List<vector> >(NumBl[j], List<vector>(numBladePoints[i],vector::zero)));
         bladeSamplePoints.append(List<List<vector> >(NumBl[j], List<vector>(numBladePoints[i],vector::zero)));
         bladePointRadius.append(List<List<scalar> >(NumBl[j], List<scalar>(numBladePoints[i],0.0)));
@@ -768,7 +768,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 
         // Compute the location of the tower section center points for each
-	// turbine tower in the array.
+    // turbine tower in the array.
 
         // Calculate the width of each tower actuator section.
         towerDs.append(DynamicList<scalar>(0));
@@ -787,19 +787,19 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         towerSamplePoints.append(List<vector>(numTowerPoints[i],vector::zero));
         towerPointHeight.append(List<scalar>(numTowerPoints[i],0.0));
         {
-	   towerPoints[i][0] = baseLocation[i];
+           towerPoints[i][0] = baseLocation[i];
          //towerPoints[i][0].z() += 0.5*towerDs[i][0];
-	   towerSamplePoints[i][0] = towerPoints[i][0];
-	   towerSamplePoints[i][0].x() -= towerSampleDistance[i];
+           towerSamplePoints[i][0] = towerPoints[i][0];
+           towerSamplePoints[i][0].x() -= towerSampleDistance[i];
            totTowerPoints++;
-	   for(int m = 1; m < numTowerPoints[i]; m++)
+           for(int m = 1; m < numTowerPoints[i]; m++)
            {
-	      towerPoints[i][m] = baseLocation[i];
-	      towerPoints[i][m].z() = towerPoints[i][m-1].z() + towerDs[i][m];
-	      towerSamplePoints[i][m] = towerPoints[i][m];
-	      towerSamplePoints[i][m].x() -= towerSampleDistance[i];
-	      towerPointHeight[i][m] = towerPoints[i][m].z() - baseLocation[i].z();
-              totTowerPoints++;
+               towerPoints[i][m] = baseLocation[i];
+               towerPoints[i][m].z() = towerPoints[i][m-1].z() + towerDs[i][m];
+               towerSamplePoints[i][m] = towerPoints[i][m];
+               towerSamplePoints[i][m].x() -= towerSampleDistance[i];
+               towerPointHeight[i][m] = towerPoints[i][m].z() - baseLocation[i].z();
+               totTowerPoints++;
            }
         }
 
@@ -824,11 +824,11 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         nacellePoints.append(List<vector>(numNacellePoints[i],vector::zero));
         nacelleSamplePoint.append(vector::zero);
         {
-	   nacellePoints[i][0] = rotorApex[i];
-	   nacelleSamplePoint[i] = nacellePoints[i][0];
-	   nacelleSamplePoint[i].x() -= nacelleSampleDistance[i];
+           nacellePoints[i][0] = rotorApex[i];
+           nacelleSamplePoint[i] = nacellePoints[i][0];
+           nacelleSamplePoint[i].x() -= nacelleSampleDistance[i];
            totNacellePoints++;
-	   for(int m = 1; m < numNacellePoints[i]; m++)
+           for(int m = 1; m < numNacellePoints[i]; m++)
            {
               nacellePoints[i][m] = nacellePoints[i][m-1] + nacelleDs[i][m] * uvShaft[i];
               totNacellePoints++;
@@ -994,21 +994,21 @@ void horizontalAxisWindTurbinesALM_tn::rotateBlades()
 {  
     // Perform rotation turbine by turbine.
     forAll(uvShaft, i)
-    {	
+    {   
         // Check the rotation direction first and set the local delta azimuth
-	// variable accordingly.
-	scalar deltaAzimuthI = 0.0;
-	if (rotationDir[i] == "cw")
-	{
+        // variable accordingly.
+        scalar deltaAzimuthI = 0.0;
+        if (rotationDir[i] == "cw")
+        {
             deltaAzimuthI =  deltaAzimuth[i];
         }
-	if (rotationDir[i] == "ccw")
-	{
+        if (rotationDir[i] == "ccw")
+        {
             deltaAzimuthI = -deltaAzimuth[i];
         }
 
-	// Rotate turbine blades, blade by blade, point by point.
-	forAll(bladePoints[i], j)
+        // Rotate turbine blades, blade by blade, point by point.
+        forAll(bladePoints[i], j)
         {
             forAll(bladePoints[i][j], k)
             {
@@ -1017,11 +1017,11 @@ void horizontalAxisWindTurbinesALM_tn::rotateBlades()
             }
         }   
 
-	// Calculate the new azimuth angle and make sure it isn't
+        // Calculate the new azimuth angle and make sure it isn't
         // bigger than 2*pi.
         if (pastFirstTimeStep)
         {
-	    rotorAzimuth[i] = rotorAzimuth[i] + deltaAzimuth[i];
+            rotorAzimuth[i] = rotorAzimuth[i] + deltaAzimuth[i];
             if (rotorAzimuth[i] >= 2.0 * Foam::constant::mathematical::pi)
             {
                 rotorAzimuth[i] -= 2.0 * Foam::constant::mathematical::pi;
@@ -1036,15 +1036,15 @@ void horizontalAxisWindTurbinesALM_tn::yawNacelle()
     // Perform rotation turbine by turbine.
     forAll(uvTower, i)
     {
-	// Rotate the rotor apex first.
+        // Rotate the rotor apex first.
         rotorApex[i] = rotatePoint(rotorApex[i], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
 
-	// Recompute the shaft unit vector since the shaft has rotated.
-	uvShaft[i] = rotorApex[i] - towerShaftIntersect[i];
-	uvShaft[i] = (uvShaft[i]/mag(uvShaft[i])) * uvShaftDir[i];
-	
-	// Rotate turbine blade points and velocity sampling points.
-	forAll(bladePoints[i], j)
+        // Recompute the shaft unit vector since the shaft has rotated.
+        uvShaft[i] = rotorApex[i] - towerShaftIntersect[i];
+        uvShaft[i] = (uvShaft[i]/mag(uvShaft[i])) * uvShaftDir[i];
+    
+        // Rotate turbine blade points and velocity sampling points.
+        forAll(bladePoints[i], j)
         {
             forAll(bladePoints[i][j], k)
             {
@@ -1068,11 +1068,11 @@ void horizontalAxisWindTurbinesALM_tn::yawNacelle()
 
 
 
-	// Compute the new yaw angle and make sure it isn't
+    // Compute the new yaw angle and make sure it isn't
         // bigger than 2*pi.
         if (pastFirstTimeStep)
         {
-	    nacYaw[i] = nacYaw[i] + deltaNacYaw[i];
+            nacYaw[i] = nacYaw[i] + deltaNacYaw[i];
             if (nacYaw[i] >= 2.0 * Foam::constant::mathematical::pi)
             {
                 nacYaw[i] -= 2.0 * Foam::constant::mathematical::pi;
@@ -1109,7 +1109,7 @@ void horizontalAxisWindTurbinesALM_tn::computeRotSpeed()
         // faster than rated.
         if (RotSpeedLimiter[j])
         {
-            # include "limiters/rotSpeedLimiter.H"
+            #include "limiters/rotSpeedLimiter.H"
         }
  
         // Compute the change in blade azimuth angle based on the time step and current rotor speed.
@@ -1153,15 +1153,15 @@ void horizontalAxisWindTurbinesALM_tn::controlGenTorque()
 
 
         // Apply a controller to update the rotor speed.
-	if (GenTorqueControllerType[j] == "none")
+        if (GenTorqueControllerType[j] == "none")
         {
             #include "controllers/genTorqueControllers/none.H"
         }
 
-	else if (GenTorqueControllerType[j] == "fiveRegion")
+        else if (GenTorqueControllerType[j] == "fiveRegion")
         {
             #include "controllers/genTorqueControllers/fiveRegion.H"
-	}
+        }
 
         else if (GenTorqueControllerType[j] == "speedTorqueTable")
         {
@@ -1194,7 +1194,7 @@ void horizontalAxisWindTurbinesALM_tn::controlNacYaw()
         if (NacYawControllerType[j] == "none")
         {
             // Do nothing.
-	    deltaNacYaw[i] = 0.0;
+            deltaNacYaw[i] = 0.0;
         }
 
         else if (NacYawControllerType[j] == "simple")
@@ -1406,22 +1406,22 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
         }
 
         if(minDisGlobalNacelle[iterNacelle] != minDisLocalNacelle[iterNacelle])
-	    {
+        {
             nacelleMinDisCellID[i] = -1;
-	    }
+        }
 
-	    forAll(towerSamplePoints[i], j)
+        forAll(towerSamplePoints[i], j)
         {
             if(minDisGlobalTower[iterTower] != minDisLocalTower[iterTower])
             {
                 towerMinDisCellID[i][j] = -1;
             }
-	        iterTower++;
+            iterTower++;
         }
 
 
     }
-}	
+}   
 
 
 void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
@@ -1442,8 +1442,8 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     {
         int i = turbinesControlled[p];
         int iterBlade = 0;
-	    int iterNacelle = 0;
-	    int iterTower = 0;
+        int iterNacelle = 0;
+        int iterTower = 0;
         if(i > 0)
         {
             for(int n = 0; n < i; n++)
@@ -1491,13 +1491,13 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
             }
         }
 
-	    forAll(towerPoints[i], j)
+        forAll(towerPoints[i], j)
         {
             if(towerMinDisCellID[i][j] != -1)
             {
                 vector velocity(vector::zero);
                 label cellID = towerMinDisCellID[i][j];
-	            vector point = towerSamplePoints[i][j];
+                vector point = towerSamplePoints[i][j];
 
                 // If the velocity interpolation is "cellCenter", then just use 
                 // the velocity at the center of the cell within which this
@@ -1516,14 +1516,14 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
                 towerWindVectorsLocal[iterTower] = velocity;
             }
-	    iterTower++;
+            iterTower++;
         }
 
-	    if(nacelleMinDisCellID[i] != -1)
+        if(nacelleMinDisCellID[i] != -1)
         {
             vector velocity(vector::zero);
-	        label cellID = nacelleMinDisCellID[i];
-	        vector point = nacelleSamplePoint[i];
+            label cellID = nacelleMinDisCellID[i];
+            vector point = nacelleSamplePoint[i];
 
             // If the velocity interpolation is "cellCenter", then just use 
             // the velocity at the center of the cell within which this
@@ -1540,7 +1540,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
                #include "velocityInterpolation/linear.H"
             }
 
-	        nacelleWindVectorLocal[iterNacelle] = velocity;           
+            nacelleWindVectorLocal[iterNacelle] = velocity;           
         }
 
 
@@ -1588,9 +1588,9 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
     forAll(nacelleWindVector, i)
     {
         nacelleWindVector[i] = vector::zero;
-	    nacelleWindVector[i] = nacelleWindVectorLocal[iterNacelle];
+        nacelleWindVector[i] = nacelleWindVectorLocal[iterNacelle];
 
-	    iterNacelle++;
+        iterNacelle++;
     }
 
     int iterTower = 0;
@@ -1599,9 +1599,9 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
         forAll(towerWindVectors[i], j)
         {
             towerWindVectors[i][j] = vector::zero;
-	        towerWindVectors[i][j] = towerWindVectorsLocal[iterTower];
+            towerWindVectors[i][j] = towerWindVectorsLocal[iterTower];
 
-	        iterTower++;
+            iterTower++;
         }
     }
 }
@@ -1629,17 +1629,17 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
         forAll(bladeWindVectors[i], j)
         {
             // If clockwise rotating, this vector points along the blade toward the tip.
-	        // If counter-clockwise rotating, this vector points along the blade toward the root.
-	        if (rotationDir[i] == "cw")
-	        {
+            // If counter-clockwise rotating, this vector points along the blade toward the root.
+            if (rotationDir[i] == "cw")
+            {
                 bladeAlignedVectors[i][j][2] =   bladePoints[i][j][0] - rotorApex[i];
                 bladeAlignedVectors[i][j][2] =   bladeAlignedVectors[i][j][2]/mag(bladeAlignedVectors[i][j][2]);
-	        }
-	        else if (rotationDir[i] == "ccw")
-	        {
+            }
+            else if (rotationDir[i] == "ccw")
+            {
                 bladeAlignedVectors[i][j][2] = -(bladePoints[i][j][0] - rotorApex[i]);
                 bladeAlignedVectors[i][j][2] =   bladeAlignedVectors[i][j][2]/mag(bladeAlignedVectors[i][j][2]);
-	        }
+            }
 
             // This vector points in the tangential direction opposite the turbines rotation type.  It is 
             // set up this way because it will point in the direction of oncoming flow that the blade sees 
@@ -1681,7 +1681,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
             // Set the total tower forces of the turbine to zero.  They will be summed on a tower-element-
             // wise basis.
-	        nacelleAxialForce[i] = 0.0;
+            nacelleAxialForce[i] = 0.0;
             nacelleHorizontalForce[i] = 0.0;
             nacelleVerticalForce[i] = 0.0;
 
@@ -1694,7 +1694,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
             vector horizontalVector = -(axialVector ^ verticalVector);
             horizontalVector = horizontalVector / mag(horizontalVector);
 
-	        // Now go point by point to find each points contribution to the total drag.
+            // Now go point by point to find each points contribution to the total drag.
             forAll(nacellePoints[i], j)
             {
                 // Find the local velocity magnitude.
@@ -1703,10 +1703,10 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                                                     Foam::pow(nacelleWindVector[i].z(),2)),0.5);
 
                 // We assume the nacelle creates drag only.  Divide the drag up into portions
-		        // for each nacelle point based on the ratio of nacelle element length to total
-		        // nacelle length.
-		        scalar contribution = nacelleDs[i][j] / NacelleLength[i];
-		        nacellePointDrag[i][j] = contribution * 0.5 * NacelleCd[m] * nacellePointVmag[i][j] * nacellePointVmag[i][j] * NacelleFrontalArea[m];
+                // for each nacelle point based on the ratio of nacelle element length to total
+                // nacelle length.
+                scalar contribution = nacelleDs[i][j] / NacelleLength[i];
+                nacellePointDrag[i][j] = contribution * 0.5 * NacelleCd[m] * nacellePointVmag[i][j] * nacellePointVmag[i][j] * NacelleFrontalArea[m];
                 vector dragVector = nacelleWindVector[i];
                 dragVector = dragVector/mag(dragVector);
 
@@ -1717,10 +1717,10 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
                 // Find the component of the tower element force/density in the different directions.
                 // Axial is horizontal but aligned with the shaft.
-	            // Horizontal is horizontal but perpendicular to axial.
+                // Horizontal is horizontal but perpendicular to axial.
                 nacellePointAxialForce[i][j] = -nacellePointForce[i][j] & axialVector;
-	            nacellePointHorizontalForce[i][j] = -nacellePointForce[i][j] & horizontalVector;
-	            nacellePointVerticalForce[i][j] = -nacellePointForce[i][j] & verticalVector;
+                nacellePointHorizontalForce[i][j] = -nacellePointForce[i][j] & horizontalVector;
+                nacellePointVerticalForce[i][j] = -nacellePointForce[i][j] & verticalVector;
 
                 // Add this blade element's contribution to the total turbine forces/moments.
                 nacelleAxialForce[i] += nacellePointAxialForce[i][j];
@@ -1773,7 +1773,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 scalar windAng = Foam::atan2(towerWindVectors[i][j].y(),towerWindVectors[i][j].x())/degRad; 
 
                 // Get the angle of the nacelle.
-	            scalar nacelleAng = Foam::atan2(-axialVector.y(),-axialVector.x())/degRad;
+                scalar nacelleAng = Foam::atan2(-axialVector.y(),-axialVector.x())/degRad;
 
                 // Angle of attack.
                 towerPointAlpha[i][j] = windAng - nacelleAng + twistAng;
@@ -1789,7 +1789,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
                 // Make the scalar lift and drag quantities vectors in the Cartesian coordinate system.
                 vector dragVector = towerWindVectors[i][j];
-	            dragVector.z() = 0.0;
+                dragVector.z() = 0.0;
                 dragVector = dragVector/mag(dragVector);
 
                 vector liftVector = -dragVector^verticalVector;
@@ -1803,9 +1803,9 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
                 // Find the component of the tower element force/density in the different directions.
                 // Axial is horizontal but aligned with the shaft.
-	            // Horizontal is horizontal but perpendicular to axial.
+                // Horizontal is horizontal but perpendicular to axial.
                 towerPointAxialForce[i][j] = -towerPointForce[i][j] & axialVector;
-	            towerPointHorizontalForce[i][j] = -towerPointForce[i][j] & horizontalVector;
+                towerPointHorizontalForce[i][j] = -towerPointForce[i][j] & horizontalVector;
 
                 // Add this blade element's contribution to the total turbine forces/moments.
                 towerAxialForce[i] += towerPointAxialForce[i][j];
@@ -1824,9 +1824,9 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
         // Set the total rotor forces/moments of the turbine to zero.  They will be summed on a blade-element-
         // wise basis.
         rotorTorque[i] = 0.0;
-	    rotorAxialForce[i] = 0.0;
-	    rotorHorizontalForce[i] = 0.0;
-	    rotorVerticalForce[i] = 0.0;
+        rotorAxialForce[i] = 0.0;
+        rotorHorizontalForce[i] = 0.0;
+        rotorVerticalForce[i] = 0.0;
 
         // Get necessary axes.
         vector axialVector = uvShaft[i];
@@ -1911,12 +1911,12 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 bladePointForce[i][j][k] = liftVector + dragVector;
 
                 // Find the component of the blade element force/density in the different directions.
-		        // Axial is horizontal but aligned with the shaft.
-		        // Horizontal is horizontal but perpendicular to axial.
-		        // Vertical is vertical.  Vertical = Axial X Horizontal.
+                // Axial is horizontal but aligned with the shaft.
+                // Horizontal is horizontal but perpendicular to axial.
+                // Vertical is vertical.  Vertical = Axial X Horizontal.
                 bladePointAxialForce[i][j][k] = -bladePointForce[i][j][k] & axialVector;
-		        bladePointHorizontalForce[i][j][k] = -bladePointForce[i][j][k] & horizontalVector;
-		        bladePointVerticalForce[i][j][k] = -bladePointForce[i][j][k] & verticalVector;
+                bladePointHorizontalForce[i][j][k] = -bladePointForce[i][j][k] & horizontalVector;
+                bladePointVerticalForce[i][j][k] = -bladePointForce[i][j][k] & verticalVector;
                 bladePointTorque[i][j][k] = (bladePointForce[i][j][k] & bladeAlignedVectors[i][j][1]) * bladePointRadius[i][j][k] * cos(PreCone[m][j]);
 
                 // Add this blade element's contribution to the total turbine forces/moments.
@@ -1956,7 +1956,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
     // Compute body force due to blades.
     forAll(bladePointForce, i)
     {
-	    
+        
         int n = turbineTypeID[i];
         
         // Proceed to compute body forces for turbine i only if there are influence cells on this processor for this turbine.
@@ -1964,13 +1964,13 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
         {
 
             // Get necessary axes.
-	        vector axialVector = uvShaft[i];
-	        axialVector.z() = 0.0;
-	        axialVector = axialVector / mag(axialVector);
+            vector axialVector = uvShaft[i];
+            axialVector.z() = 0.0;
+            axialVector = axialVector / mag(axialVector);
             vector verticalVector = vector::zero;
-	        verticalVector.z() = 1.0;
-	        vector horizontalVector = -(axialVector ^ verticalVector);
-	        horizontalVector = horizontalVector / mag(horizontalVector);
+            verticalVector.z() = 1.0;
+            vector horizontalVector = -(axialVector ^ verticalVector);
+            horizontalVector = horizontalVector / mag(horizontalVector);
 
 
             // For each blade.
@@ -1989,16 +1989,16 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                             scalar spreading = 1.0;
                             if (bladeForceProjectionType[i] == "uniformGaussian")
                             {
-			                    spreading = uniformGaussian(bladeEpsilon[i][0], dis);
-			                }
-			                else
+                                spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+                            }
+                            else
                             {
-			                    spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+                                spreading = uniformGaussian(bladeEpsilon[i][0], dis);
                             }
                             bodyForce[influenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
                             rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
                             rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
-				                                   & bladeAlignedVectors[i][j][1];
+                                                   & bladeAlignedVectors[i][j][1];
                         }
                     }
                 }  
@@ -2012,16 +2012,16 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual rotor thrust and torque to the integrated body force.
     Info << "Rotor Axial Force from Body Force = " << rotorAxialForceBodySum << tab << "Rotor Axial Force from Actuator = " << rotorAxialForceSum << tab
-	     << "Ratio = " << rotorAxialForceBodySum/max(rotorAxialForceSum,1.0E-5) << endl;
+         << "Ratio = " << rotorAxialForceBodySum/max(rotorAxialForceSum,1.0E-5) << endl;
     Info << "Rotor Torque from Body Force = " << rotorTorqueBodySum << tab << "Rotor Torque from Actuator = " << rotorTorqueSum << tab 
-	     << "Ratio = " << rotorTorqueBodySum/max(rotorTorqueSum,1.0E-5) << endl;
+         << "Ratio = " << rotorTorqueBodySum/max(rotorTorqueSum,1.0E-5) << endl;
 
 
 
     // Compute body force due to tower.
     forAll(towerPointForce, i)
     {
-	    
+        
         int n = turbineTypeID[i];
 
         if (includeTower[i])
@@ -2031,17 +2031,17 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
                 // Get necessary axes.
                 vector axialVector = uvShaft[i];
-	            axialVector.z() = 0.0;
-	            axialVector = axialVector / mag(axialVector);
+                axialVector.z() = 0.0;
+                axialVector = axialVector / mag(axialVector);
                 vector verticalVector = vector::zero;
-	            verticalVector.z() = 1.0;
-	            vector horizontalVector = -(axialVector ^ verticalVector);
-	            horizontalVector = horizontalVector / mag(horizontalVector);
+                verticalVector.z() = 1.0;
+                vector horizontalVector = -(axialVector ^ verticalVector);
+                horizontalVector = horizontalVector / mag(horizontalVector);
 
             
                 forAll(influenceCells[i], m)
                 {
-		            vector d = mesh_.C()[influenceCells[i][m]] - towerPoints[i][j];
+                    vector d = mesh_.C()[influenceCells[i][m]] - towerPoints[i][j];
                     scalar dis = mag(d);
                     if (dis <= towerProjectionRadius[i])
                     {
@@ -2050,17 +2050,17 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         {
                             spreading = uniformGaussian(towerEpsilon[i][0], dis);
                         }
-			            else if (towerForceProjectionType[i] == "diskGaussian")
+                        else if (towerForceProjectionType[i] == "diskGaussian")
                         {
                             scalar r = 0.5 * interpolate(towerPointHeight[i][j], TowerStation[n], TowerChord[n]);
                             spreading = diskGaussian(towerEpsilon[i][0], towerEpsilon[i][1], verticalVector, r, d);
                         }
-			            else
+                        else
                         {
                             spreading = uniformGaussian(towerEpsilon[i][0], dis);
                         }
-			            bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
-			            towerAxialForceBodySum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+                        bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
+                        towerAxialForceBodySum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
             }
@@ -2071,14 +2071,14 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual tower thrust to the integrated body force.
     Info << "Tower Axial Force from BodyForce = " << towerAxialForceBodySum << tab << "Tower Axial Force from Actuator = " << towerAxialForceSum << tab
-	     << "Ratio = " << towerAxialForceBodySum/max(towerAxialForceSum,1.0E-5) << endl;
+         << "Ratio = " << towerAxialForceBodySum/max(towerAxialForceSum,1.0E-5) << endl;
 
 
 
     // Compute body force due to nacelle.
     forAll(nacellePointForce, i)
     {
-	    
+        
         int n = turbineTypeID[i];
 
         if (includeNacelle[i])
@@ -2088,12 +2088,12 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
                 // Get necessary axes.
                 vector axialVector = uvShaft[i];
-	            axialVector.z() = 0.0;
-	            axialVector = axialVector / mag(axialVector);
+                axialVector.z() = 0.0;
+                axialVector = axialVector / mag(axialVector);
                 vector verticalVector = vector::zero;
-	            verticalVector.z() = 1.0;
-	            vector horizontalVector = -(axialVector ^ verticalVector);
-	            horizontalVector = horizontalVector / mag(horizontalVector);
+                verticalVector.z() = 1.0;
+                vector horizontalVector = -(axialVector ^ verticalVector);
+                horizontalVector = horizontalVector / mag(horizontalVector);
 
             
                 forAll(influenceCells[i], m)
@@ -2115,8 +2115,8 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         {
                             spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
                         }
-			            bodyForce[influenceCells[i][m]] += nacellePointForce[i][j] * spreading;
-			            nacelleAxialForceBodySum += (-nacellePointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+                        bodyForce[influenceCells[i][m]] += nacellePointForce[i][j] * spreading;
+                        nacelleAxialForceBodySum += (-nacellePointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
             }
@@ -2127,7 +2127,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
     // Print information comparing the actual tower thrust to the integrated body force.
     Info << "Nacelle Axial Force from BodyForce = " << nacelleAxialForceBodySum << tab << "Nacelle Axial Force from Actuator = " << nacelleAxialForceSum << tab
-	     << "Ratio = " << nacelleAxialForceBodySum/max(nacelleAxialForceSum,1E-5) << endl;
+         << "Ratio = " << nacelleAxialForceBodySum/max(nacelleAxialForceSum,1E-5) << endl;
 
 }
 
@@ -2152,8 +2152,8 @@ scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xE
 
     // Compute the spreading function
     scalar coeff = 1.0 / (r0 * r0 * xEpsilon * Foam::pow(Foam::constant::mathematical::pi,1.5) +
-		          xEpsilon * rEpsilon * rEpsilon * Foam::pow(Foam::constant::mathematical::pi,1.5) + 
-			      r0 * xEpsilon * rEpsilon * Foam::sqr(Foam::constant::mathematical::pi));
+                  xEpsilon * rEpsilon * rEpsilon * Foam::pow(Foam::constant::mathematical::pi,1.5) + 
+                  r0 * xEpsilon * rEpsilon * Foam::sqr(Foam::constant::mathematical::pi));
     scalar f = 1.0;
     if (dr <= r0)
     {
@@ -2392,7 +2392,7 @@ void horizontalAxisWindTurbinesALM_tn::update()
         {
             outputIndex = 0;
             printOutputFiles();
-	    }
+        }
     }
     else if (outputControl == "runTime")
     {
@@ -2451,7 +2451,7 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
         }
 
 
-	// BLADE-POINT RELATED FILES
+    // BLADE-POINT RELATED FILES
         bladePointAlphaFile_ = new OFstream(rootDir/time/"bladePointAlpha");
        *bladePointAlphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack (degrees)" << endl;
 
@@ -2502,7 +2502,7 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
 
 
-	// NACELLE-POINT RELATED FILES
+    // NACELLE-POINT RELATED FILES
         nacellePointVmagFile_ = new OFstream(rootDir/time/"nacellePointVmag");
        *nacellePointVmagFile_ << "#Turbine    Time(s)    dt(s)    Vmag (m/s)" << endl;
     
@@ -2529,7 +2529,7 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
 
 
-	// TOWER-POINT RELATED FILES
+    // TOWER-POINT RELATED FILES
         towerPointAlphaFile_ = new OFstream(rootDir/time/"towerPointAlpha");
        *towerPointAlphaFile_ << "#Turbine    Time(s)    dt(s)    angle-of-attack (deg)" << endl;
 
@@ -2596,8 +2596,8 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
 
 
-	// NACELLE-RELATED FILES 
-	    nacelleAxialForceFile_ = new OFstream(rootDir/time/"nacelleAxialForce");
+    // NACELLE-RELATED FILES 
+        nacelleAxialForceFile_ = new OFstream(rootDir/time/"nacelleAxialForce");
        *nacelleAxialForceFile_ << "#Turbine    Time(s)    dt(s)    nacelle axial force (N)" << endl;
 
         nacelleHorizontalForceFile_ = new OFstream(rootDir/time/"nacelleHorizontalForce");
@@ -2611,22 +2611,22 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 
 
 
-	// TOWER-RELATED FILES 
-	    towerAxialForceFile_ = new OFstream(rootDir/time/"towerAxialForce");
+    // TOWER-RELATED FILES 
+        towerAxialForceFile_ = new OFstream(rootDir/time/"towerAxialForce");
        *towerAxialForceFile_ << "#Turbine    Time(s)    dt(s)    tower axial force (N)" << endl;
 
         towerHorizontalForceFile_ = new OFstream(rootDir/time/"towerHorizontalForce");
        *towerHorizontalForceFile_ << "#Turbine    Time(s)    dt(s)    tower horizontal force (N)" << endl;
 
 
-	
-	// BLADE-RELATED FILES
+    
+    // BLADE-RELATED FILES
         bladePitchFile_ = new OFstream(rootDir/time/"bladePitch");
        *bladePitchFile_ << "#Turbine    Time(s)    dt(s)    blade pitch angle (degrees)" << endl;
 
        
 
-	// GENERATOR-RELATED FILES
+    // GENERATOR-RELATED FILES
         generatorTorqueFile_ = new OFstream(rootDir/time/"generatorTorque");
        *generatorTorqueFile_ << "#Turbine    Time(s)    dt(s)    generator torque (N-m)" << endl;
 
@@ -2690,7 +2690,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
 
 
             // Write out bulk information for each turbine (i.e., quantities not distributed
-	        // along points).
+            // along points).
             *rotorTorqueFile_ << rotorTorque[i]*fluidDensity[i] << endl;
             *rotorAxialForceFile_ << rotorAxialForce[i]*fluidDensity[i] << endl;
             *rotorHorizontalForceFile_ << rotorHorizontalForce[i]*fluidDensity[i] << endl;
@@ -2709,8 +2709,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
             *bladePitchFile_ << bladePitch[i] << endl;
 
 
-	        // Write out information for the nacelle, which is distributed along a points, but along
-	        // only one set of points (as opposed to blades of which there are multiple sets of points)
+            // Write out information for the nacelle, which is distributed along a points, but along
+            // only one set of points (as opposed to blades of which there are multiple sets of points)
             forAll(nacellePoints[i], k)
             {
                 *nacellePointVmagFile_ << nacellePointVmag[i][k] << " ";
@@ -2733,9 +2733,9 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
 
 
 
-	    // Write out information for the tower, which is distributed along a points, but along
-	    // only one set of points (as opposed to blades of which there are multiple sets of points)
-	    forAll(towerPoints[i], k)
+        // Write out information for the tower, which is distributed along a points, but along
+        // only one set of points (as opposed to blades of which there are multiple sets of points)
+        forAll(towerPoints[i], k)
             {
                 *towerPointAlphaFile_ << towerPointAlpha[i][k] << " "; 
                 *towerPointVmagFile_ << towerPointVmag[i][k] << " "; 
@@ -2784,7 +2784,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                 *bladePointYFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointZFile_ << i << " " << j << " " <<  time << " " << dt << " ";
 
-		        // Write the information for each point on the blade.
+                // Write the information for each point on the blade.
                 forAll(bladePoints[i][j], k)
                 {   
                     *bladePointAlphaFile_ << bladePointAlpha[i][j][k] << " ";
@@ -2805,7 +2805,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
                     *bladePointZFile_ << bladePoints[i][j][k].z() << " ";
                 }
 
-		        // End the line so we can go on to the next blade.
+                // End the line so we can go on to the next blade.
                 *bladePointAlphaFile_ << endl;
                 *bladePointVmagFile_ << endl;
                 *bladePointVaxialFile_ << endl;
@@ -2828,8 +2828,8 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
 
 
 
-	    // Add another space to denote that we are done with a timestep.  The output is blocks
-	    // of data for each time step, separated by a blank line between time steps.
+        // Add another space to denote that we are done with a timestep.  The output is blocks
+        // of data for each time step, separated by a blank line between time steps.
         *rotorTorqueFile_ << endl;
         *rotorAxialForceFile_ << endl;
         *rotorHorizontalForceFile_ << endl;

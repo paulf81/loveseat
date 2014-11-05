@@ -114,30 +114,30 @@ private:
         //- Boolean that is true past time step.
         bool pastFirstTimeStep;
 
-	    //- Velocity gradient used to linearly interpolate the velocity from the
-	    //  CFD gridto the actuator line.
-	    volTensorField gradU;
+        //- Velocity gradient used to linearly interpolate the velocity from the
+        //  CFD gridto the actuator line.
+        volTensorField gradU;
 
         //- Body force field applied to fluid by turbine.
         volVectorField bodyForce;
-	    
-	    //- Write every "outputInterval" time steps or seconds.  Options are
+        
+        //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
-	    //  "outputInterval" seconds as possible, but doesn't adjust the time
+        //  "outputInterval" seconds as possible, but doesn't adjust the time
         //  step to write on the exact interval. 
-	    word outputControl;
+        word outputControl;
 
         //- The inteveral over which to write out turbine data.
         scalar outputInterval;
 
-	    //- Last time when output written.
-	    scalar lastOutputTime;
+        //- Last time when output written.
+        scalar lastOutputTime;
 
         //- Value to perturb blade locations by to break ties when searching for control processor.
         scalar perturb;
 
-    	//- Last time step when output written.
-	    label outputIndex;
+        //- Last time step when output written.
+        label outputIndex;
 
 
 
@@ -151,30 +151,30 @@ private:
             //- List of names of turbine types in array.
             DynamicList<word> turbineType;
 
-	        //- List of booleans for including nacelle and a global boolean that is
-	        //  true if at least one turbine nacelle is included..
-	        DynamicList<bool> includeNacelle;
+            //- List of booleans for including nacelle and a global boolean that is
+            //  true if at least one turbine nacelle is included..
+            DynamicList<bool> includeNacelle;
             bool includeNacelleSomeTrue;
 
-	        //- List of booleans for including tower and a global boolean that is
-	        //  true if at least one turbine tower is included.
-	        DynamicList<bool> includeTower;
+            //- List of booleans for including tower and a global boolean that is
+            //  true if at least one turbine tower is included.
+            DynamicList<bool> includeTower;
             bool includeTowerSomeTrue;
  
             //- List of locations of bases of turbines in array relative to origin (m).
             DynamicList<vector> baseLocation;
 
             //- List of number of actuator points on blades, tower, and nacelles
-	        //  of turbines in array. 
+            //  of turbines in array. 
             DynamicList<int> numBladePoints; 
-	        DynamicList<int> numTowerPoints;
-	        DynamicList<int> numNacellePoints;
+            DynamicList<int> numTowerPoints;
+            DynamicList<int> numNacellePoints;
 
             //- List of description of actuator line point distribution types
             //  for each turbine (set to uniform for now--here for future upgrades).
             DynamicList<word> bladePointDistType;
-	        DynamicList<word> towerPointDistType;
-	        DynamicList<word> nacellePointDistType;
+            DynamicList<word> towerPointDistType;
+            DynamicList<word> nacellePointDistType;
 
             //- List of description of how velocity field is interpolated from the 
             //  CFD mesh to the actuator line points.  Options are "cellCenter" or
@@ -196,20 +196,20 @@ private:
             //  are projected.   
             DynamicList<word> actuatorUpdateType;
 
-	        //- The body force projection type to be used. Currently, the options are:
-	        //  "uniformGaussian" - Projects force at a point uniformly in all three directions.
-	        //                      Enter the spreading value epsilon as the first entry into
-	        //                      the epsilon vector, the remaining two entries will be disregarded.
-	        //  "diskGaussian"    - Projects force at a point constantly over a disk of some radius,
-	        //                      but dies off with a Gaussian at the end of the disk.  It also dies
-	        //                      off as a Gaussian in the direction normal to the disk.  Useful for
-	        //                      the tower and nacelle.  For the tower, the disk normal is along
-	        //                      the tower direction and the disk takes the radius of the tower.
-	        //                      For the nacelle, the disk normal is along the drive shaft direction
-	        //                      and the radius is the effective radius (based on frontal area) of
-	        //                      the nacelle. Epsilon for the radial die off of force is the first
-	        //                      entry into the epsilon vector and that of the axial die off is
-	        //                      the second entry (see below).
+            //- The body force projection type to be used. Currently, the options are:
+            //  "uniformGaussian" - Projects force at a point uniformly in all three directions.
+            //                      Enter the spreading value epsilon as the first entry into
+            //                      the epsilon vector, the remaining two entries will be disregarded.
+            //  "diskGaussian"    - Projects force at a point constantly over a disk of some radius,
+            //                      but dies off with a Gaussian at the end of the disk.  It also dies
+            //                      off as a Gaussian in the direction normal to the disk.  Useful for
+            //                      the tower and nacelle.  For the tower, the disk normal is along
+            //                      the tower direction and the disk takes the radius of the tower.
+            //                      For the nacelle, the disk normal is along the drive shaft direction
+            //                      and the radius is the effective radius (based on frontal area) of
+            //                      the nacelle. Epsilon for the radial die off of force is the first
+            //                      entry into the epsilon vector and that of the axial die off is
+            //                      the second entry (see below).
             DynamicList<word> bladeForceProjectionType;
             DynamicList<word> nacelleForceProjectionType;
             DynamicList<word> towerForceProjectionType;
@@ -224,11 +224,11 @@ private:
             DynamicList<vector> nacelleEpsilon;
             DynamicList<vector> towerEpsilon;
 
-	        //- The velocity used to calculate tower and nacelle forces must be sampled
-	        //  somewhere upstream of the actuator points.  These variables describe how
-	        //  far upstream the sampling occurs.
-	        DynamicList<scalar> nacelleSampleDistance;
-	        DynamicList<scalar> towerSampleDistance;
+            //- The velocity used to calculate tower and nacelle forces must be sampled
+            //  somewhere upstream of the actuator points.  These variables describe how
+            //  far upstream the sampling occurs.
+            DynamicList<scalar> nacelleSampleDistance;
+            DynamicList<scalar> towerSampleDistance;
 
             //- The projection of actuator forces to body forces uses a Gaussian (or some
             //  other smooth normalization could be used).  At some distance away from the
@@ -243,15 +243,15 @@ private:
             //- List of tip/root loss correction type for each turbine.  "none" applies
             //  no correction.  "Glauert" applies the Glauert tip loss correction.
             DynamicList<word> tipRootLossCorrType;
-	    
-	        //- Rotor rotation direction as viewed from upwind.  Options are
-	        //  "cw" for clockwise and "ccw" for counter-clockwise.
-	        DynamicList<word> rotationDir;
+        
+            //- Rotor rotation direction as viewed from upwind.  Options are
+            //  "cw" for clockwise and "ccw" for counter-clockwise.
+            DynamicList<word> rotationDir;
 
             //- Initial or fixed rotor speed (rpm).  A positive value means
-	        //  clockwise rotation for a clockwise rotating turbine (see rotationDir
-	        //  above) or counter-clockwise rotation for a counter-clockwise
-	        //  rotating turbine.
+            //  clockwise rotation for a clockwise rotating turbine (see rotationDir
+            //  above) or counter-clockwise rotation for a counter-clockwise
+            //  rotating turbine.
             DynamicList<scalar> rotorSpeed;
 
             //- Filtered rotor speed that is fed to the controllers (rpm).
@@ -265,10 +265,10 @@ private:
             DynamicList<scalar> intSpeedError;
 
             //- Initial blade 1 rotorAzimuth angle (degrees) (looking from upwind to 
-	        //  downwind, a positive rotorAzimuth angle makes a clockwise movement if
-	        //  this is a clockwise rotating turbine (see rotationDir above) or
-	        //  or a counterclockwise movement if this is a counter-clockwise
-	        //  rotating turbine).
+            //  downwind, a positive rotorAzimuth angle makes a clockwise movement if
+            //  this is a clockwise rotating turbine (see rotationDir above) or
+            //  or a counterclockwise movement if this is a counter-clockwise
+            //  rotating turbine).
             DynamicList<scalar> rotorAzimuth;
 
             //- Initial generator torque on turbine (not density normalized).
@@ -320,17 +320,17 @@ private:
             //- Distance from nacelle yaw axis to teeter pin or rotor apex (m).
             DynamicList<scalar> OverHang;
 
-	        //- Distance of nacelle fore to aft extent (m).
-	        DynamicList<scalar> NacelleLength;
+            //- Distance of nacelle fore to aft extent (m).
+            DynamicList<scalar> NacelleLength;
 
-	        //- Nacelle frontal area (m^2).
-	        DynamicList<scalar> NacelleFrontalArea;
+            //- Nacelle frontal area (m^2).
+            DynamicList<scalar> NacelleFrontalArea;
 
-	        //- Equivalent nacelle radius (m), based on frontal area.
-	        DynamicList<scalar> NacelleEquivalentRadius;
+            //- Equivalent nacelle radius (m), based on frontal area.
+            DynamicList<scalar> NacelleEquivalentRadius;
 
-	        //- Nacelle coefficient of drag.
-	        DynamicList<scalar> NacelleCd;
+            //- Nacelle coefficient of drag.
+            DynamicList<scalar> NacelleCd;
 
             //- Height of tower top above ground (m).
             DynamicList<scalar> TowerHt;
@@ -373,13 +373,13 @@ private:
             //  will be limited at rated regardless of generator and rotor torque.
             DynamicList<word> GenTorqueControllerType;
 
-	        //- Nacelle yaw controller type (NOT IMPLEMENTED, just remains at 
-	        //  specified nacYaw).
-	        DynamicList<word> NacYawControllerType;
+            //- Nacelle yaw controller type (NOT IMPLEMENTED, just remains at 
+            //  specified nacYaw).
+            DynamicList<word> NacYawControllerType;
 
-	        //- Pitch controller type (NOT IMPLEMENTED, just remains at 
-	        //  specified pitch).
-	        DynamicList<word> BladePitchControllerType;
+            //- Pitch controller type (NOT IMPLEMENTED, just remains at 
+            //  specified pitch).
+            DynamicList<word> BladePitchControllerType;
 
             //- Engage a rotor speed limiter (do not let rotor speed exceed rated
             //  or become negative.
@@ -533,8 +533,8 @@ private:
             DynamicList<vector> rotorApex;
 
             //- List of list of labels of cells that turbine could lie within.  
-	        //  This is a cylinder about the tower with a hemisphere capping
-	        //  the cylinder to envelop the rotor
+            //  This is a cylinder about the tower with a hemisphere capping
+            //  the cylinder to envelop the rotor
             DynamicList<DynamicList<label> > influenceCells;
 
             //- Actuator element width.
@@ -548,11 +548,11 @@ private:
 
             //- Actuator line point locations with respect to origin.
             DynamicList<List<vector> > towerPoints;
-	        DynamicList<List<vector> > towerSamplePoints;
+            DynamicList<List<vector> > towerSamplePoints;
 
             //- Actuator line point locations with respect to origin.
             DynamicList<List<vector> > nacellePoints;
-	        DynamicList<vector> nacelleSamplePoint;
+            DynamicList<vector> nacelleSamplePoint;
 
             //- Random perturbation of sample points applied only when determining control
             //  processors to break ties.  This does not affect true location where
@@ -563,29 +563,29 @@ private:
 
             //- Total actuator line points in blade, nacelle, and tower arrays.
             int totBladePoints;
-	        int totTowerPoints;
-	        int totNacellePoints;
+            int totTowerPoints;
+            int totNacellePoints;
 
             //- Blade radius away from rotor apex.  Must take into account coning.
             DynamicList<List<List<scalar> > > bladePointRadius;
 
-	        //- Tower height from ground.
-	        DynamicList<List<scalar> > towerPointHeight;
+            //- Tower height from ground.
+            DynamicList<List<scalar> > towerPointHeight;
 
-	        //- An indicator of shaft direction.  The convention is that when viewed
+            //- An indicator of shaft direction.  The convention is that when viewed
             //  from upwind, the rotor turns clockwise for positive rotation angles,
             //  regardless of if it is an upwind or downwind turbine.  uvShaft is
             //  found by subtracting the rotor apex location from the tower shaft
             //  intersection point.  This vector switches direciton depending on 
             //  if the turbine is upwind or downwind, so this uvShaftDir multiplier
             //  makes the vector consistent no matter what kind of turbine.
-	        DynamicList<scalar> uvShaftDir;
+            DynamicList<scalar> uvShaftDir;
 
             //- Unit vector pointing along the rotor shaft (axis of blade rotation).
             DynamicList<vector> uvShaft;
 
-	        //- Unit vector pointing along the tower (axis of yaw).
-	        DynamicList<vector> uvTower;
+            //- Unit vector pointing along the tower (axis of yaw).
+            DynamicList<vector> uvTower;
 
             //- Blade force at each actuator point.
             DynamicList<List<List<vector> > > bladePointForce;
@@ -607,17 +607,17 @@ private:
             DynamicList<List<List<vector> > > bladeAlignedVectors;
 
             //- Wind vector at each blade, tower, or nacelle actuator point in
-	        //  geometry-aligned coordinate system (i.e., bladeWindVectors are in the
-	        //  bladeAlignedVectors coordinate system).
+            //  geometry-aligned coordinate system (i.e., bladeWindVectors are in the
+            //  bladeAlignedVectors coordinate system).
             DynamicList<List<List<vector> > > bladeWindVectors;
-	        DynamicList<vector> nacelleWindVector;
-	        DynamicList<List<vector> > towerWindVectors;
+            DynamicList<vector> nacelleWindVector;
+            DynamicList<List<vector> > towerWindVectors;
 
-	        //- Change in yaw each time step.
-	        DynamicList<scalar> deltaNacYaw;
+            //- Change in yaw each time step.
+            DynamicList<scalar> deltaNacYaw;
 
-	        //- Change in rotorAzimuth each time step.
-	        DynamicList<scalar> deltaAzimuth;
+            //- Change in rotorAzimuth each time step.
+            DynamicList<scalar> deltaAzimuth;
 
 
 
@@ -654,41 +654,41 @@ private:
             //- Axial force/density at each actuator point (not pointed in blade-local
             //  axial, but rather along horizontal component of shaft). 
             DynamicList<List<List<scalar> > > bladePointAxialForce;
-	        DynamicList<List<scalar> > towerPointAxialForce;
-	        DynamicList<List<scalar> > nacellePointAxialForce;
+            DynamicList<List<scalar> > towerPointAxialForce;
+            DynamicList<List<scalar> > nacellePointAxialForce;
 
             //- Torque/density at each actuator point.
             DynamicList<List<List<scalar> > > bladePointTorque;
 
-	        //- Horizontal force/density at each actuator point (horizontal and perpendicular
-	        //  to shaft axis).
-	        DynamicList<List<List<scalar> > > bladePointHorizontalForce;
-	        DynamicList<List<scalar> > towerPointHorizontalForce;
-	        DynamicList<List<scalar> > nacellePointHorizontalForce;
+            //- Horizontal force/density at each actuator point (horizontal and perpendicular
+            //  to shaft axis).
+            DynamicList<List<List<scalar> > > bladePointHorizontalForce;
+            DynamicList<List<scalar> > towerPointHorizontalForce;
+            DynamicList<List<scalar> > nacellePointHorizontalForce;
 
 
-	        //- Vertical force/density at each actuator point (horizontal and perpendicular
-	        //  to shaft axis).
-	        DynamicList<List<List<scalar> > > bladePointVerticalForce;
-	        DynamicList<List<scalar> > nacellePointVerticalForce;
+            //- Vertical force/density at each actuator point (horizontal and perpendicular
+            //  to shaft axis).
+            DynamicList<List<List<scalar> > > bladePointVerticalForce;
+            DynamicList<List<scalar> > nacellePointVerticalForce;
 
 
             //- Axial force on turbine (along horizontal component of shaft axis).
             DynamicList<scalar> rotorAxialForce;
-	        DynamicList<scalar> nacelleAxialForce;
-	        DynamicList<scalar> towerAxialForce;
+            DynamicList<scalar> nacelleAxialForce;
+            DynamicList<scalar> towerAxialForce;
 
             //- Total rotor torque/density on turbine (about shaft axis).
             DynamicList<scalar> rotorTorque;
 
-	        //- Total horizontal force on turbine (horizontal and perpendicular to shaft axis).
-	        DynamicList<scalar> rotorHorizontalForce;
-	        DynamicList<scalar> nacelleHorizontalForce;
-	        DynamicList<scalar> towerHorizontalForce;
+            //- Total horizontal force on turbine (horizontal and perpendicular to shaft axis).
+            DynamicList<scalar> rotorHorizontalForce;
+            DynamicList<scalar> nacelleHorizontalForce;
+            DynamicList<scalar> towerHorizontalForce;
 
-	        //- Total vertical force on turbine (along tower axis).
-	        DynamicList<scalar> rotorVerticalForce;
-	        DynamicList<scalar> nacelleVerticalForce;
+            //- Total vertical force on turbine (along tower axis).
+            DynamicList<scalar> rotorVerticalForce;
+            DynamicList<scalar> nacelleVerticalForce;
 
             //- Power on turbine rotor.
             DynamicList<scalar> rotorPower;
@@ -735,7 +735,7 @@ private:
             OFstream* nacellePointVerticalForceFile_;
 
 
-	    
+        
             //- List of output files for tower points.
             OFstream* towerPointAlphaFile_;
 
@@ -812,8 +812,8 @@ private:
         //- Calculate generator torque.
         void controlGenTorque();
 
-	    //- Calculate the nacelle yaw position.
-	    void controlNacYaw();
+        //- Calculate the nacelle yaw position.
+        void controlNacYaw();
 
         //- Calculate the blade pitch.
         void controlBladePitch();
@@ -822,10 +822,10 @@ private:
         //  (Which processor is controlling each actuator line point?)
         void findControlProcNo();
         
-	    //- Compute the unit vector at all blade points in blade-aligned
-	    //  coordinates.  Then, compute the wind vector in these blade-aligned
+        //- Compute the unit vector at all blade points in blade-aligned
+        //  coordinates.  Then, compute the wind vector in these blade-aligned
         //  coordinates at each actuator point.
-	    void computeWindVectors();
+        void computeWindVectors();
 
         //- Compute blade forces.
         void computeBladeForce();
@@ -864,7 +864,7 @@ private:
 
 
 public:
-	
+    
     //- Constructor
     horizontalAxisWindTurbinesALM_tn
     (
@@ -882,8 +882,8 @@ public:
         //- Update state of turbine.
         void update();
 
-	//- Return force.
-	volVectorField& force();
+    //- Return force.
+    volVectorField& force();
         
 };
 
