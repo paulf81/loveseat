@@ -64,6 +64,7 @@ SourceFiles
 #include "IFstream.H"
 #include "OFstream.H"
 #include "fvCFD.H"
+#include "Random.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

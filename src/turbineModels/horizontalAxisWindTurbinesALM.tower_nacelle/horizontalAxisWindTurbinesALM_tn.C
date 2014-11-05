@@ -692,6 +692,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     totBladePoints = 0;
     totNacellePoints = 0;
     totTowerPoints = 0;
+    Random rndGen(123456);
     for(int i = 0; i < numTurbines; i++)
     {
         int j = turbineTypeID[i];
@@ -861,7 +862,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             }
         }
 
-        nacellePointPerturbVector.append(vector::zero)
+        nacellePointPerturbVector.append(vector::zero);
         if(Pstream::myProcNo() == 0)
         {
             nacellePointPerturbVector[i] = perturb*(2.0*rndGen.vector01()-vector::one);
@@ -1448,8 +1449,8 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
             for(int n = 0; n < i; n++)
             {
                 iterBlade += numBladePoints[n] * NumBl[turbineTypeID[n]];
-		        iterNacelle += 1;
-		        iterTower += numTowerPoints[n];
+                iterNacelle += 1;
+                iterTower += numTowerPoints[n];
             }
         }
         
@@ -1460,8 +1461,8 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
                 if(bladeMinDisCellID[i][j][k] != -1)
                 {
                     vector velocity(vector::zero);
-		            label cellID = bladeMinDisCellID[i][j][k];
-		            vector point = bladeSamplePoints[i][j][k];
+                    label cellID = bladeMinDisCellID[i][j][k];
+                    vector point = bladeSamplePoints[i][j][k];
 
                     // If the velocity interpolation is "cellCenter", then just use 
                     // the velocity at the center of the cell within which this
@@ -1484,7 +1485,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
                         #include "velocityInterpolation/integral.H"
                     }  
 
-		            bladeWindVectorsLocal[iterBlade] = velocity;
+                    bladeWindVectorsLocal[iterBlade] = velocity;
                 }
                 iterBlade++;
             }
@@ -1515,7 +1516,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 
                 towerWindVectorsLocal[iterTower] = velocity;
             }
-	        iterTower++;
+	    iterTower++;
         }
 
 	    if(nacelleMinDisCellID[i] != -1)
