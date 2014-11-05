@@ -2055,12 +2055,29 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                             scalar r = 0.5 * interpolate(towerPointHeight[i][j], TowerStation[n], TowerChord[n]);
                             spreading = diskGaussian(towerEpsilon[i][0], towerEpsilon[i][1], verticalVector, r, d);
                         }
+                        else if (towerForceProjectionType[i] == "ringGaussian" || towerForceProjectionType[i] == "advanced" )
+                        {
+                            scalar r = 0.5 * interpolate(towerPointHeight[i][j], TowerStation[n], TowerChord[n]);
+                            spreading = ringGaussian(towerEpsilon[i][0], towerEpsilon[i][1], verticalVector, r, d);
+                        }
                         else
                         {
                             spreading = uniformGaussian(towerEpsilon[i][0], dis);
                         }
-                        bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
-                        towerAxialForceBodySum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+
+
+                        // This is where the advanced tower force that mimics cylinder pressure (force normal to
+                        // the surface with a sine type of distribution) that has axial and side forces.
+                        if (towerForceProjectionType[i] == "advanced")
+                        {
+
+                        }
+                        // Otherwise make the force drag only.
+                        else
+                        {
+                            bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
+                            towerAxialForceBodySum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+                        }
                     }
                 }
             }
@@ -2163,6 +2180,26 @@ scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xE
     {
         f = coeff *  Foam::exp(-Foam::sqr(dx/xEpsilon)) * Foam::exp(-Foam::sqr((dr - r0)/rEpsilon));
     }
+
+    return f;
+}
+
+scalar horizontalAxisWindTurbinesALM_tn::ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
+{
+    // Compute a spreading function that is a ring of Gaussian distribution,
+    // but is also Gaussian in the axial direction.
+
+    // Get the distances between the origin and the point in radial and axial direction.
+    scalar dx = d & u;
+    vector drVec = d - (dx * u);
+    dx = mag(dx);
+    scalar dr = mag(drVec);
+
+    // Compute the spreading function
+    scalar coeff = 1.0 / (xEpsilon * rEpsilon * rEpsilon * Foam::pow(Foam::constant::mathematical::pi,1.5) * exp(-sqr(r0/rEpsilon)) + 
+                          r0 * xEpsilon * rEpsilon * Foam::sqr(Foam::constant::mathematical::pi) * (1.0 + erf(r0/rEpsilon)));
+    scalar f = 1.0;
+    f = coeff *  Foam::exp(-Foam::sqr(dx/xEpsilon)) * Foam::exp(-Foam::sqr((dr - r0)/rEpsilon));
 
     return f;
 }

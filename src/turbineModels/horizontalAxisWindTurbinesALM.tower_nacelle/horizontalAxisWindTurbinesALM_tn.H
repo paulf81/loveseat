@@ -837,6 +837,7 @@ private:
         scalar uniformGaussian(scalar epsilon, scalar d);
       //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
+        scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
 
         //- Rotates a point about a rotation axis and rotation point by the specified
         //  angle in radians.
