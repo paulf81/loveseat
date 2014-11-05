@@ -2070,7 +2070,17 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         // the surface with a sine type of distribution) that has axial and side forces.
                         if (towerForceProjectionType[i] == "advanced")
                         {
-
+                            scalar windAng = Foam::atan2(-towerWindVectors[i][j].y(),-towerWindVectors[i][j].x());
+                            scalar pointAng = Foam::atan2(d.y(),d.x());
+                            scalar theta = windAng - pointAng;
+                            vector towerNormal = d;
+                            towerNormal.z() = 0.0;
+                            towerNormal /= mag(towerNormal);
+                          //Info << "windAng = " << windAng << tab << "pointAng = " << pointAng << endl;
+                            bodyForce[influenceCells[i][m]] += mag(towerPointForce[i][j]) * spreading * 
+                                                                  (cos(2.0*theta) - 0.5*exp(-sqr((theta-constant::mathematical::pi)/(constant::mathematical::pi/4.0)))) * towerNormal;
+                            towerAxialForceBodySum +=  -(mag(towerPointForce[i][j]) * spreading * (cos(2.0*theta) - 0.5*exp(-sqr((theta-constant::mathematical::pi)/(constant::mathematical::pi/4.0)))) * towerNormal *
+                                                         mesh_.V()[influenceCells[i][m]]) & axialVector;
                         }
                         // Otherwise make the force drag only.
                         else
