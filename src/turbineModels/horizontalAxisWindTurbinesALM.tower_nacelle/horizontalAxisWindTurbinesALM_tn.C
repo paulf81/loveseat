@@ -2068,26 +2068,38 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
                         // This is where the advanced tower force that mimics cylinder pressure (force normal to
                         // the surface with a sine type of distribution) that has axial and side forces.
+                        vector bodyForceContrib = vector::zero;
                         if (towerForceProjectionType[i] == "advanced")
                         {
-                            scalar windAng = Foam::atan2(-towerWindVectors[i][j].y(),-towerWindVectors[i][j].x());
+                          //scalar windAng = Foam::atan2(-towerWindVectors[i][j].y(),-towerWindVectors[i][j].x());
+                            scalar windAng = Foam::atan2(0.0,-10.0);
                             scalar pointAng = Foam::atan2(d.y(),d.x());
                             scalar theta = windAng - pointAng;
+
                             vector towerNormal = d;
                             towerNormal.z() = 0.0;
                             towerNormal /= mag(towerNormal);
-                          //Info << "windAng = " << windAng << tab << "pointAng = " << pointAng << endl;
-                            bodyForce[influenceCells[i][m]] += mag(towerPointForce[i][j]) * spreading * 
-                                                                  (cos(2.0*theta) - 0.5*exp(-sqr((theta-constant::mathematical::pi)/(constant::mathematical::pi/4.0)))) * towerNormal;
-                            towerAxialForceBodySum +=  -(mag(towerPointForce[i][j]) * spreading * (cos(2.0*theta) - 0.5*exp(-sqr((theta-constant::mathematical::pi)/(constant::mathematical::pi/4.0)))) * towerNormal *
-                                                         mesh_.V()[influenceCells[i][m]]) & axialVector;
+
+                            scalar pi = constant::mathematical::pi;
+                            scalar c = 2.08325 / (2.0 * pi);
+                            scalar forcePotential =  1.0 - 4.0 * sqr(sin(theta));
+                            scalar forceCorrection = 1.0 
+                                                    -3.0 * exp(-sqr((theta - pi)/(pi/4.0)))
+                                                    -1.0 * exp(-sqr((theta)/(pi/2.0)))
+                                                    -1.0 * exp(-sqr((theta - 2.0*pi)/(pi/2.0)));
+                            scalar forceBase = (forcePotential + forceCorrection) / c;
+
+
+                            bodyForceContrib = mag(towerPointForce[i][j]) * spreading * forceBase * towerNormal;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
                         // Otherwise make the force drag only.
                         else
                         {
-                            bodyForce[influenceCells[i][m]] += towerPointForce[i][j] * spreading;
-                            towerAxialForceBodySum += (-towerPointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+                            bodyForceContrib = towerPointForce[i][j] * spreading;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
+                        towerAxialForceBodySum += -(bodyForceContrib * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
             }
