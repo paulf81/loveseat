@@ -2071,16 +2071,31 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         vector bodyForceContrib = vector::zero;
                         if (towerForceProjectionType[i] == "advanced")
                         {
-                          //scalar windAng = Foam::atan2(-towerWindVectors[i][j].y(),-towerWindVectors[i][j].x());
-                            scalar windAng = Foam::atan2(0.0,-10.0);
+                            scalar pi = constant::mathematical::pi;
+                          
+                            scalar windAng = Foam::atan2(-towerWindVectors[i][j].y(),-towerWindVectors[i][j].x());
+                          //scalar windAng = Foam::atan2(0.0,-10.0);
+                            if (windAng < 0.0)
+                            {
+                                windAng += 2.0*pi;
+                            }
+
                             scalar pointAng = Foam::atan2(d.y(),d.x());
+                            if (pointAng < 0.0)
+                            {
+                                pointAng += 2.0*pi;
+                            }
+
                             scalar theta = windAng - pointAng;
+                            if (theta < 0.0)
+                            {
+                                theta += 2.0*pi;
+                            }
 
                             vector towerNormal = d;
                             towerNormal.z() = 0.0;
                             towerNormal /= mag(towerNormal);
 
-                            scalar pi = constant::mathematical::pi;
                             scalar c = 2.08325 / (2.0 * pi);
                             scalar forcePotential =  1.0 - 4.0 * sqr(sin(theta));
                             scalar forceCorrection = 1.0 
