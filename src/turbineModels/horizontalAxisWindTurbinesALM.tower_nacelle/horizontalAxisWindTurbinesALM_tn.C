@@ -259,7 +259,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 
 
-
     // For each distinct turbine, read in properties of that turbine from separate
     // dictionaries.
 
@@ -305,8 +304,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         NacYawRateLimiter.append(bool(readBool(turbineProperties.lookup("NacYawRateLimiter"))));
         BladePitchRateLimiter.append(bool(readBool(turbineProperties.lookup("BladePitchRateLimiter"))));
         SpeedFilterCornerFrequency.append(scalar(readScalar(turbineProperties.lookup("SpeedFilterCornerFrequency"))));
-
-    NacelleEquivalentRadius.append(Foam::sqrt(NacelleFrontalArea[i]/Foam::constant::mathematical::pi));
+        NacelleEquivalentRadius.append(Foam::sqrt(NacelleFrontalArea[i]/Foam::constant::mathematical::pi));
 
 
         RateLimitGenTorque.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("RateLimitGenTorque")));
@@ -373,9 +371,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 
 
-
         AirfoilType.append(turbineProperties.lookup("Airfoils"));
-
 
 
 
@@ -407,7 +403,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 
 
-
         TowerData.append(turbineProperties.lookup("TowerData"));
         {
            DynamicList<scalar> height;
@@ -432,7 +427,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
            twist.clear();
            id.clear();
         }
-
     }
 
     
@@ -464,8 +458,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         }
     }
 
-
-
     // Reassign airfoil type IDs to blades of each turbine based on the global
     // distinct list of airfoils.
     forAll(BladeAirfoilTypeID,i)
@@ -482,9 +474,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             }
         }
     }
-
-
-
     // Reassign airfoil type IDs to tower of each turbine based on the global
     // distinct list of airfoils.
     forAll(TowerAirfoilTypeID,i)
@@ -502,7 +491,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         }
     }
    
-
 
   
 
@@ -545,7 +533,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         ClInt.clear();
         CdInt.clear();
     }
-
 
 
 
@@ -637,7 +624,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
 
         // Calculate the sphere of influence radius (The sphere that 
-    // envelops the rotor at all yaw angles).
+        // envelops the rotor at all yaw angles).
         scalar sphereRadius = 0.0;
         forAll(PreCone[j],k)
         {
@@ -681,7 +668,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     }
 
 
-    
     // Create the actuator line points (not yet rotated for initial nacelle
     // yaw or initial rotor azimuth), the actuator tower points, and the
     // actuator nacelle points. i-index is at array level, j-index is
