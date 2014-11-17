@@ -71,8 +71,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef dynLagrangianCs_H
-#define dynLagrangianCs_H
+#ifndef dynLagrangianCsDiffusion_H
+#define dynLagrangianCsDiffusion_H
 
 #include "GenEddyVisc.H"
 #include "simpleFilter.H"
@@ -91,14 +91,11 @@ namespace LESModels
                        Class dynLagrangian Declaration
 \*---------------------------------------------------------------------------*/
 
-class dynLagrangianCsBound
+class dynLagrangianCsDiffusion
 :
     public GenEddyVisc
 {
     // Private data
-
-        scalar CsMin;
-        scalar CsMax;
 
         volScalarField flm_;
         volScalarField fmm_;
@@ -123,19 +120,19 @@ class dynLagrangianCsBound
         );
 
         // Disallow default bitwise copy construct and assignment
-        dynLagrangianCsBound(const dynLagrangianCsBound&);
-        dynLagrangianCsBound& operator=(const dynLagrangianCsBound&);
+        dynLagrangianCsDiffusion(const dynLagrangianCsDiffusion&);
+        dynLagrangianCsDiffusion& operator=(const dynLagrangianCsDiffusion&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("dynLagrangianCsBound");
+    TypeName("dynLagrangianCsDiffusion");
 
     // Constructors
 
         //- Construct from components
-        dynLagrangianCsBound
+        dynLagrangianCsDiffusion
         (
             const volVectorField& U,
             const surfaceScalarField& phi,
@@ -146,7 +143,7 @@ public:
 
 
     //- Destructor
-    virtual ~dynLagrangianCsBound()
+    virtual ~dynLagrangianCsDiffusion()
     {}
 
 

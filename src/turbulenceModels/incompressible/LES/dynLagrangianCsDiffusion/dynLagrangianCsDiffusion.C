@@ -24,7 +24,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "dynLagrangianCs.H"
+#include "dynLagrangianCsDiffusion.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -38,26 +38,26 @@ namespace LESModels
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-defineTypeNameAndDebug(dynLagrangianCs, 0);
-addToRunTimeSelectionTable(LESModel, dynLagrangianCs, dictionary);
+defineTypeNameAndDebug(dynLagrangianCsDiffusion, 0);
+addToRunTimeSelectionTable(LESModel, dynLagrangianCsDiffusion, dictionary);
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void dynLagrangianCs::updateSubGridScaleFields
+void dynLagrangianCsDiffusion::updateSubGridScaleFields
 (
     const tmp<volTensorField>& gradU
 )
 {
     Cs_ = Foam::sqrt(flm_/fmm_);
-  //nuSgs_ = (flm_/fmm_)*delta()*sqrt(k(gradU));
-    nuSgs_ = (flm_/fmm_)*sqr(delta())*sqrt(2.0*magSqr(dev(symm(gradU))));
+  //nuSgs_ = Foam::sqr(Cs_)*delta()*sqrt(k(gradU));
+    nuSgs_ = Foam::sqr(Cs_)*sqr(delta())*sqrt(2.0*magSqr(dev(symm(gradU))));
     nuSgs_.correctBoundaryConditions();
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-dynLagrangianCs::dynLagrangianCs
+dynLagrangianCsDiffusion::dynLagrangianCsDiffusion
 (
     const volVectorField& U,
     const surfaceScalarField& phi,
@@ -128,7 +128,7 @@ dynLagrangianCs::dynLagrangianCs
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void dynLagrangianCs::correct(const tmp<volTensorField>& gradU)
+void dynLagrangianCsDiffusion::correct(const tmp<volTensorField>& gradU)
 {
     LESModel::correct(gradU);
 
@@ -157,6 +157,7 @@ void dynLagrangianCs::correct(const tmp<volTensorField>& gradU)
     (
         fvm::ddt(flm_)
       + fvm::div(phi(), flm_)
+      - fvm::laplacian(DkEff(), flm_)
      ==
         invT*LM
       - fvm::Sp(invT, flm_)
@@ -173,6 +174,7 @@ void dynLagrangianCs::correct(const tmp<volTensorField>& gradU)
     (
         fvm::ddt(fmm_)
       + fvm::div(phi(), fmm_)
+      - fvm::laplacian(DkEff(), fmm_)
      ==
         invT*MM
       - fvm::Sp(invT, fmm_)
@@ -187,7 +189,7 @@ void dynLagrangianCs::correct(const tmp<volTensorField>& gradU)
 }
 
 
-bool dynLagrangianCs::read()
+bool dynLagrangianCsDiffusion::read()
 {
     if (GenEddyVisc::read())
     {
