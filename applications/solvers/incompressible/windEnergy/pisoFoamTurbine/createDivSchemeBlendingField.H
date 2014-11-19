@@ -22,6 +22,15 @@
     scalar blendingFactor1 = readScalar(mesh.schemesDict().subDict("schemeBlending").lookup("blendingFactor1"));
     scalar blendingFactor2 = readScalar(mesh.schemesDict().subDict("schemeBlending").lookup("blendingFactor2"));
 
+
+    scalar xBlending1Old = xBlending1;
+    scalar xBlending2Old = xBlending2;
+    scalar xBlending3Old = xBlending3;
+    scalar xBlending4Old = xBlending4;
+
+    scalar blendingFactor1Old = blendingFactor1;
+    scalar blendingFactor2Old = blendingFactor2;
+
     // Create blending factor field
     // internal field
     forAll(UBlendingFactor, faceI)
