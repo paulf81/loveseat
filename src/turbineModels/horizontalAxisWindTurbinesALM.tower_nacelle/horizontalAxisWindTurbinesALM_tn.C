@@ -1755,6 +1755,20 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 // Find the local velocity magnitude composed of only the horizontal part of the flow.
                 towerPointVmag[i][j] = Foam::pow((Foam::pow(towerWindVectors[i][j].x(),2) + Foam::pow(towerWindVectors[i][j].y(),2)),0.5);
 
+                // If the advanced tower model is used, use potential flow theory to scale up the sampled
+                // wind speed to freestream.
+                if (towerForceProjectionType[i] == "advanced" )
+                {
+                   scalar R = chord / 2.0;
+                   scalar r = towerSampleDistance[i];
+                   if (r > 1.5*R)
+                   {
+                       scalar VmagOld = towerPointVmag[i][j];
+                       towerPointVmag[i][j] *= 1.0/(1.0 - sqr(R/r));
+                       Info << "j: " << j << tab << "r = " << r << tab << "R = " << R << tab << VmagOld << tab << towerPointVmag[i][j] << endl;
+                   }
+                }
+
                 // Get the angle of the wind.
                 scalar windAng = Foam::atan2(towerWindVectors[i][j].y(),towerWindVectors[i][j].x())/degRad; 
 
