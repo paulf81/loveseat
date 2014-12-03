@@ -220,6 +220,11 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         {
             numTowerPoints[i] = 1;
         }
+
+        if(towerForceProjectionType[i] == "advanced") // for the advanced nacelle force projection, only 1 nacelle point can be handled
+        {
+            numNacellePoints[i] = 1;
+        }
     }
 
 
@@ -2066,7 +2071,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         }
 
 
-                        // This is where the advanced tower force that mimics cylinder pressure (force normal to
+                        // This is the advanced tower force that mimics cylinder pressure (force normal to
                         // the surface with a sine type of distribution) that has axial and side forces.
                         vector bodyForceContrib = vector::zero;
                         if (towerForceProjectionType[i] == "advanced")
@@ -2165,6 +2170,13 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         {
                             spreading = diskGaussian(nacelleEpsilon[i][0], nacelleEpsilon[i][1], axialVector, NacelleEquivalentRadius[n], d);
                         }
+
+
+                        // This is the advanced nacelle body force projection that projects into a shell resembling a nacelle.
+                        else if (nacelleForceProjectionType[i] == "advanced")
+                        {
+                        }
+
                         else
                         {
                             spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
@@ -2268,6 +2280,57 @@ vector horizontalAxisWindTurbinesALM_tn::rotatePoint(vector point, vector rotati
 
     return point;
 }
+
+
+
+
+vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP)
+{
+    // Transform from the Cartesian (x,y,z) system into the local (x',y',z')
+    // system
+    //
+    //    x' is aligned with the flow
+    //    y' is the cross product of z' and x'
+    //    z' is in the boundary face normal direction
+    //
+    // These vectors are unit vectors.  The vectors make up the rows of
+    // the rotation matrix T', which rotates from (x,y,z) to (x',y',z').
+
+    // z' is equal to the surface normal pointing inward (negative because
+    // OpenFOAM normal is outward)
+    scalar zPMag;
+    zPMag = mag(zP);
+    zP = zP/zPMag;
+
+    // x' is pointed in the direction of the parallel resolved velocity at this cell
+    scalar xPMag;
+    xPMag = mag(xP);
+    xP = xP/xPMag;
+
+    // y' is orthogonal to x' and z', so it can be found with cross product
+    scalar yPMag;
+    yPMag = mag(yP);
+    yP = yP/yPMag;
+
+    // Create T'
+    tensor TP;
+    TP.xx() = xP.x();
+    TP.xy() = xP.y();
+    TP.xz() = xP.z();
+    TP.yx() = yP.x();
+    TP.yy() = yP.y();
+    TP.yz() = yP.z();
+    TP.zx() = zP.x();
+    TP.zy() = zP.y();
+    TP.zz() = zP.z();
+
+    // Transform the vector from Cartesian to local
+    vector vP = TP & v;
+
+    return vP;
+}
+
+
 
 
 scalar horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<scalar>& yOld)

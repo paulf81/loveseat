@@ -843,6 +843,9 @@ private:
         //  angle in radians.
         vector rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle);
 
+        //- Transform a vector from one coordinate system to another.
+        vector transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP);
+
         //- Perform interpolation.
         scalar interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<scalar>& yOld);
         label  interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<label>& yOld);
