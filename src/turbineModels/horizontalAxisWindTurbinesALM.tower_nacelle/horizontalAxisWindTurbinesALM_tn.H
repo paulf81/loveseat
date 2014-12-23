@@ -838,13 +838,15 @@ private:
       //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
+        scalar oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff);
 
         //- Rotates a point about a rotation axis and rotation point by the specified
         //  angle in radians.
         vector rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle);
 
         //- Transform a vector from one coordinate system to another.
-        vector transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP);
+        vector transformVectorCartToLocal(vector v,  vector xP, vector yP, vector zP);
+        vector transformVectorLocalToCart(vector vP, vector xP, vector yP, vector zP);
 
         //- Perform interpolation.
         scalar interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<scalar>& yOld);

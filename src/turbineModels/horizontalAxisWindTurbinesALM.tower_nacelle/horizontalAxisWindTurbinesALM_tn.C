@@ -221,7 +221,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             numTowerPoints[i] = 1;
         }
 
-        if(towerForceProjectionType[i] == "advanced") // for the advanced nacelle force projection, only 1 nacelle point can be handled
+        if((nacelleForceProjectionType[i] == "advanced1") || (nacelleForceProjectionType[i] == "advanced2")) // for the advanced nacelle force projection, only 1 nacelle point can be handled
         {
             numNacellePoints[i] = 1;
         }
@@ -625,7 +625,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
        
 
         bladeProjectionRadius.append(bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
-        nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j]);
+        nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j] + NacelleLength[j]);
         towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
 
         // Calculate the sphere of influence radius (The sphere that 
@@ -1697,7 +1697,26 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
                 // for each nacelle point based on the ratio of nacelle element length to total
                 // nacelle length.
                 scalar contribution = nacelleDs[i][j] / NacelleLength[i];
-                nacellePointDrag[i][j] = contribution * 0.5 * NacelleCd[m] * nacellePointVmag[i][j] * nacellePointVmag[i][j] * NacelleFrontalArea[m];
+
+                if (nacelleForceProjectionType[i] == "advanced2")
+                {  
+                    if (pastFirstTimeStep == false)
+                    {  
+                        nacellePointDrag[i][j] = contribution * 0.5 * NacelleCd[m] * nacellePointVmag[i][j] * nacellePointVmag[i][j] * NacelleFrontalArea[m];
+                    }
+                    else
+                    {
+                        nacellePointDrag[i][j] *= (1 + 0.002*nacelleWindVector[i].x());
+                    }
+
+                    Info << "Nacelle --- V_x: " << nacelleWindVector[i].x() << tab << "Drag: " << nacellePointDrag[i][j] << endl;
+                }
+                else
+                {
+
+                    nacellePointDrag[i][j] = contribution * 0.5 * NacelleCd[m] * nacellePointVmag[i][j] * nacellePointVmag[i][j] * NacelleFrontalArea[m];
+                }
+                
                 vector dragVector = nacelleWindVector[i];
                 dragVector = dragVector/mag(dragVector);
 
@@ -1858,6 +1877,8 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 
                 // Find the local airfoil type.
                 label airfoil = interpolate(bladePointRadius[i][j][k], BladeStation[m], BladeAirfoilTypeID[m]);
+                label maxIndex = BladeAirfoilTypeID[m].size() - 1;
+                airfoil = min(max(0,airfoil),maxIndex);
 
                 // Find the local velocity magnitude compose of only the axial and tangential flow (do
                 // not include the radial (along blade span) flow).
@@ -2162,6 +2183,14 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                     if (dis <= nacelleProjectionRadius[i])
                     {
                         scalar spreading = 1.0;
+                        scalar r = 0.0;
+                        scalar theta = 0.0;
+                        scalar pi = constant::mathematical::pi;
+                        vector vP = vector::zero;
+                        vector xP = vector::zero;
+                        vector yP = vector::zero;
+                        vector zP = vector::zero;
+
                         if (nacelleForceProjectionType[i] == "uniformGaussian")
                         {
                             spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
@@ -2170,18 +2199,132 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                         {
                             spreading = diskGaussian(nacelleEpsilon[i][0], nacelleEpsilon[i][1], axialVector, NacelleEquivalentRadius[n], d);
                         }
-
-
-                        // This is the advanced nacelle body force projection that projects into a shell resembling a nacelle.
-                        else if (nacelleForceProjectionType[i] == "advanced")
+                        else if ((nacelleForceProjectionType[i] == "advanced1") || (nacelleForceProjectionType[i] == "advanced2"))
                         {
-                        }
+                            vector v = mesh_.C()[influenceCells[i][m]] - rotorApex[i];
 
+                            zP = vector::zero;
+                            zP.z() = 1.0;
+
+                            xP = uvShaft[i];
+                            xP /= mag(xP);
+
+                            yP = zP ^ xP;
+                            yP /= mag(yP);
+
+                            zP = xP ^ yP;
+                            zP /= mag(zP);
+
+                            vP = transformVectorCartToLocal(v, xP, yP, zP);
+
+                            if ((vP.x() > 0.0) && (vP.x() < NacelleLength[n]))
+                            {
+                                r = sqrt(sqr(vP.y()) + sqr(vP.z()));
+                                theta = pi/2.0;
+                            }
+                            else if (vP.x() <= 0.0)
+                            {
+                                r = sqrt(sqr(vP.x()) + sqr(vP.y()) + sqr(vP.z()));
+                                scalar h = sqrt(sqr(vP.y()) + sqr(vP.z()));
+                                theta = atan2(h,-vP.x());
+                            }
+                            else if (vP.x() >= NacelleLength[n])
+                            {
+                                r = sqrt(sqr(vP.x() - NacelleLength[n]) + sqr(vP.y()) + sqr(vP.z()));
+                                scalar h = sqrt(sqr(vP.y()) + sqr(vP.z()));
+                                theta = atan2(h,-(vP.x() - NacelleLength[n]));
+                            }
+
+                            scalar L = NacelleLength[n];
+                            scalar epsilonR = nacelleEpsilon[i][0];
+                            scalar r0 = NacelleEquivalentRadius[n];
+
+                            scalar coeff = 1.0 / ( L * pow(pi,1.5) * r0 * epsilonR + 
+                                                   L * pi * sqr(epsilonR) * exp(-sqr(r0 / epsilonR)) + 
+                                                   L * pow(pi,1.5) * r0 * epsilonR * erf(r0 / epsilonR) + 
+                                                   2.0 * pow(pi,1.5) * epsilonR * (2.0*sqr(r0) + sqr(epsilonR)) * erf(r0 / epsilonR) +
+                                                   2.0 * pi * sqr(epsilonR) * r0 * exp(-sqr(r0 / epsilonR)) );
+
+                            spreading = oneDGaussian(r, NacelleEquivalentRadius[n], nacelleEpsilon[i][0], coeff);
+                        }
                         else
                         {
                             spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
                         }
-                        bodyForce[influenceCells[i][m]] += nacellePointForce[i][j] * spreading;
+
+
+
+                        // This is the advanced nacelle body force projection that projects into a shell resembling a nacelle.
+                        vector bodyForceContrib = vector::zero;
+                        scalar forceBase = 0.0;
+
+                        scalar x1 = (1.0/9.0) * NacelleLength[n];
+                        scalar x2 = (8.0/9.0) * NacelleLength[n];
+                        scalar theta1 = 125.0 * pi / 180.0;
+                        scalar CpSide =  0.25;
+                        scalar CpBack =  0.0;
+                        scalar a1 = 16.0 * x1;
+                        scalar a2 = 16.0 * (NacelleLength[n] - x2);
+                        scalar a3 = 5.0;
+                        scalar c = 1.5643;
+
+                        if ((nacelleForceProjectionType[i] == "advanced1") || (nacelleForceProjectionType[i] == "advanced2"))
+                        {
+                            vector nacelleNormal = vector::zero;
+                            if ((vP.x() > 0.0) && (vP.x() < NacelleLength[n]))
+                            {
+                                nacelleNormal = vP;
+                                nacelleNormal.x() = 0.0;
+                                nacelleNormal /= mag(nacelleNormal);
+                                if (vP.x() < x1)
+                                {
+                                    forceBase = 0.5 * (CpSide - 1.25) + 0.5 * (1.25 + CpSide) * erf(a1 * (vP.x() - 0.5*x1));
+                                }
+                                else if (vP.x() > x2)
+                                {
+                                    forceBase = 0.5 * (CpSide - 1.25) - 0.5 * (1.25 + CpSide) * erf(a2 * (vP.x() - 0.5*(NacelleLength[n] + x2)));
+                                }
+                                else
+                                {
+                                    forceBase = CpSide;
+                                }
+                            }
+                            else if (vP.x() <= 0.0)
+                            {
+                                nacelleNormal = vP/mag(vP);
+                                forceBase = 1.0 - (9.0/4.0)*pow(sin(theta),3.0);
+                            }
+                            else if (vP.x() >= NacelleLength[n])
+                            {
+                                nacelleNormal = vP;
+                                nacelleNormal.x() -= NacelleLength[n];
+                                nacelleNormal /= mag(nacelleNormal);
+                              //forceBase = 0.5 * (CpBack - 1.25) + 0.5 * (1.25 + CpBack) * erf(a3 * (theta - 0.5*(pi/2.0 + theta1)));
+                                if (theta > theta1)
+                                {
+                                    forceBase = 1.0 - (9.0/4.0)*pow(sin(theta1),3.0);
+                                }
+                                else
+                                {
+                                    forceBase = 1.0 - (9.0/4.0)*pow(sin(theta),3.0);
+                                }
+                            }
+
+                            nacelleNormal = transformVectorLocalToCart(nacelleNormal, xP, yP, zP);
+                            forceBase /= c;
+
+                            //bodyForceContrib = vector::zero;
+                            //bodyForceContrib.x() = theta*180.0/pi;
+                            //bodyForceContrib.x() = spreading;
+                            bodyForceContrib = mag(nacellePointForce[i][j]) * spreading * forceBase * nacelleNormal;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
+                        }
+                        // Otherwise make the force drag only.
+                        else
+                        {
+                            bodyForceContrib = nacellePointForce[i][j] * spreading;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
+                        }
                         nacelleAxialForceBodySum += (-nacellePointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
@@ -2253,6 +2396,15 @@ scalar horizontalAxisWindTurbinesALM_tn::ringGaussian(scalar rEpsilon, scalar xE
     return f;
 }
 
+scalar horizontalAxisWindTurbinesALM_tn::oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff)
+{
+    // Compute a 1D Gaussian function centered about x0 with width epsilon and scaled by coeff.
+    scalar f = coeff * Foam::exp(-Foam::sqr((x - x0)/epsilon));
+
+    return f;
+}
+
+
 
 vector horizontalAxisWindTurbinesALM_tn::rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle)
 {
@@ -2287,7 +2439,7 @@ vector horizontalAxisWindTurbinesALM_tn::rotatePoint(vector point, vector rotati
 vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP)
 {
     // Transform from the Cartesian (x,y,z) system into the local (x',y',z')
-    // system
+    // system using v' = T'v
     //
     //    x' is aligned with the flow
     //    y' is the cross product of z' and x'
@@ -2296,18 +2448,14 @@ vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, ve
     // These vectors are unit vectors.  The vectors make up the rows of
     // the rotation matrix T', which rotates from (x,y,z) to (x',y',z').
 
-    // z' is equal to the surface normal pointing inward (negative because
-    // OpenFOAM normal is outward)
     scalar zPMag;
     zPMag = mag(zP);
     zP = zP/zPMag;
 
-    // x' is pointed in the direction of the parallel resolved velocity at this cell
     scalar xPMag;
     xPMag = mag(xP);
     xP = xP/xPMag;
 
-    // y' is orthogonal to x' and z', so it can be found with cross product
     scalar yPMag;
     yPMag = mag(yP);
     yP = yP/yPMag;
@@ -2328,6 +2476,57 @@ vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, ve
     vector vP = TP & v;
 
     return vP;
+}
+
+
+
+
+vector horizontalAxisWindTurbinesALM_tn::transformVectorLocalToCart(vector vP, vector xP, vector yP, vector zP)
+{
+    // Transform from the local (x',y',z') system to the Cartesian (x,y,z) system 
+    // using v = Tv'
+    //
+    //    x' is aligned with the flow
+    //    y' is the cross product of z' and x'
+    //    z' is in the boundary face normal direction
+    //
+    // These vectors are unit vectors.  The vectors make up the rows of
+    // the rotation matrix T', which rotates from (x,y,z) to (x',y',z').
+    // T can be recovered from T' because it is the inverse. T' is
+    // such that the (T')^-1 = transpose(T') because it is made up of
+    // orthogonal basis vectors. 
+
+    scalar zPMag;
+    zPMag = mag(zP);
+    zP = zP/zPMag;
+
+    scalar xPMag;
+    xPMag = mag(xP);
+    xP = xP/xPMag;
+
+    scalar yPMag;
+    yPMag = mag(yP);
+    yP = yP/yPMag;
+
+    // Create T'
+    tensor TP;
+    TP.xx() = xP.x();
+    TP.xy() = xP.y();
+    TP.xz() = xP.z();
+    TP.yx() = yP.x();
+    TP.yy() = yP.y();
+    TP.yz() = yP.z();
+    TP.zx() = zP.x();
+    TP.zy() = zP.y();
+    TP.zz() = zP.z();
+
+    // Create T
+    tensor T = TP.T();
+
+    // Transform the vector from Cartesian to local
+    vector v = T & vP;
+
+    return v;
 }
 
 
