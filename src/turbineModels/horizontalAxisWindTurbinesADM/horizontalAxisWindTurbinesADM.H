@@ -150,12 +150,15 @@ private:
             //- List of locations of bases of turbines in array relative to origin (m).
             DynamicList<vector> baseLocation;
 
-            //- List of number of actuator line points on blades of turbines
-            //  in array. 
-            DynamicList<int> numBladePoints; 
+            //- List of number of actuator points in the radial direction from root to
+            //  tip or actuator disk. 
+            DynamicList<int> nRadial; 
 
             //- List of maximum length in azimuth direction of an actuator element
             DynamicList<scalar> azimuthMaxDis;
+
+            //- List of number of averaging sectors to report values at over disk.
+            DynamicList<int> nAvgSector;
 
             //- List of description of actuator line point distribution types
             //  for each turbine (set to uniform for now--here for future upgrades).
@@ -285,7 +288,7 @@ private:
             DynamicList<scalar> ShftTilt;
 
             //- Coning angle of blades (degrees) (one for each blade).
-            DynamicList<List<scalar> > PreCone;
+            DynamicList<scalar> PreCone;
 
             //- Gear-box ratio.
             DynamicList<scalar> GBRatio;
@@ -459,11 +462,14 @@ private:
             //- List of list of labels or cells within sphere of action.
             DynamicList<DynamicList<label> > sphereCells;
 
-            //- Actuator element width.
-            DynamicList<DynamicList<scalar> > db;
+            //- Total number of points per disk.
+            DynamicList<label> totDiskPoints;
+
+            //- Actuator element radial width.
+            DynamicList<DynamicList<scalar> > dr;
 
             //- Number of azimuth points at a given radius.
-            DynamicList<DynamicList<int> > nAzimuth;
+            DynamicList<List<int> > nAzimuth;
 
             //- Actuator line point locations with respect to origin.
             DynamicList<List<List<vector> > > bladePoints;
@@ -474,10 +480,13 @@ private:
             DynamicList<List<List<vector> > > bladePointsPerturbVector;
 
             //- Total actuator line points in array.
-            int totDiskPoints;
+            int totDiskPointsArray;
 
             //- Blade radius away from rotor apex.  Must take into account coning.
             DynamicList<List<scalar> > bladeRadius;
+
+            //- Solidity at a given radius.
+            DynamicList<List<scalar> > solidity;
 
 	    //- An indicator of shaft direction.  The convention is that when viewed
             //  from upwind, the rotor turns clockwise for positive rotation angles,
@@ -505,7 +514,7 @@ private:
             //  points orthogonal to vector 0 and 1 and points toward downstream (but 
             //  vector 2 is not perfectly aligned with downstream due to rotor coning  
             //  and nacelle tilt).
-            DynamicList<List<List<vector> > > bladeAlignedVectors;
+            DynamicList<List<List<List<vector> > > > bladeAlignedVectors;
 
             //- Wind vector at each actuator point in blade-aligned coordinate system.
             DynamicList<List<List<vector> > > windVectors;

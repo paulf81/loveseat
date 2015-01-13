@@ -152,6 +152,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         baseLocation.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("baseLocation")));
         nRadial.append(int(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("nRadial"))));
         azimuthMaxDis.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("azimuthMaxDis"))));
+        nAvgSector.append(int(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("nAvgSector"))));
         pointDistType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("pointDistType")));
         pointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("pointInterpType")));
         bladeUpdateType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeUpdateType")));
@@ -234,7 +235,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         TowerHt.append(scalar(readScalar(turbineProperties.lookup("TowerHt"))));
         Twr2Shft.append(scalar(readScalar(turbineProperties.lookup("Twr2Shft"))));
         ShftTilt.append(scalar(readScalar(turbineProperties.lookup("ShftTilt"))));
-        PreCone.append(turbineProperties.lookup("PreCone"));
+        PreCone.append(scalar(readScalar(turbineProperties.lookup("PreCone"))));
         GBRatio.append(scalar(readScalar(turbineProperties.lookup("GBRatio"))));
         RatedRotSpeed.append(scalar(readScalar(turbineProperties.lookup("RatedRotSpeed"))));
         GenIner.append(scalar(readScalar(turbineProperties.lookup("GenIner"))));
@@ -505,16 +506,8 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         projectionRadius.append(epsilon[i] * Foam::sqrt(Foam::log(1.0/0.001)));
 
         // Calculate the sphere of influence radius.
-        scalar sphereRadius = 0.0;
         int j = turbineTypeID[i];
-        forAll(PreCone[j],k)
-        {
-            scalar sphereRadiusI = Foam::sqrt(Foam::sqr((OverHang[j] + UndSling[j]) + TipRad[j]*Foam::sin(PreCone[j][k])) + Foam::sqr(TipRad[j]*Foam::cos(PreCone[j][k])));
-            if(sphereRadiusI > sphereRadius)
-            {
-                sphereRadius = sphereRadiusI;
-            }
-        } 
+        scalar sphereRadius = Foam::sqrt(Foam::sqr((OverHang[j] + UndSling[j]) + TipRad[j]*Foam::sin(PreCone[j])) + Foam::sqr(TipRad[j]*Foam::cos(PreCone[j])));
         sphereRadius += projectionRadius[i];
 
         // Find the cells within the sphere of influence.
@@ -545,10 +538,11 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
     // for each actuator point.  Also create other important vectors, and
     // initialize the blade force, blade aligned coordinate system, and
     // wind vectors to zero.
-    totDiskPoints = 0;
+    totDiskPointsArray = 0;
     Random rndGen(123456);
     for(int i = 0; i < numTurbines; i++)
     {
+        totDiskPoints.append(0);
         int j = turbineTypeID[i];
 
         // Define which way the shaft points to distinguish between
@@ -566,135 +560,149 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 	    uvTower[i] = uvTower[i]/mag(uvTower[i]);
 
         // Calculate the width of each actuator section.
-        db.append(DynamicList<scalar>(0));
+        dr.append(DynamicList<scalar>(0));
         if(pointDistType[i] == "uniform")
         {
-            scalar actuatorWidth = (TipRad[j]-HubRad[j])/nRadial[i];
+            scalar actuatorRadialWidth = (TipRad[j]-HubRad[j])/nRadial[i];
             for(int m = 0; m < nRadial[i]; m++)
             {
-                db[i].append(actuatorWidth);
+                dr[i].append(actuatorRadialWidth);
             }
         }
         // Add other point distribution types here, such as cosine, tanh.
 
         // Calculate how many azimuthal sections are at each radial station
         bladeRadius.append(List<scalar>(nRadial[i],0.0));
+        solidity.append(List<scalar>(nRadial[i],0.0));
+        nAzimuth.append(List<int>(nRadial[i],0));
         scalar dist = 0.0;
         for(int m = 0; m < nRadial[i]; m++)
         {
-            dist = dist + 0.5*db[i][m];
+            dist = dist + 0.5*dr[i][m];
             bladeRadius[i][m] = HubRad[j] + dist;
-            dist = dist + 0.5*db[i][m];
+            dist = dist + 0.5*dr[i][m];
 
             // Get the local circumference
-            scalar circ = 2.0 * pi * bladeRadius[i][m];
+            scalar circ = 2.0 * Foam::constant::mathematical::pi * bladeRadius[i][m];
 
             // Divide it by the max azimuthal distance
-            nAzimuth[i][m] = circ/azimuthMaxDis;
+            nAzimuth[i][m] = circ/azimuthMaxDis[i];
+
+            // Make sure that each sector over which averaging is done has
+            // an equal number of actuator elements in the azimuth direction
+            if (nAzimuth[i][m] % nAvgSector[i] != 0)
+            {
+                nAzimuth[i][m] = nAzimuth[i][m] - (nAzimuth[i][m] % nAvgSector[i]) + nAvgSector[i];
+            }
+
+            // Make sure that each sector has at least 1 actuator element in it.
+            if (nAzimuth[i][m] < nAvgSector[i])
+            {
+                nAzimuth[i][m] = nAvgSector[i];
+            }
+
+            // Calculate the solidity factor at this radius.
+            scalar chord = interpolate(bladeRadius[i][m], BladeStation[j], BladeChord[j]);
+            solidity[i][m] = NumBl[j]*chord / (2.0 * Foam::constant::mathematical::pi * bladeRadius[i][m] * dr[i][m] * Foam::cos(PreCone[j]));
+            
         }
+
+
+
+        bladePoints.append(List<List<vector> >(nRadial[i]));
+        bladePointsPerturbVector.append(List<List<vector> >(nRadial[i]));
+        bladeForce.append(List<List<vector> >(nRadial[i]));
+        bladeAlignedVectors.append(List<List<List<vector > > >(nRadial[i]));
+        windVectors.append(List<List<vector> >(nRadial[i]));
+        alpha.append(List<List<scalar> >(nRadial[i]));
+        Vmag.append(List<List<scalar> >(nRadial[i]));
+        Cl.append(List<List<scalar> >(nRadial[i]));
+        Cd.append(List<List<scalar> >(nRadial[i]));
+        lift.append(List<List<scalar> >(nRadial[i]));
+        drag.append(List<List<scalar> >(nRadial[i]));
+        axialForce.append(List<List<scalar> >(nRadial[i]));
+        tangentialForce.append(List<List<scalar> >(nRadial[i]));
+        minDisCellID.append(List<List<label> >(nRadial[i]));
+        deltaNacYaw.append(0.0);
+        deltaAzimuth.append(0.0);
+        thrust.append(0.0);
+        torqueRotor.append(0.0);
+        powerRotor.append(0.0);
+
+        for(int m = 0; m < nRadial[i]; m++)
+        {
+            bladePoints[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
+            bladePointsPerturbVector[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
+            bladeForce[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
+            bladeAlignedVectors[i][m].append(List<List<vector> >(nAzimuth[i][m]));
+            for(int n = 0; n < nAzimuth[i][m]; n++)
+            {
+                bladeAlignedVectors[i][m][n].append(List<vector>(3,vector::zero));
+            }
+            windVectors[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
+            alpha[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            Vmag[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            Cl[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            Cd[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            lift[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            drag[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            axialForce[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            tangentialForce[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
+            minDisCellID[i][m].append(List<label>(nAzimuth[i][m],-1));
+        }
+        
+
+
+
 
         // Now calculate the actuator section center points for each blade
         // of each turbine in the array.  All blades points will be calculated
         // at zero azimuth (blade pointing up), and then rotated to its correct
         // position before doing a global rotation to the initial azimuth of
         // the rotor.  Also calculate the radius of each point (not including coning).
-        bladePoints.append(List<List<vector> >(NumBl[j], List<vector>(nRadial[i],vector::zero)));
-        bladeRadius.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-        for(int m = 0; m < nRadial[i]; m++)
+        vector root = rotorApex[i];
+        scalar beta = PreCone[j] - ShftTilt[j];
+        root.x() = root.x() + HubRad[j]*Foam::sin(beta);
+        root.z() = root.z() + HubRad[j]*Foam::cos(beta);
+        dist = 0.0;
+        for(int m = 0; m < nRadial[i]; m ++)
         {
-            vector root = rotorApex[i];
-            scalar beta = PreCone[j][k] - ShftTilt[j];
-            root.x() = root.x() + HubRad[j]*Foam::sin(beta);
-            root.z() = root.z() + HubRad[j]*Foam::cos(beta);
-//          scalar dist = HubRad[j];
-            scalar dist = 0.0;
-            for(int m = 0; m < nRadial[i]; m++)
+            dist = dist + 0.5*dr[i][m];
+            scalar dAzimuth = 2.0*Foam::constant::mathematical::pi/nAzimuth[i][m];
+            for(int k = 0; k < nAzimuth[i][m]; k++)
             {
-               dist = dist + 0.5*db[i][m];
-               bladePoints[i][k][m].x() = root.x() + dist*Foam::sin(beta);
-               bladePoints[i][k][m].y() = root.y();
-               bladePoints[i][k][m].z() = root.z() + dist*Foam::cos(beta);
-//             bladeRadius[i][k][m] = dist;
-               bladeRadius[i][k][m] = HubRad[j] + dist;
-               totDiskPoints++;
-               dist = dist + 0.5*db[i][m];
+               totDiskPointsArray++;
+               totDiskPoints[i]++;
+               scalar elementAzimuth = k*dAzimuth;
+               bladePoints[i][m][k].x() = root.x() + dist*Foam::sin(beta);
+               bladePoints[i][m][k].y() = root.y();
+               bladePoints[i][m][k].z() = root.z() + dist*Foam::cos(beta);
+               if (k > 0)
+               {
+                   bladePoints[i][m][k] = rotatePoint(bladePoints[i][m][k], rotorApex[i], uvShaft[i], elementAzimuth);
+               }
             }
-            // Apply rotation to get blades, other than blade 1, in the right
-            // place.
-            if (k > 0)
-            {
-                for(int m = 0; m < nRadial[i]; m++)
-                {
-                    bladePoints[i][k][m] = rotatePoint(bladePoints[i][k][m], rotorApex[i], uvShaft[i], (360.0/NumBl[j])*k*degRad);
-                }
-            }
+            dist = dist + 0.5*dr[i][m];
         }
+
+
+
 
         // Generate randome numbers for the blade point perturbation during control
         // processor identification.  This does not affect the actual location--it is
         // just there to break ties and make sure > 1 processors don't account for a
         // single blade point.
-        bladePointsPerturbVector.append(List<List<vector> >(NumBl[j], List<vector>(nRadial[i],vector::zero)));
         if(Pstream::myProcNo() == 0)
         {
-            for(int k =  0; k < NumBl[j]; k++)
+            for(int m = 0; m < nRadial[i]; m++)
             {
-                for(int m = 0; m < nRadial[i]; m++)
+                for(int k = 0; k < nAzimuth[i][m]; k++)
                 {
-                    bladePointsPerturbVector[i][k][m] = perturb*(2.0*rndGen.vector01()-vector::one); 
+                    bladePointsPerturbVector[i][m][k] = perturb*(2.0*rndGen.vector01()-vector::one); 
                 }
             }
         }
         
-
-        // Define the size of the bladeForce array and set to zero.
-        bladeForce.append(List<List<vector> >(NumBl[j], List<vector>(nRadial[i],vector::zero)));
-  
-        // Define the size of the bladeAlignedVectors array and set to zero.
-        bladeAlignedVectors.append(List<List<vector> >(NumBl[j],List<vector>(3,vector::zero)));
-
-        // Define the windVectors array and set it to zero.
-        windVectors.append(List<List<vector> >(NumBl[j],List<vector>(nRadial[i],vector::zero)));
-
-        // Define the size of the deltaNacYaw, deltaAzimuth, and deltaPitch lists and set to zero.
-        deltaNacYaw.append(0.0);
-        deltaAzimuth.append(0.0);
-
-        // Define the size of the angle of attack lists and set to zero.
-        alpha.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the wind speed magnitude lists and set to zero.
-        Vmag.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the coefficient of lift lists and set to zero.
-        Cl.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the coefficient of drag lists and set to zero.
-        Cd.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the lift lists and set to zero.
-        lift.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the drag lists and set to zero.
-        drag.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the axial force lists and set to zero.
-        axialForce.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the tangential force lists and set to zero.
-        tangentialForce.append(List<List<scalar> >(NumBl[j], List<scalar>(nRadial[i],0.0)));
-
-        // Define the size of the thrust lists and set to zero.
-        thrust.append(0.0);
-
-        // Define the size of the aerodynamic torque lists and set to zero.
-        torqueRotor.append(0.0);
-
-        // Define the size of the rotor power lists and set to zero.
-        powerRotor.append(0.0);
-
-        // Define the size of the cell-containing-actuator-point ID list and set to -1.
-        minDisCellID.append(List<List<label> >(NumBl[j], List<label>(nRadial[i],-1)));
     }
     Pstream::scatter(bladePointsPerturbVector);
 
@@ -704,8 +712,8 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
     yawNacelle();
 
     // Rotate the rotor to initial azimuth angle.
-    deltaAzimuth =  azimuth;
-    rotateBlades();  
+  //deltaAzimuth =  azimuth;
+  //rotateBlades();  
 
     // Find out which processors control each actuator line point.
     findControlProcNo();
@@ -980,8 +988,8 @@ void horizontalAxisWindTurbinesADM::findControlProcNo()
 {
     // Create a local and global list of minimum distance cells to actuator line 
     // points of turbines that this processor controls.  Initialize the values to huge.
-    List<scalar> minDisLocal(totDiskPoints,1.0E30);
-    List<scalar> minDisGlobal(totDiskPoints,1.0E30);
+    List<scalar> minDisLocal(totDiskPointsArray,1.0E30);
+    List<scalar> minDisGlobal(totDiskPointsArray,1.0E30);
 
     forAll(turbinesControlled, p)
     {
@@ -991,7 +999,7 @@ void horizontalAxisWindTurbinesADM::findControlProcNo()
         {
             for(int n = 0; n < i; n++)
             {
-                iter += nRadial[n] * NumBl[turbineTypeID[n]];
+                iter += totDiskPoints[n];
             }
         }
         
@@ -1036,7 +1044,7 @@ void horizontalAxisWindTurbinesADM::findControlProcNo()
         {
             for(int n = 0; n < i; n++)
             {
-                iter += nRadial[n] * NumBl[turbineTypeID[n]];
+                iter += totDiskPoints[n];
             }
         }
         
@@ -1058,7 +1066,7 @@ void horizontalAxisWindTurbinesADM::findControlProcNo()
 void horizontalAxisWindTurbinesADM::computeWindVectors()
 {
     // Create a list of wind velocity in x, y, z coordinates for each blade point.
-    List<vector> windVectorsLocal(totDiskPoints,vector::zero);
+    List<vector> windVectorsLocal(totDiskPointsArray,vector::zero);
 
     // If linear interpolation of the velocity from the CFD mesh to the actuator
     // points is used, we need velocity gradient information.
@@ -1072,7 +1080,7 @@ void horizontalAxisWindTurbinesADM::computeWindVectors()
         {
             for(int n = 0; n < i; n++)
             {
-                iter += nRadial[n] * NumBl[turbineTypeID[n]];
+                iter += totDiskPoints[n];
             }
         }
         
@@ -1141,34 +1149,35 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         // Proceed blade by blade.
         forAll(windVectors[i], j)
         {
-            // If clockwise rotating, this vector points along the blade toward the tip.
-	    // If counter-clockwise rotating, this vector points along the blade toward the root.
-	    if (rotationDir[i] == "cw")
-	    {
-                bladeAlignedVectors[i][j][2] =   bladePoints[i][j][0] - rotorApex[i];
-                bladeAlignedVectors[i][j][2] =   bladeAlignedVectors[i][j][2]/mag(bladeAlignedVectors[i][j][2]);
-	    }
-	    else if (rotationDir[i] == "ccw")
-	    {
-                bladeAlignedVectors[i][j][2] = -(bladePoints[i][j][0] - rotorApex[i]);
-                bladeAlignedVectors[i][j][2] =   bladeAlignedVectors[i][j][2]/mag(bladeAlignedVectors[i][j][2]);
-	    }
-
-            // This vector points in the tangential direction opposite the turbines rotation type.  It is 
-            // set up this way because it will point in the direction of oncoming flow that the blade sees 
-            // due to rotation.
-            bladeAlignedVectors[i][j][1] = bladeAlignedVectors[i][j][2]^uvShaft[i];
-            bladeAlignedVectors[i][j][1] = bladeAlignedVectors[i][j][1]/mag(bladeAlignedVectors[i][j][1]);
-
-            // This vector points normal to the other two and toward downwind (not exactly downwind if
-            // the blade is coned).  It points in the direction of the oncoming flow due to wind that the
-            // blade sees.
-            bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][1]^bladeAlignedVectors[i][j][2];
-            bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][0]/mag(bladeAlignedVectors[i][j][0]);
-            
-            // Proceed point by point.
             forAll(windVectors[i][j], k)
             {
+
+                // If clockwise rotating, this vector points along the blade toward the tip.
+                // If counter-clockwise rotating, this vector points along the blade toward the root.
+                if (rotationDir[i] == "cw")
+                {
+                    bladeAlignedVectors[i][j][k][2] =   bladePoints[i][j][k] - rotorApex[i];
+                    bladeAlignedVectors[i][j][k][2] =   bladeAlignedVectors[i][j][k][2]/mag(bladeAlignedVectors[i][j][k][2]);
+                }
+                else if (rotationDir[i] == "ccw")
+                {
+                    bladeAlignedVectors[i][j][k][2] = -(bladePoints[i][j][k] - rotorApex[i]);
+                    bladeAlignedVectors[i][j][k][2] =   bladeAlignedVectors[i][j][k][2]/mag(bladeAlignedVectors[i][j][k][2]);
+                }
+
+                // This vector points in the tangential direction opposite the turbines rotation type.  It is
+                // set up this way because it will point in the direction of oncoming flow that the blade sees
+                // due to rotation.
+                bladeAlignedVectors[i][j][k][1] = bladeAlignedVectors[i][j][k][2]^uvShaft[i];
+                bladeAlignedVectors[i][j][k][1] = bladeAlignedVectors[i][j][k][1]/mag(bladeAlignedVectors[i][j][k][1]);
+
+                // This vector points normal to the other two and toward downwind (not exactly downwind if
+                // the blade is coned).  It points in the direction of the oncoming flow due to wind that the
+                // blade sees.
+                bladeAlignedVectors[i][j][k][0] = bladeAlignedVectors[i][j][k][1]^bladeAlignedVectors[i][j][k][2];
+                bladeAlignedVectors[i][j][k][0] = bladeAlignedVectors[i][j][k][0]/mag(bladeAlignedVectors[i][j][k][0]);
+
+
                 vector windVectorsInt = windVectors[i][j][k];
 
                 // Zero the wind vector.
@@ -1176,9 +1185,9 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
 
                 // Now put the velocity in that cell into blade-oriented coordinates and add on the
                 // velocity due to blade rotation.
-                windVectors[i][j][k].x() = (bladeAlignedVectors[i][j][0] & windVectorsInt);
-                windVectors[i][j][k].y() = (bladeAlignedVectors[i][j][1] & windVectorsInt) + (rotSpeed[i] * bladeRadius[i][j][k] * cos(PreCone[n][j]));
-                windVectors[i][j][k].z() = (bladeAlignedVectors[i][j][2] & windVectorsInt);
+                windVectors[i][j][k].x() = (bladeAlignedVectors[i][j][k][0] & windVectorsInt);
+                windVectors[i][j][k].y() = (bladeAlignedVectors[i][j][k][1] & windVectorsInt) + (rotSpeed[i] * bladeRadius[i][j] * cos(PreCone[n]));
+                windVectors[i][j][k].z() = (bladeAlignedVectors[i][j][k][2] & windVectorsInt);
             }
         }
     }
@@ -1206,13 +1215,13 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
             forAll(windVectors[i][j], k)
             {
                 // Interpolate the local twist angle.
-                scalar twistAng = interpolate(bladeRadius[i][j][k], BladeStation[m], BladeTwist[m]);
+                scalar twistAng = interpolate(bladeRadius[i][j], BladeStation[m], BladeTwist[m]);
 
                 // Interpolate the local chord.
-                scalar chord = interpolate(bladeRadius[i][j][k], BladeStation[m], BladeChord[m]);
+                scalar chord = interpolate(bladeRadius[i][j], BladeStation[m], BladeChord[m]);
 
                 // Find the local airfoil type.
-                label airfoil = interpolate(bladeRadius[i][j][k], BladeStation[m], BladeAirfoilTypeID[m]);
+                label airfoil = interpolate(bladeRadius[i][j], BladeStation[m], BladeAirfoilTypeID[m]);
                 label maxIndex = BladeAirfoilTypeID[m].size() - 1;
                 airfoil = min(max(0,airfoil),maxIndex);
 
@@ -1243,10 +1252,10 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
                 {
                     scalar g = 1.0;
 
-                    scalar ftip  = (TipRad[m] - bladeRadius[i][j][k])/(bladeRadius[i][j][k] * sin(windAng*degRad));
+                    scalar ftip  = (TipRad[m] - bladeRadius[i][j])/(bladeRadius[i][j] * sin(windAng*degRad));
                     scalar Ftip  = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * ftip));
 
-                    scalar froot = (bladeRadius[i][j][k] - HubRad[i])/(bladeRadius[i][j][k] * sin(windAng*degRad));
+                    scalar froot = (bladeRadius[i][j] - HubRad[i])/(bladeRadius[i][j] * sin(windAng*degRad));
                     scalar Froot = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * froot));
 
                     F = Ftip * Froot;
@@ -1254,25 +1263,25 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
 
                 // Using Cl, Cd, wind velocity, chord, and actuator element width, calculate the
                 // lift and drag per density.
-                //lift[i][j][k] = 0.5 * F * Cl[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * db[i][k];
-                //drag[i][j][k] = 0.5 * F * Cd[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * db[i][k];
+                //lift[i][j][k] = 0.5 * F * Cl[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * dr[i][k];
+                //drag[i][j][k] = 0.5 * F * Cd[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * dr[i][k];
                 Cl[i][j][k] *= F;
                 Cd[i][j][k] *= F;
-                lift[i][j][k] = 0.5 * Cl[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * db[i][k];
-                drag[i][j][k] = 0.5 * Cd[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * db[i][k];
+                lift[i][j][k] = 0.5 * Cl[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * dr[i][j];
+                drag[i][j][k] = 0.5 * Cd[i][j][k] * Vmag[i][j][k] * Vmag[i][j][k] * chord * dr[i][j];
 
                 // Make the scalar lift and drag quantities vectors in the Cartesian coordinate system.
-                vector dragVector = bladeAlignedVectors[i][j][0]*windVectors[i][j][k].x() + bladeAlignedVectors[i][j][1]*windVectors[i][j][k].y();
+                vector dragVector = bladeAlignedVectors[i][j][k][0]*windVectors[i][j][k].x() + bladeAlignedVectors[i][j][k][1]*windVectors[i][j][k].y();
                 dragVector = dragVector/mag(dragVector);
 
-                vector liftVector = dragVector^bladeAlignedVectors[i][j][2];
+                vector liftVector = dragVector^bladeAlignedVectors[i][j][k][2];
                 liftVector = liftVector/mag(liftVector);
 
                 liftVector = -lift[i][j][k] * liftVector;
                 dragVector = -drag[i][j][k] * dragVector;
 
                 // Add up lift and drag to get the resultant force/density applied to this blade element.
-                bladeForce[i][j][k] = liftVector + dragVector;
+                bladeForce[i][j][k] = (liftVector + dragVector) * solidity[i][j];
 
                 // Find the component of the blade element force/density in the axial (along the shaft)
                 // direction.
@@ -1280,13 +1289,13 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
 
                 // Find the component of the blade element force/density in the tangential (torque-creating)
                 // direction.
-                tangentialForce[i][j][k] = bladeForce[i][j][k] & bladeAlignedVectors[i][j][1];
+                tangentialForce[i][j][k] = bladeForce[i][j][k] & bladeAlignedVectors[i][j][k][1];
 
                 // Add this blade element's contribution to thrust to the total turbine thrust.
-                thrust[i] += axialForce[i][j][k];
+                thrust[i] += axialForce[i][j][k] * solidity[i][j];
 
                 // Add this blade element's contribution to aerodynamic torque to the total turbine aerodynamic torque.
-                torqueRotor[i] += tangentialForce[i][j][k] * bladeRadius[i][j][k] * cos(PreCone[m][j]);
+                torqueRotor[i] += tangentialForce[i][j][k] * solidity[i][j] * bladeRadius[i][j] * cos(PreCone[m]);
             }
         }
 
@@ -1331,7 +1340,7 @@ void horizontalAxisWindTurbinesADM::computeBodyForce()
                             thrustBodyForceSum += (-bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) *
                                                     mesh_.V()[sphereCells[i][m]]) & uvShaft[i];
                             torqueBodyForceSum += ( bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * 
-                                                    bladeRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[sphereCells[i][m]]) & bladeAlignedVectors[i][j][1];
+                                                    bladeRadius[i][j] * cos(PreCone[n]) * mesh_.V()[sphereCells[i][m]]) & bladeAlignedVectors[i][j][k][1];
                         }
                     }
                 }  
@@ -1537,7 +1546,7 @@ void horizontalAxisWindTurbinesADM::update()
         controlBladePitch();
         controlNacYaw();
         computeRotSpeed();
-        rotateBlades();
+      //rotateBlades();
         yawNacelle();
     }
     else if(bladeUpdateType[0] == "newPosition")
@@ -1548,7 +1557,7 @@ void horizontalAxisWindTurbinesADM::update()
         controlBladePitch();
         controlNacYaw();
         computeRotSpeed();
-        rotateBlades();
+      //rotateBlades();
         yawNacelle();
 
         // Find out which processor controls which actuator point,
@@ -1877,7 +1886,7 @@ void horizontalAxisWindTurbinesADM::printDebug()
 
     Info << "sphereCells = " << sphereCells << endl << endl << endl;
 
-    Info << "db = " << db << endl;
+    Info << "dr = " << dr << endl;
     Info << "bladePoints = " << bladePoints << endl;
     Info << "bladeRadius = " << bladeRadius << endl;
     Info << "towerShaftIntersect = " << towerShaftIntersect << endl;
