@@ -80,6 +80,12 @@ ln -s $dir/pisoFoamTurbine.C
 wmake
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.ADM
+rm pisoFoamTurbine.C
+ln -s $dir/pisoFoamTurbine.C
+wmake
+cd ../../../../../
+
 cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.towerNacelle
 rm pisoFoamTurbine.C
 ln -s $dir/pisoFoamTurbine.C
