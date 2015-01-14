@@ -288,7 +288,7 @@ private:
             DynamicList<scalar> ShftTilt;
 
             //- Coning angle of blades (degrees) (one for each blade).
-            DynamicList<scalar> PreCone;
+            DynamicList<vector> PreCone;
 
             //- Gear-box ratio.
             DynamicList<scalar> GBRatio;
@@ -471,6 +471,9 @@ private:
             //- Number of azimuth points at a given radius.
             DynamicList<List<int> > nAzimuth;
 
+            //- List of blade elements within an averaging sector.
+            DynamicList<List<List<label> > > sectorIndices;
+
             //- Actuator line point locations with respect to origin.
             DynamicList<List<List<vector> > > bladePoints;
 
@@ -478,6 +481,9 @@ private:
             //  processors to break ties.  This does not affect true location where
             //  velocity is sampled and forces are applied.
             DynamicList<List<List<vector> > > bladePointsPerturbVector;
+
+            //- List of azimuthal location of each actuator element.
+            DynamicList<List<List<scalar> > > elementAzimuth;
 
             //- Total actuator line points in array.
             int totDiskPointsArray;
@@ -518,6 +524,7 @@ private:
 
             //- Wind vector at each actuator point in blade-aligned coordinate system.
             DynamicList<List<List<vector> > > windVectors;
+            DynamicList<List<List<vector> > > windVectorsSecAvg;
 
 	    //- Change in yaw each time step.
 	    DynamicList<scalar> deltaNacYaw;
@@ -532,28 +539,36 @@ private:
 
             //- Angle of attack at each actuator point.
             DynamicList<List<List<scalar> > > alpha;
+            DynamicList<List<List<scalar> > > alphaSecAvg;
 
             //- Wind magnitude (not including radial wind) at each actuator point.
             DynamicList<List<List<scalar> > > Vmag;
+            DynamicList<List<List<scalar> > > VmagSecAvg;
 
             //- Coefficient of lift at each actuator point. 
             DynamicList<List<List<scalar> > > Cl;
+            DynamicList<List<List<scalar> > > ClSecAvg;
 
             //- Coefficient of drag at each actuator point. 
             DynamicList<List<List<scalar> > > Cd;
+            DynamicList<List<List<scalar> > > CdSecAvg;
 
             //- Lift/density at each actuator point. 
             DynamicList<List<List<scalar> > > lift;
+            DynamicList<List<List<scalar> > > liftSecAvg;
 
             //- Drag/density at each actuator point. 
             DynamicList<List<List<scalar> > > drag;
+            DynamicList<List<List<scalar> > > dragSecAvg;
 
             //- Axial force/density at each actuator point (not pointed in blade-local
             //  axial, but rather along shaft). 
             DynamicList<List<List<scalar> > > axialForce;
+            DynamicList<List<List<scalar> > > axialForceSecAvg;
 
             //- Tangential force/density at each actuator point.
             DynamicList<List<List<scalar> > > tangentialForce;
+            DynamicList<List<List<scalar> > > tangentialForceSecAvg;
 
             //- Thrust/density on turbine.
             DynamicList<scalar> thrust;
@@ -600,11 +615,6 @@ private:
 
             //- List of output files for tangential/density.
             OFstream* tangentialForceFile_;
-
-            //- List of output files for actuator point locations.
-            OFstream* xFile_;
-            OFstream* yFile_;
-            OFstream* zFile_;
 
             //- List of output files for total aerodynamic torque/density.
             OFstream* torqueRotorFile_;
@@ -675,6 +685,9 @@ private:
         
         //- Compute body forces.
         void computeBodyForce();
+
+        //- Compute azimuthal sector averages of blade quantities.
+        void computeSectorAverage();
 
         //- Rotates a point about a rotation axis and rotation point by the specified
         //  angle in radians.

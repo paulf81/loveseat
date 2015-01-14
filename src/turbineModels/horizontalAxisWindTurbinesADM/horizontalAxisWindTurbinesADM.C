@@ -235,7 +235,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         TowerHt.append(scalar(readScalar(turbineProperties.lookup("TowerHt"))));
         Twr2Shft.append(scalar(readScalar(turbineProperties.lookup("Twr2Shft"))));
         ShftTilt.append(scalar(readScalar(turbineProperties.lookup("ShftTilt"))));
-        PreCone.append(scalar(readScalar(turbineProperties.lookup("PreCone"))));
+        PreCone.append(vector(turbineProperties.lookup("PreCone")));
         GBRatio.append(scalar(readScalar(turbineProperties.lookup("GBRatio"))));
         RatedRotSpeed.append(scalar(readScalar(turbineProperties.lookup("RatedRotSpeed"))));
         GenIner.append(scalar(readScalar(turbineProperties.lookup("GenIner"))));
@@ -507,7 +507,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 
         // Calculate the sphere of influence radius.
         int j = turbineTypeID[i];
-        scalar sphereRadius = Foam::sqrt(Foam::sqr((OverHang[j] + UndSling[j]) + TipRad[j]*Foam::sin(PreCone[j])) + Foam::sqr(TipRad[j]*Foam::cos(PreCone[j])));
+        scalar sphereRadius = Foam::sqrt(Foam::sqr((OverHang[j] + UndSling[j]) + TipRad[j]*Foam::sin(PreCone[j][0])) + Foam::sqr(TipRad[j]*Foam::cos(PreCone[j][0])));
         sphereRadius += projectionRadius[i];
 
         // Find the cells within the sphere of influence.
@@ -603,14 +603,15 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 
             // Calculate the solidity factor at this radius.
             scalar chord = interpolate(bladeRadius[i][m], BladeStation[j], BladeChord[j]);
-            solidity[i][m] = NumBl[j]*chord / (2.0 * Foam::constant::mathematical::pi * bladeRadius[i][m] * dr[i][m] * Foam::cos(PreCone[j]));
-            
+          //solidity[i][m] = NumBl[j]*chord / (2.0 * Foam::constant::mathematical::pi * bladeRadius[i][m] * Foam::cos(PreCone[j][0]));
+            solidity[i][m] = scalar(NumBl[j]) / scalar(nAzimuth[i][m]);
         }
 
 
-
+        sectorIndices.append(List<List<label> >(nRadial[i]));
         bladePoints.append(List<List<vector> >(nRadial[i]));
         bladePointsPerturbVector.append(List<List<vector> >(nRadial[i]));
+        elementAzimuth.append(List<List<scalar> >(nRadial[i]));
         bladeForce.append(List<List<vector> >(nRadial[i]));
         bladeAlignedVectors.append(List<List<List<vector > > >(nRadial[i]));
         windVectors.append(List<List<vector> >(nRadial[i]));
@@ -628,11 +629,12 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         thrust.append(0.0);
         torqueRotor.append(0.0);
         powerRotor.append(0.0);
-
         for(int m = 0; m < nRadial[i]; m++)
         {
+            sectorIndices[i][m].append(List<label>(nAzimuth[i][m],0));
             bladePoints[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
             bladePointsPerturbVector[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
+            elementAzimuth[i][m].append(List<scalar>(nAzimuth[i][m],0.0));
             bladeForce[i][m].append(List<vector>(nAzimuth[i][m],vector::zero));
             bladeAlignedVectors[i][m].append(List<List<vector> >(nAzimuth[i][m]));
             for(int n = 0; n < nAzimuth[i][m]; n++)
@@ -653,6 +655,27 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         
 
 
+        windVectorsSecAvg.append(List<List<vector> >(nAvgSector[i]));
+        alphaSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        VmagSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        ClSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        CdSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        liftSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        dragSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        axialForceSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        tangentialForceSecAvg.append(List<List<scalar> >(nAvgSector[i]));
+        for(int m = 0; m < nAvgSector[i]; m++)
+        {
+            windVectorsSecAvg[i][m].append(List<vector>(nRadial[i],vector::zero));
+            alphaSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            VmagSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            ClSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            CdSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            liftSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            dragSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            axialForceSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+            tangentialForceSecAvg[i][m].append(List<scalar>(nRadial[i],0.0));
+        }
 
 
         // Now calculate the actuator section center points for each blade
@@ -661,7 +684,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         // position before doing a global rotation to the initial azimuth of
         // the rotor.  Also calculate the radius of each point (not including coning).
         vector root = rotorApex[i];
-        scalar beta = PreCone[j] - ShftTilt[j];
+        scalar beta = PreCone[j][0] - ShftTilt[j];
         root.x() = root.x() + HubRad[j]*Foam::sin(beta);
         root.z() = root.z() + HubRad[j]*Foam::cos(beta);
         dist = 0.0;
@@ -673,13 +696,22 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
             {
                totDiskPointsArray++;
                totDiskPoints[i]++;
-               scalar elementAzimuth = k*dAzimuth;
+               elementAzimuth[i][m][k] = k*dAzimuth;
                bladePoints[i][m][k].x() = root.x() + dist*Foam::sin(beta);
                bladePoints[i][m][k].y() = root.y();
                bladePoints[i][m][k].z() = root.z() + dist*Foam::cos(beta);
+
+               scalar elementAzimuthInt = elementAzimuth[i][m][k] + 0.5 * (2.0*Foam::constant::mathematical::pi) / scalar(nAvgSector[i]);
+               scalar sectorWidth = (2.0*Foam::constant::mathematical::pi) / scalar(nAvgSector[i]);
+               if (elementAzimuthInt >= 2.0*Foam::constant::mathematical::pi)
+               {
+                   elementAzimuthInt -= 2.0*Foam::constant::mathematical::pi;
+               }
+               sectorIndices[i][m][k] = elementAzimuthInt / sectorWidth;
+
                if (k > 0)
                {
-                   bladePoints[i][m][k] = rotatePoint(bladePoints[i][m][k], rotorApex[i], uvShaft[i], elementAzimuth);
+                   bladePoints[i][m][k] = rotatePoint(bladePoints[i][m][k], rotorApex[i], uvShaft[i], elementAzimuth[i][m][k]);
                }
             }
             dist = dist + 0.5*dr[i][m];
@@ -688,7 +720,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 
 
 
-        // Generate randome numbers for the blade point perturbation during control
+        // Generate random numbers for the blade point perturbation during control
         // processor identification.  This does not affect the actual location--it is
         // just there to break ties and make sure > 1 processors don't account for a
         // single blade point.
@@ -712,8 +744,8 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
     yawNacelle();
 
     // Rotate the rotor to initial azimuth angle.
-  //deltaAzimuth =  azimuth;
-  //rotateBlades();  
+    deltaAzimuth =  azimuth;
+    rotateBlades();  
 
     // Find out which processors control each actuator line point.
     findControlProcNo();
@@ -729,6 +761,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 
     // Open the turbine data output files and print initial information.
     openOutputFiles();
+    computeSectorAverage(); 
     printOutputFiles();
 }
 
@@ -741,24 +774,24 @@ void horizontalAxisWindTurbinesADM::rotateBlades()
     {	
         // Check the rotation direction first and set the local delta azimuth
 	// variable accordingly.
-	scalar deltaAzimuthI = 0.0;
-	if (rotationDir[i] == "cw")
-	{
-            deltaAzimuthI =  deltaAzimuth[i];
-        }
-	if (rotationDir[i] == "ccw")
-	{
-            deltaAzimuthI = -deltaAzimuth[i];
-        }
+      //scalar deltaAzimuthI = 0.0;
+      //if (rotationDir[i] == "cw")
+      //{
+      //    deltaAzimuthI =  deltaAzimuth[i];
+      //}
+      //if (rotationDir[i] == "ccw")
+      //{
+      //    deltaAzimuthI = -deltaAzimuth[i];
+      //}
 
 	// Rotate turbine blades, blade by blade, point by point.
-	forAll(bladePoints[i], j)
-        {
-            forAll(bladePoints[i][j], k)
-            {
-                bladePoints[i][j][k] = rotatePoint(bladePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
-            }
-        }   
+      //forAll(bladePoints[i], j)
+      //{
+      //    forAll(bladePoints[i][j], k)
+      //    {
+      //        bladePoints[i][j][k] = rotatePoint(bladePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
+      //    }
+      //}   
 
 	// Calculate the new azimuth angle and make sure it isn't
         // bigger than 2*pi.
@@ -1186,7 +1219,7 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
                 // Now put the velocity in that cell into blade-oriented coordinates and add on the
                 // velocity due to blade rotation.
                 windVectors[i][j][k].x() = (bladeAlignedVectors[i][j][k][0] & windVectorsInt);
-                windVectors[i][j][k].y() = (bladeAlignedVectors[i][j][k][1] & windVectorsInt) + (rotSpeed[i] * bladeRadius[i][j] * cos(PreCone[n]));
+                windVectors[i][j][k].y() = (bladeAlignedVectors[i][j][k][1] & windVectorsInt) + (rotSpeed[i] * bladeRadius[i][j] * cos(PreCone[n][0]));
                 windVectors[i][j][k].z() = (bladeAlignedVectors[i][j][k][2] & windVectorsInt);
             }
         }
@@ -1281,7 +1314,7 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
                 dragVector = -drag[i][j][k] * dragVector;
 
                 // Add up lift and drag to get the resultant force/density applied to this blade element.
-                bladeForce[i][j][k] = (liftVector + dragVector) * solidity[i][j];
+                bladeForce[i][j][k] = (liftVector + dragVector);
 
                 // Find the component of the blade element force/density in the axial (along the shaft)
                 // direction.
@@ -1295,12 +1328,13 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
                 thrust[i] += axialForce[i][j][k] * solidity[i][j];
 
                 // Add this blade element's contribution to aerodynamic torque to the total turbine aerodynamic torque.
-                torqueRotor[i] += tangentialForce[i][j][k] * solidity[i][j] * bladeRadius[i][j] * cos(PreCone[m]);
+                torqueRotor[i] += tangentialForce[i][j][k] * solidity[i][j] * bladeRadius[i][j] * cos(PreCone[m][0]);
             }
         }
 
         // Compute rotor power based on aerodynamic torque and rotation speed.
         powerRotor[i] = torqueRotor[i] * rotSpeed[i];
+
     }
 }
 
@@ -1336,11 +1370,11 @@ void horizontalAxisWindTurbinesADM::computeBodyForce()
                         scalar dis = mag(mesh_.C()[sphereCells[i][m]] - bladePoints[i][j][k]);
                         if (dis <= projectionRadius[i])
                         {
-                            bodyForce[sphereCells[i][m]] += bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5)));
-                            thrustBodyForceSum += (-bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) *
+                            bodyForce[sphereCells[i][m]] += bladeForce[i][j][k] * solidity[i][j] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5)));
+                            thrustBodyForceSum += (-bladeForce[i][j][k] * solidity[i][j] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) *
                                                     mesh_.V()[sphereCells[i][m]]) & uvShaft[i];
-                            torqueBodyForceSum += ( bladeForce[i][j][k] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * 
-                                                    bladeRadius[i][j] * cos(PreCone[n]) * mesh_.V()[sphereCells[i][m]]) & bladeAlignedVectors[i][j][k][1];
+                            torqueBodyForceSum += ( bladeForce[i][j][k] * solidity[i][j] * (Foam::exp(-Foam::sqr(dis/epsilon[i]))/(Foam::pow(epsilon[i],3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * 
+                                                    bladeRadius[i][j] * cos(PreCone[n][0]) * mesh_.V()[sphereCells[i][m]]) & bladeAlignedVectors[i][j][k][1];
                         }
                     }
                 }  
@@ -1353,8 +1387,47 @@ void horizontalAxisWindTurbinesADM::computeBodyForce()
     reduce(torqueBodyForceSum,sumOp<scalar>());
 
     // Print information comparing the actual thrust and torque to the integrated body force.
-    Info << "Thrust from Body Force = " << thrustBodyForceSum << tab << "Thrust from Act. Line = " << thrustSum << tab << "Ratio = " << thrustBodyForceSum/thrustSum << endl;
-    Info << "Torque from Body Force = " << torqueBodyForceSum << tab << "Torque from Act. Line = " << torqueSum << tab << "Ratio = " << torqueBodyForceSum/torqueSum << endl;
+    Info << "Thrust from Body Force = " << thrustBodyForceSum << tab << "Thrust from Act. Disk = " << thrustSum << tab << "Ratio = " << thrustBodyForceSum/thrustSum << endl;
+    Info << "Torque from Body Force = " << torqueBodyForceSum << tab << "Torque from Act. Disk = " << torqueSum << tab << "Ratio = " << torqueBodyForceSum/torqueSum << endl;
+}
+
+
+void horizontalAxisWindTurbinesADM::computeSectorAverage()
+{
+    forAll(alphaSecAvg, i)
+    {
+        forAll(alphaSecAvg[i], j)
+        {
+            forAll(alphaSecAvg[i][j], k)
+            {
+                windVectorsSecAvg[i][j][k] = vector::zero;
+                alphaSecAvg[i][j][k] = 0.0;
+                VmagSecAvg[i][j][k] = 0.0;
+                ClSecAvg[i][j][k] = 0.0;
+                CdSecAvg[i][j][k] = 0.0;
+                liftSecAvg[i][j][k] = 0.0;
+                dragSecAvg[i][j][k] = 0.0;
+                axialForceSecAvg[i][j][k] = 0.0;
+                tangentialForceSecAvg[i][j][k] = 0.0;
+
+                forAll(sectorIndices[i][k], m)
+                {
+                    if (sectorIndices[i][k][m] == j)
+                    {
+                        windVectorsSecAvg[i][j][k] += windVectors[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        alphaSecAvg[i][j][k] += alpha[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        VmagSecAvg[i][j][k] += Vmag[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        ClSecAvg[i][j][k] += Cl[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        CdSecAvg[i][j][k] += Cd[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        liftSecAvg[i][j][k] += lift[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        dragSecAvg[i][j][k] += drag[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        axialForceSecAvg[i][j][k] += axialForce[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                        tangentialForceSecAvg[i][j][k] += tangentialForce[i][k][m] / (scalar(nAzimuth[i][k])/scalar(nAvgSector[i]));
+                    }
+                }
+            }
+        }
+    }
 }
 
 
@@ -1537,7 +1610,7 @@ void horizontalAxisWindTurbinesADM::update()
         // Find out which processor controls which actuator point,
         // and with that informatio sample the wind at the actuator
         // points.
-        findControlProcNo();
+      //findControlProcNo();
         computeWindVectors();
 
         // Update the rotor state.
@@ -1546,7 +1619,7 @@ void horizontalAxisWindTurbinesADM::update()
         controlBladePitch();
         controlNacYaw();
         computeRotSpeed();
-      //rotateBlades();
+        rotateBlades();
         yawNacelle();
     }
     else if(bladeUpdateType[0] == "newPosition")
@@ -1557,13 +1630,13 @@ void horizontalAxisWindTurbinesADM::update()
         controlBladePitch();
         controlNacYaw();
         computeRotSpeed();
-      //rotateBlades();
+        rotateBlades();
         yawNacelle();
 
         // Find out which processor controls which actuator point,
         // and with that information sample the wind at the actuator
         // points.
-        findControlProcNo();
+      //findControlProcNo();
         computeWindVectors();
     }
 
@@ -1581,6 +1654,7 @@ void horizontalAxisWindTurbinesADM::update()
             if (outputIndex >= outputInterval)
     	    {
 	        outputIndex = 0;
+                computeSectorAverage();
 	        printOutputFiles();
 	    }
         }
@@ -1589,11 +1663,13 @@ void horizontalAxisWindTurbinesADM::update()
             if ((runTime_.value() - lastOutputTime) >= outputInterval)
             {
     	        lastOutputTime += outputInterval;
+                computeSectorAverage();
 	        printOutputFiles();
             }
         }
         else
         {
+            computeSectorAverage();
             printOutputFiles();
         }
 
@@ -1672,59 +1748,47 @@ void horizontalAxisWindTurbinesADM::openOutputFiles()
 
         // Create an angle of attack file.
         alphaFile_ = new OFstream(rootDir/time/"alpha");
-        *alphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
+        *alphaFile_ << "#Turbine    Sector    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
 
         // Create a wind speed magnitude file.
         VmagFile_ = new OFstream(rootDir/time/"Vmag");
-        *VmagFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vmag(m/s)" << endl;
+        *VmagFile_ << "#Turbine    Sector    Time(s)    dt(s)    Vmag(m/s)" << endl;
     
         // Create an axial wind speed file.
         VaxialFile_ = new OFstream(rootDir/time/"Vaxial");
-        *VaxialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vaxial(m/s)" << endl;
+        *VaxialFile_ << "#Turbine    Sector    Time(s)    dt(s)    Vaxial(m/s)" << endl;
 
         // Create a tangential wind speed file.
         VtangentialFile_ = new OFstream(rootDir/time/"Vtangential");
-        *VtangentialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vtangential(m/s)" << endl;
+        *VtangentialFile_ << "#Turbine    Sector    Time(s)    dt(s)    Vtangential(m/s)" << endl;
 
         // Create a radial wind speed file.
         VradialFile_ = new OFstream(rootDir/time/"Vradial");
-        *VradialFile_ << "#Turbine    Blade    Time(s)    dt(s)    Vradial(m/s)" << endl;
+        *VradialFile_ << "#Turbine    Sector    Time(s)    dt(s)    Vradial(m/s)" << endl;
 
         // Create a coefficient of lift file.
         ClFile_ = new OFstream(rootDir/time/"Cl");
-        *ClFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cl" << endl;
+        *ClFile_ << "#Turbine    Sector    Time(s)    dt(s)    Cl" << endl;
 
         // Create a coefficient of drag file.
         CdFile_ = new OFstream(rootDir/time/"Cd");
-        *CdFile_ << "#Turbine    Blade    Time(s)    dt(s)    Cd" << endl;
+        *CdFile_ << "#Turbine    Sector    Time(s)    dt(s)    Cd" << endl;
 
         // Create a lift file.
         liftFile_ = new OFstream(rootDir/time/"lift");
-        *liftFile_ << "#Turbine    Blade    Time(s)    dt(s)    lift (N)" << endl;
+        *liftFile_ << "#Turbine    Sector    Time(s)    dt(s)    lift (N)" << endl;
 
         // Create a drag file.
         dragFile_ = new OFstream(rootDir/time/"drag");
-        *dragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+        *dragFile_ << "#Turbine    Sector    Time(s)    dt(s)    drag (N)" << endl;
 
         // Create a axial force file.
         axialForceFile_ = new OFstream(rootDir/time/"axialForce");
-        *axialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
+        *axialForceFile_ << "#Turbine    Sector    Time(s)    dt(s)    axial force (N)" << endl;
 
         // Create a tangential force file.
         tangentialForceFile_ = new OFstream(rootDir/time/"tangentialForce");
-        *tangentialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    tangential force (N)" << endl;
-
-        // Create a x-location file.
-        xFile_ = new OFstream(rootDir/time/"x");
-        *xFile_ << "#Turbine    Blade    Time(s)    dt(s)    x-location(m)" << endl;
-
-        // Create a y-location file.
-        yFile_ = new OFstream(rootDir/time/"y");
-        *yFile_ << "#Turbine    Blade    Time(s)    dt(s)    y-location(m)" << endl;
-
-        // Create a z-location file.
-        zFile_ = new OFstream(rootDir/time/"z");
-        *zFile_ << "#Turbine    Blade    Time(s)    dt(s)    z-location(m)" << endl;
+        *tangentialForceFile_ << "#Turbine    Sector    Time(s)    dt(s)    tangential force (N)" << endl;
 
     }
 }
@@ -1734,7 +1798,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
 {
     if (Pstream::master())
     {
-        forAll(bladePoints,i)
+        forAll(alphaSecAvg,i)
         {
             // Write out time and delta t.
             *torqueRotorFile_ << i << " " << time << " " << dt << " ";
@@ -1758,8 +1822,8 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *pitchFile_ << pitch[i] << endl;
             *nacYawFile_ << standardToCompass(nacYaw[i]/degRad) << endl;
 
-            // Proceed blade by blade.
-            forAll(bladePoints[i], j)
+            // Proceed sector by sector.
+            forAll(alphaSecAvg[i], j)
             {
                 // Write out time and delta t.
                 *alphaFile_ << i << " " << j << " " << time << " " << dt << " ";
@@ -1773,26 +1837,20 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
                 *dragFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *axialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *tangentialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *xFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *yFile_ << i << " " << j << " " <<  time << " " << dt << " ";
-                *zFile_ << i << " " << j << " " <<  time << " " << dt << " ";
 
-                forAll(bladePoints[i][j], k)
+                forAll(alphaSecAvg[i][j], k)
                 {   
-                    *alphaFile_ << alpha[i][j][k] << " ";
-                    *VmagFile_ << Vmag[i][j][k] << " ";
-                    *VaxialFile_ << windVectors[i][j][k].x() << " ";
-                    *VtangentialFile_ << windVectors[i][j][k].y() << " ";
-                    *VradialFile_ << windVectors[i][j][k].z() << " ";
-                    *ClFile_ << Cl[i][j][k] << " ";
-                    *CdFile_ << Cd[i][j][k] << " ";
-                    *liftFile_ << lift[i][j][k]*fluidDensity[i] << " ";
-                    *dragFile_ << drag[i][j][k]*fluidDensity[i] << " ";
-                    *axialForceFile_ << axialForce[i][j][k]*fluidDensity[i] << " ";
-                    *tangentialForceFile_ << tangentialForce[i][j][k]*fluidDensity[i] << " ";
-                    *xFile_ << bladePoints[i][j][k].x() << " ";
-                    *yFile_ << bladePoints[i][j][k].y() << " ";
-                    *zFile_ << bladePoints[i][j][k].z() << " ";
+                    *alphaFile_ << alphaSecAvg[i][j][k] << " ";
+                    *VmagFile_ << VmagSecAvg[i][j][k] << " ";
+                    *VaxialFile_ << windVectorsSecAvg[i][j][k].x() << " ";
+                    *VtangentialFile_ << windVectorsSecAvg[i][j][k].y() << " ";
+                    *VradialFile_ << windVectorsSecAvg[i][j][k].z() << " ";
+                    *ClFile_ << ClSecAvg[i][j][k] << " ";
+                    *CdFile_ << CdSecAvg[i][j][k] << " ";
+                    *liftFile_ << liftSecAvg[i][j][k]*fluidDensity[i] << " ";
+                    *dragFile_ << dragSecAvg[i][j][k]*fluidDensity[i] << " ";
+                    *axialForceFile_ << axialForceSecAvg[i][j][k]*fluidDensity[i] << " ";
+                    *tangentialForceFile_ << tangentialForceSecAvg[i][j][k]*fluidDensity[i] << " ";
                 }
                 *alphaFile_ << endl;
                 *VmagFile_ << endl;
@@ -1805,9 +1863,6 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
                 *dragFile_ << endl;
                 *axialForceFile_ << endl;
                 *tangentialForceFile_ << endl;
-                *xFile_ << endl;
-                *yFile_ << endl;
-                *zFile_ << endl;
             }
         }
           
@@ -1832,9 +1887,6 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
         *dragFile_ << endl;
         *axialForceFile_ << endl;
         *tangentialForceFile_ << endl;
-        *xFile_ << endl;
-        *yFile_ << endl;
-        *zFile_ << endl;
     }
 }
    
