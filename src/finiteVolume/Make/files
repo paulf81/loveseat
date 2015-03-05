@@ -17,5 +17,8 @@ $(surfaceTemperatureFluxModels)/fixedHeatingRate/fixedHeatingRateFvPatchField.C
 surfaceVelocityModels = $(derivedFvPatchFields)/surfaceVelocityModels
 $(surfaceVelocityModels)/velocityABLWallFunction/velocityABLWallFunctionFvPatchField.C
 
+fvMesh/fvPatches/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatch.C
+fields/fvPatchFields/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatchFields.C
+
 
 LIB = $(FOAM_USER_LIBBIN)/libuserfiniteVolume
