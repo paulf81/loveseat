@@ -289,7 +289,7 @@ if (updateInternalFields)
     forAll(T,cellI)
     {
         scalar TPrime = TPrimeScale * (TRandom.scalar01() - 0.5);
-        scalar z = mesh.C()[cellI].z();
+        scalar z = mesh.C()[cellI].z() - zMin;
         T[cellI] = Tbottom;
         if ((z >= zInversion - 0.5*widthInversion) && (z <= zInversion + 0.5*widthInversion) && (temperatureInitType == "simple"))
         {

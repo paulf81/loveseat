@@ -207,6 +207,9 @@ scalar deltaV(setFieldsABLDict.lookupOrDefault<scalar>("deltaV",1.0));
 scalar zPeak(setFieldsABLDict.lookupOrDefault<scalar>("zPeak",0.03));
 scalar Uperiods(setFieldsABLDict.lookupOrDefault<scalar>("Uperiods",4));
 scalar Vperiods(setFieldsABLDict.lookupOrDefault<scalar>("Vperiods",4));
+scalar xMin(setFieldsABLDict.lookupOrDefault<scalar>("xMin",0.0));
+scalar yMin(setFieldsABLDict.lookupOrDefault<scalar>("yMin",0.0));
+scalar zMin(setFieldsABLDict.lookupOrDefault<scalar>("zMin",0.0));
 scalar xMax(setFieldsABLDict.lookupOrDefault<scalar>("xMax",3000.0));
 scalar yMax(setFieldsABLDict.lookupOrDefault<scalar>("yMax",3000.0));
 scalar zMax(setFieldsABLDict.lookupOrDefault<scalar>("zMax",1000.0));
@@ -266,20 +269,25 @@ UgToVector.y() = Foam::sin(UgDir);
 UgToVector.z() = 0.0;
 vector UgVec = Ug * UgToVector;
 
+// Compute the domain extents.
+scalar xExtent = xMax - xMin;
+scalar yExtent = yMax - yMin;
+scalar zExtent = zMax - zMin;
+
 // Update the interior fields.
 if (updateInternalFields)
 {
     // Velocity.
     forAll(U,cellI)
     {
-        scalar x = mesh.C()[cellI].x();
-        scalar y = mesh.C()[cellI].y();
-        scalar z = mesh.C()[cellI].z();
+        scalar x = mesh.C()[cellI].x() - xMin;
+        scalar y = mesh.C()[cellI].y() - yMin;
+        scalar z = mesh.C()[cellI].z() - zMin;
         vector UPrime = vector::zero;
-        UPrime.x() = deltaU * Foam::exp(0.5) * Foam::cos(Uperiods * 2.0 * Foam::constant::mathematical::pi * y/yMax) * 
-                    (z/(zPeak*zMax)) * Foam::exp(-0.5*Foam::pow((z/(zPeak*zMax)),2));
-        UPrime.y() = deltaV * Foam::exp(0.5) * Foam::sin(Vperiods * 2.0 * Foam::constant::mathematical::pi * x/xMax) * 
-                    (z/(zPeak*zMax)) * Foam::exp(-0.5*Foam::pow((z/(zPeak*zMax)),2));
+        UPrime.x() = deltaU * Foam::exp(0.5) * Foam::cos(Uperiods * 2.0 * Foam::constant::mathematical::pi * y/yExtent) * 
+                    (z/(zPeak*zExtent)) * Foam::exp(-0.5*Foam::pow((z/(zPeak*zExtent)),2));
+        UPrime.y() = deltaV * Foam::exp(0.5) * Foam::sin(Vperiods * 2.0 * Foam::constant::mathematical::pi * x/xExtent) * 
+                    (z/(zPeak*zExtent)) * Foam::exp(-0.5*Foam::pow((z/(zPeak*zExtent)),2));
         UPrime.z() = 0.0;
 
         if ((z <= zInversion) && (velocityInitType == "log"))
@@ -313,7 +321,7 @@ if (updateInternalFields)
     forAll(T,cellI)
     {
         scalar TPrime = TPrimeScale * (TRandom.scalar01() - 0.5);
-        scalar z = mesh.C()[cellI].z();
+        scalar z = mesh.C()[cellI].z() - zMin;
         T[cellI] = Tbottom;
         if ((z >= zInversion - 0.5*widthInversion) && (z <= zInversion + 0.5*widthInversion) && (temperatureInitType == "simple"))
         {
