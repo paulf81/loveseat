@@ -1,8 +1,8 @@
 fvPatchFields = fields/fvPatchFields
 derivedFvPatchFields = $(fvPatchFields)/derived
-$(derivedFvPatchFields)/timeVaryingMappedFluctuatingFixedValue/timeVaryingMappedFluctuatingFixedValueFvPatchFields.C
-$(derivedFvPatchFields)/turbulentABLVelocityControlled/turbulentABLVelocityControlledFvPatchField.C
-$(derivedFvPatchFields)/turbulentABLTemperatureControlled/turbulentABLTemperatureControlledFvPatchField.C
+/*$(derivedFvPatchFields)/timeVaryingMappedFluctuatingFixedValue/timeVaryingMappedFluctuatingFixedValueFvPatchFields.C*/
+/*$(derivedFvPatchFields)/turbulentABLVelocityControlled/turbulentABLVelocityControlledFvPatchField.C*/
+/*$(derivedFvPatchFields)/turbulentABLTemperatureControlled/turbulentABLTemperatureControlledFvPatchField.C*/
 
 
 /* Surface Shear Stress Models */
@@ -17,8 +17,12 @@ $(surfaceTemperatureFluxModels)/fixedHeatingRate/fixedHeatingRateFvPatchField.C
 surfaceVelocityModels = $(derivedFvPatchFields)/surfaceVelocityModels
 $(surfaceVelocityModels)/velocityABLWallFunction/velocityABLWallFunctionFvPatchField.C
 
-fvMesh/fvPatches/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatch.C
-fields/fvPatchFields/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatchFields.C
+/* Modified buoyantPressure */
+buoyancyModels = $(derivedFvPatchFields)/buoyantPressureMod
+$(buoyancyModels)/buoyantPressureModFvPatchScalarField.C
+
+/*fvMesh/fvPatches/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatch.C*/
+/*fields/fvPatchFields/constraint/cyclicFixedNormal/cyclicFixedNormalFvPatchFields.C*/
 
 
 LIB = $(FOAM_USER_LIBBIN)/libuserfiniteVolume
