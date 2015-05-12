@@ -22,50 +22,27 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::incompressible::LESModels::oneEqEddyABL
+    Foam::incompressible::LESModels::GenEddyViscABLABL
 
 Description
-    One Equation Eddy Viscosity Model for incompressible atmospheric flows. 
-    It is based on the original oneEqEddy OpenFOAM model, but has some small
-    modifications, such as buoyancy production, specific to atmospheric flow.
+    General base class for all incompressible models that can be implemented
+    as an eddy viscosity, i.e. algebraic and one-equation models. Modified 
+    from original version to better handle the atmospheric SGS models.
 
-    Eddy viscosity SGS model using a modeled balance equation to simulate the
-    behaviour of k, hence,
-    \verbatim
-        d/dt(k) 
-      + div(U*k)
-        =
-      - dev(R)*(grad(U)
-      + (1/theta_0)*g&q
-      + div(2*nuSgs*grad(k))
-      - eps
-
-    and
-
-        R = 2/3*k*I - 2*nuSgs*dev(D)
-        Reff = 2/3*k*I - 2*nuEff*dev(D)
-        eps = ce*k^(3/2)/l
-
-    where
-
-        D = symm(grad(U));
-        nuSgs = ck*sqrt(k)*delta
-        nuEff = nuSgs + nu
-        theta_0 = reference potential temperature
-        g = gravity
-        q = -2*(nuSgs/Pr_t)*grad(T)
-        l = length scale
-    \endverbatim
+    Contains fields for k (SGS turbulent kinetic energy), gamma
+    (modelled viscosity) and epsilon (SGS dissipation).
 
 SourceFiles
-    oneEqEddyABL.C
+    GenEddyViscABL.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef oneEqEddyABL_H
-#define oneEqEddyABL_H
+#ifndef GenEddyViscABL_H
+#define GenEddyViscABL_H
 
-#include "GenEddyViscABL.H"
+#include "LESModel.H"
+#include "uniformDimensionedFields.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -77,39 +54,54 @@ namespace LESModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class oneEqEddyABL Declaration
+                           Class GenEddyViscABL Declaration
 \*---------------------------------------------------------------------------*/
 
-class oneEqEddyABL
+class GenEddyViscABL
 :
-    public GenEddyViscABL
+    virtual public LESModel
 {
-    // Private data
-
-        volScalarField k_;
-
-        dimensionedScalar ck_;
-
-
     // Private Member Functions
 
-        //- Update sub-grid scale fields
-        void updateSubGridScaleFields();
-
         // Disallow default bitwise copy construct and assignment
-        oneEqEddyABL(const oneEqEddyABL&);
-        oneEqEddyABL& operator=(const oneEqEddyABL&);
+        GenEddyViscABL(const GenEddyViscABL&);
+        GenEddyViscABL& operator=(const GenEddyViscABL&);
+
+
+protected:
+
+    // Model coefficient field
+
+        volScalarField ce_;
+
+    // Fields
+
+        volScalarField nuSgs_;
+
+        volScalarField l_;
+
+    // Other model parameters or needed information.
+
+        word TName_;
+
+        const volScalarField& T_;
+
+        const uniformDimensionedVectorField& g_;
+
+        IOdictionary transportDict_;
+
+        dimensionedScalar TRef_;
 
 
 public:
 
-    //- Runtime type information
-    TypeName("oneEqEddyABL");
+    //- Partial Runtime type information
+    static const word typeName;
 
     // Constructors
 
         //- Construct from components
-        oneEqEddyABL
+        GenEddyViscABL
         (
             const volVectorField& U,
             const surfaceScalarField& phi,
@@ -120,26 +112,37 @@ public:
 
 
     //- Destructor
-    virtual ~oneEqEddyABL()
+    virtual ~GenEddyViscABL()
     {}
 
 
     // Member Functions
 
-        //- Return SGS kinetic energy
-        virtual tmp<volScalarField> k() const
+        //- Return sub-grid disipation rate
+        virtual tmp<volScalarField> epsilon() const
         {
-            return k_;
+            return ce_*k()*sqrt(k())/delta();
         }
 
-        //- Return the effective diffusivity for k
-        tmp<volScalarField> DkEff() const
+        //- Return the SGS viscosity.
+        virtual tmp<volScalarField> nuSgs() const
         {
-            return tmp<volScalarField>
-            (
-                new volScalarField("DkEff", nuSgs_ + nu())
-            );
+            return nuSgs_;
         }
+
+        //- Return the sub-grid stress tensor.
+        virtual tmp<volSymmTensorField> B() const;
+
+        //- Return the effective sub-grid turbulence stress tensor
+        //  including the laminar stress
+        virtual tmp<volSymmTensorField> devBeff() const;
+
+        //- Return the deviatoric part of the effective sub-grid
+        //  turbulence stress tensor including the laminar stress
+        virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
+
+        //- Correct the stability-dependent length scale
+        virtual void computeLengthScale();
 
         //- Correct Eddy-Viscosity and related properties
         virtual void correct(const tmp<volTensorField>& gradU);

@@ -25,6 +25,7 @@ License
 
 #include "oneEqEddyABL.H"
 #include "addToRunTimeSelectionTable.H"
+#include "wallFvPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,7 +46,11 @@ addToRunTimeSelectionTable(LESModel, oneEqEddyABL, dictionary);
 
 void oneEqEddyABL::updateSubGridScaleFields()
 {
-    nuSgs_ = ck_*sqrt(k_)*delta();
+    // Compute the eddy-viscosity field using the SGS-energy and stability-
+    // dependent lengthscale.
+    nuSgs_ = ck_*sqrt(k_)*l_;
+
+    // Update boundary conditions on eddy-viscosity
     nuSgs_.correctBoundaryConditions();
 }
 
@@ -61,9 +66,11 @@ oneEqEddyABL::oneEqEddyABL
     const word& modelName
 )
 :
+    // Inherit properties from the LESModel and GenEddyViscABL classes.
     LESModel(modelName, U, phi, transport, turbulenceModelName),
-    GenEddyVisc(U, phi, transport),
+    GenEddyViscABL(U, phi, transport),
 
+    // Create the SGS-energy field.
     k_
     (
         IOobject
@@ -83,18 +90,10 @@ oneEqEddyABL::oneEqEddyABL
         (
             "ck",
             coeffDict_,
-            0.094
+            0.1
         )
-    ),
+    )
 
-    TName_
-    (
-        coeffDict_.lookupOrDefault<word>("TName","T")
-    ),
-
-    T_(U.db().lookupObject<volScalarField>(TName_)),
-
-    g_(U.db().lookupObject<uniformDimensionedVectorField>("g"))
 {
     bound(k_, kMin_);
 
@@ -108,49 +107,68 @@ oneEqEddyABL::oneEqEddyABL
 
 void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
 {
-    GenEddyVisc::correct(gradU);
+    // Update the molecular viscosity, and the grid-dependent length scale.
+    GenEddyViscABL::correct(gradU);
 
-    volVectorField gradT = fvc::grad(T_);
+    // Update the stability-dependent length scale.
+    GenEddyViscABL::computeLengthScale();
 
-    tmp<volScalarField> G = 2.0*nuSgs_*magSqr(symm(gradU));
-    tmp<volScalarField> Q = -(1/300.0)*g_&(nuSgs_*gradT);
+    // Use the stability-dependent and grid-dependent length scales to form the 
+    // turbulent Prandtl number.
+    tmp<volScalarField> Prt = 1.0/(1.0 + (2.0*l_/delta()));
 
+    // Ce is stability dependent, so set it here.
+    ce_ = 0.19 + (0.51*l_/delta());
+
+    // Ce is also to be set to 3.9 at the lowest level.
+    const fvPatchList& patches = mesh_.boundary();
+    forAll(patches, patchi)
+    {
+        if (isA<wallFvPatch>(patches[patchi]))
+        {
+            forAll(patches[patchi], faceI)
+            {
+                label cellI = patches[patchi].faceCells()[faceI];
+                ce_[cellI] = 3.9;
+            }
+        }
+    }
+
+
+    // Form the SGS-energy production terms, using old values of velocity and temperature.
+    tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
+    tmp<volScalarField> P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+
+
+    // Build the SGS-energy equation matrix system.
     tmp<fvScalarMatrix> kEqn
     (
        fvm::ddt(k_)
      + fvm::div(phi(), k_)
      - fvm::laplacian(2.0*DkEff(), k_)
     ==
-       G
-     + Q
-     - fvm::Sp(ce_*sqrt(k_)/delta(), k_)
+       P_shear
+     + P_buoyant
+     - fvm::Sp(ce_*sqrt(k_)/l_, k_)
     );
 
+    // Solve the SGS-energy equation system.
     kEqn().relax();
     kEqn().solve();
 
+
+    // Bound the SGS-energy to have a minimum value set by kMin_.
     bound(k_, kMin_);
 
+   
+    // Call the function that computes eddy viscosity.
     updateSubGridScaleFields();
-
-
-
-
-  //    d/dt(k)
-  //  + div(U*k)
-  //  - div(2*nuSgs*grad(k))
-  //    =
-  //  - dev(R)*(grad(U)
-  //  + (1/theta_0)*g&q
-  //  - eps
-
-
 }
 
 
 bool oneEqEddyABL::read()
 {
-    if (GenEddyVisc::read())
+    if (GenEddyViscABL::read())
     {
         ck_.readIfPresent(coeffDict());
 
