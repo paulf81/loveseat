@@ -98,7 +98,12 @@ GenEddyViscABL::GenEddyViscABL
         coeffDict_.lookupOrDefault<word>("TName","T")
     ),
 
-    T_(U.db().lookupObject<volScalarField>(TName_)), 
+    kappatName_
+    (
+        coeffDict_.lookupOrDefault<word>("kappatName","kappat")
+    ),
+
+    T_(U.db().lookupObject<volScalarField>(TName_)),
 
     g_(U.db().lookupObject<uniformDimensionedVectorField>("g")),
 

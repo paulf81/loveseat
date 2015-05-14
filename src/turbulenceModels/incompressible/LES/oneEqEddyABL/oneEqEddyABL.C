@@ -110,15 +110,19 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
     // Update the molecular viscosity, and the grid-dependent length scale.
     GenEddyViscABL::correct(gradU);
 
+
     // Update the stability-dependent length scale.
     GenEddyViscABL::computeLengthScale();
 
+
     // Use the stability-dependent and grid-dependent length scales to form the 
     // turbulent Prandtl number.
-    tmp<volScalarField> Prt = 1.0/(1.0 + (2.0*l_/delta()));
+    volScalarField Prt = 1.0/(1.0 + (2.0*l_/delta()));
+
 
     // Ce is stability dependent, so set it here.
     ce_ = 0.19 + (0.51*l_/delta());
+
 
     // Ce is also to be set to 3.9 at the lowest level.
     const fvPatchList& patches = mesh_.boundary();
@@ -152,6 +156,7 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
      - fvm::Sp(ce_*sqrt(k_)/l_, k_)
     );
 
+
     // Solve the SGS-energy equation system.
     kEqn().relax();
     kEqn().solve();
@@ -163,6 +168,12 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
    
     // Call the function that computes eddy viscosity.
     updateSubGridScaleFields();
+
+
+    // Update the SGS thermal conductivity.
+    volScalarField& kappat_ = const_cast<volScalarField&>(U().db().lookupObject<volScalarField>(kappatName_));
+    kappat_ = nuSgs_/Prt;
+//  kappat_.correctBoundaryConditions();
 }
 
 

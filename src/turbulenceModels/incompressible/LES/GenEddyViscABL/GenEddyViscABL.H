@@ -84,6 +84,8 @@ protected:
 
         word TName_;
 
+        word kappatName_;
+
         const volScalarField& T_;
 
         const uniformDimensionedVectorField& g_;
