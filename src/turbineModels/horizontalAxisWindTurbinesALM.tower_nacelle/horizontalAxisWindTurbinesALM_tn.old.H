@@ -471,12 +471,6 @@ private:
                 //- Twist at this station (degrees).
                 DynamicList<DynamicList<scalar> > BladeTwist;
 
-                //- Thickness at this station (percentage of chord).
-                DynamicList<DynamicList<scalar> > BladeThickness;
-
-                //- Placeholder for some other user-defined property at this station.
-                DynamicList<DynamicList<scalar> > BladeUserDef;
-
                 //- Airfoil type ID at this station.
                 DynamicList<DynamicList<label> > BladeAirfoilTypeID;
 

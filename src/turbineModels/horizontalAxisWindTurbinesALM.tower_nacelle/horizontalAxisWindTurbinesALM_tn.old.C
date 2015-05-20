@@ -175,7 +175,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         nacelleForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleForceProjectionType")));
         towerForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerForceProjectionType")));
 
-        //bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
+        bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
         nacelleEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleEpsilon")));
         towerEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("towerEpsilon")));
 
@@ -385,33 +385,25 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
            DynamicList<scalar> station;
            DynamicList<scalar> chord;
            DynamicList<scalar> twist;
-           DynamicList<scalar> thickness;
            DynamicList<label> id;
-           DynamicList<scalar> userDef;
 
            forAll(BladeData[i], j)
            {
                station.append(BladeData[i][j][0]);
                chord.append(BladeData[i][j][1]);
                twist.append(BladeData[i][j][2]);
-               thickness.append(BladeData[i][j][3]);
-               id.append(BladeData[i][j][4]);
-               userDef.append(BladeData[i][j][5]);
+               id.append(BladeData[i][j][3]);
            }
 
            BladeStation.append(station);
            BladeChord.append(chord);
            BladeTwist.append(twist);
-           BladeThickness.append(thickness);
            BladeAirfoilTypeID.append(id);
-           BladeUserDef.append(userDef);
 
            station.clear();
            chord.clear();
            twist.clear();
-           thickness.clear();
            id.clear();
-           userDef.clear();
         }
 
 
@@ -2016,8 +2008,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                     // For each sphere cell.
                     forAll(influenceCells[i], m)
                     {
-                        vector disVector = (mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
-                        scalar dis = mag(disVector);
+                        scalar dis = mag(mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
                         if (dis <= bladeProjectionRadius[i])
                         {
                             // Currently only uniform Gaussian blade distribution is implemented.
@@ -2025,37 +2016,6 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                             if (bladeForceProjectionType[i] == "uniformGaussian")
                             {
                                 spreading = uniformGaussian(bladeEpsilon[i][0], dis);
-                            }
-                            else if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
-                            {
-                                scalar chord = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeChord[n]);
-                                scalar epsilonScalar = bladeEpsilon[i][0];
-                                scalar epsilonMin = bladeEpsilon[i][1];
-                                scalar epsilonMax = bladeEpsilon[i][2];
-                                scalar epsilon = max(min((epsilonScalar * chord), epsilonMax), epsilonMin);
-                                spreading = uniformGaussian(epsilon, dis);
-                            }
-                            else if (bladeForceProjectionType[i] == "variableUniformGaussianUserDef")
-                            {
-                                scalar userDef = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeUserDef[n]);
-                                scalar epsilonScalar = bladeEpsilon[i][0];
-                                scalar epsilonMin = bladeEpsilon[i][1];
-                                scalar epsilonMax = bladeEpsilon[i][2];
-                                scalar epsilon = max(min((epsilonScalar * userDef), epsilonMax), epsilonMin);
-                                spreading = uniformGaussian(epsilon, dis);
-                            }
-                            else if (bladeForceProjectionType[i] == "chordThicknessGaussian")
-                            {
-                                scalar chord = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeChord[n]);
-                                scalar thickness = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeThickness[n]);
-                                scalar epsilonScalar = bladeEpsilon[i][0];
-                                vector epsilon = vector::zero;
-                                epsilon[0] = epsilonScalar * chord;
-                                epsilon[1] = epsilonScalar * thickness;
-                                epsilon[2] = epsilonScalar * width;
-                                vector dir0 = bladeAlignedVectors[i][j][0];
-                                vector dir1 = bladeAlignedVectors[i][j][1];
-                                vector dir2 = bladeAlignedVectors[i][j][2];
                             }
                             else
                             {
@@ -2387,22 +2347,6 @@ scalar horizontalAxisWindTurbinesALM_tn::uniformGaussian(scalar epsilon, scalar 
     scalar f = (1.0 / (Foam::pow(epsilon,3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * Foam::exp(-Foam::sqr(d/epsilon));
     return f;
 }
-
-
-scalar horizontalAxisWindTurbinesALM_tn::chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
-{
-    // Compute the 3-dimensional Gaussian that has different spreading in each direction.
-    scalar d0 = d & dir0;
-    scalar d1 = d & dir1;
-    scalar d2 = d & dir2;
-    scalar c = (1.0 / (epsilon[0]*epsilon[1]*epsilon[3]*Foam::pow(Foam::constant::mathematical::pi,1.5)));
-    scalar g = Foam::exp(-Foam::sqr(d0/epsilon[0])) + 
-               Foam::exp(-Foam::sqr(d1/epsilon[1])) +
-               Foam::exp(-Foam::sqr(d2/epsilon[2]));
-    scalar f = c*g;
-    return f;
-}
-
 
 scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
 {
