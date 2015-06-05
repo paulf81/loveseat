@@ -76,5 +76,5 @@ ar cr libfast.a \
       fastgetbldpos.o fastgetbldforce.o
 
 
-cp libfast.a ../../../applications/solvers/incompressible/windEnergy/windPlantSolverFAST/fast
+cp libfast.a ../../../applications/solvers/incompressible/windEnergy/windPlantSolverFAST/fast/
 
