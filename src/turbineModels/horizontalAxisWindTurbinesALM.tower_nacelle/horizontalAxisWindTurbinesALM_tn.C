@@ -677,20 +677,20 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             }
             else if (((includeTower[i]) && (U_.mesh().C()[cellI].z() > towerShaftIntersect[i].z())) || (includeTower[i] != true))
             {
-              //if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
-              //{
-              //    influenceCellsI.append(cellI);
-              //}
-
-                scalar x = U_.mesh().C()[cellI].x();
-                scalar y = U_.mesh().C()[cellI].y();
-                scalar z = U_.mesh().C()[cellI].z();
-                scalar r = Foam::sqrt(Foam::sqr(y) + Foam::sqr(z));
-                scalar d = mag(x - rotorApex[i].x());
-                if ( (r < sphereRadius) && (d <= 1.25) )
+                if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
                 {
                     influenceCellsI.append(cellI);
                 }
+
+              //scalar x = U_.mesh().C()[cellI].x();
+              //scalar y = U_.mesh().C()[cellI].y();
+              //scalar z = U_.mesh().C()[cellI].z();
+              //scalar r = Foam::sqrt(Foam::sqr(y) + Foam::sqr(z));
+              //scalar d = mag(x - rotorApex[i].x());
+              //if ( (r < sphereRadius) && (d <= 1.25) )
+              //{
+              //    influenceCellsI.append(cellI);
+              //}
             }
         }
         influenceCells.append(influenceCellsI);
