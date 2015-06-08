@@ -106,6 +106,8 @@ horizontalAxisWindTurbinesFAST::horizontalAxisWindTurbinesFAST
       hubz[i] = readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("hubz"));
     }
 
+
+
     yawAngle = readScalar(turbineArrayProperties.subDict(turbineName[turbNum]).lookup("yawAngle"));
     bldNum = readScalar(turbineArrayProperties.subDict(turbineName[turbNum]).lookup("numberofBld"));
     bldPts = readScalar(turbineArrayProperties.subDict(turbineName[turbNum]).lookup("numberofBldPts"));
