@@ -121,7 +121,8 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
 
 
     // Ce is stability dependent, so set it here.
-    ce_ = 0.19 + (0.51*l_/delta());
+  //ce_ = 0.19 + (0.51*l_/delta());
+    ce_ = 0.93;  // see Moeng and Wyngaard 1988.
 
 
     // Ce is also to be set to 3.9 at the lowest level.

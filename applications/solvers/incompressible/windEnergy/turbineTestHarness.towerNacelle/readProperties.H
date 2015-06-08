@@ -1,5 +1,5 @@
 // Get access to the input dictionary.
-IOdictionary setFieldsABLDict
+IOdictionary turbineTestHarnessDict
 (
    IOobject
    (
@@ -13,7 +13,7 @@ IOdictionary setFieldsABLDict
 
 
 // Change the table profiles from scalar lists to scalar fields
-List<List<scalar> > windTable(setFieldsABLDict.lookup("windTable"));
+List<List<scalar> > windTable(turbineTestHarnessDict.lookup("windTable"));
 
 scalarField tProfile(windTable.size(),0.0);
 scalarField UProfile(windTable.size(),0.0);

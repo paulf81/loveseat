@@ -120,6 +120,7 @@ private:
 
         //- Body force field applied to fluid by turbine.
         volVectorField bodyForce;
+        volScalarField g;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
@@ -841,14 +842,14 @@ private:
 
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian(scalar epsilon, scalar d);
-      //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
+        scalar generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff);
 
-        //- Rotates a point about a rotation axis and rotation point by the specified
+        //- Rotates a point/vector about a rotation axis and rotation point by the specified
         //  angle in radians.
-        vector rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle);
+        vector rotateVector(vector v, vector translation, vector axis, scalar angle);
 
         //- Transform a vector from one coordinate system to another.
         vector transformVectorCartToLocal(vector v,  vector xP, vector yP, vector zP);

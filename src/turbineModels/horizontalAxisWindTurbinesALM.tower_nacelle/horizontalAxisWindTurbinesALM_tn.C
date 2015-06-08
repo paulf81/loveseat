@@ -105,6 +105,20 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         ),
         mesh_,
         dimensionedVector("bodyForce",dimForce/dimVolume/dimDensity,vector::zero)
+    ),
+
+    g
+    (
+        IOobject
+        (
+            "g",
+            time,
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("g",dimless/dimVolume,0.0)
     )
 
 
@@ -175,7 +189,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         nacelleForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleForceProjectionType")));
         towerForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerForceProjectionType")));
 
-        //bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
+        bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
         nacelleEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleEpsilon")));
         towerEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("towerEpsilon")));
 
@@ -395,16 +409,16 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
                chord.append(BladeData[i][j][1]);
                twist.append(BladeData[i][j][2]);
                thickness.append(BladeData[i][j][3]);
-               id.append(BladeData[i][j][4]);
-               userDef.append(BladeData[i][j][5]);
+               userDef.append(BladeData[i][j][4]);
+               id.append(BladeData[i][j][5]);
            }
 
            BladeStation.append(station);
            BladeChord.append(chord);
            BladeTwist.append(twist);
            BladeThickness.append(thickness);
-           BladeAirfoilTypeID.append(id);
            BladeUserDef.append(userDef);
+           BladeAirfoilTypeID.append(id);
 
            station.clear();
            chord.clear();
@@ -663,7 +677,17 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             }
             else if (((includeTower[i]) && (U_.mesh().C()[cellI].z() > towerShaftIntersect[i].z())) || (includeTower[i] != true))
             {
-                if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
+              //if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
+              //{
+              //    influenceCellsI.append(cellI);
+              //}
+
+                scalar x = U_.mesh().C()[cellI].x();
+                scalar y = U_.mesh().C()[cellI].y();
+                scalar z = U_.mesh().C()[cellI].z();
+                scalar r = Foam::sqrt(Foam::sqr(y) + Foam::sqr(z));
+                scalar d = mag(x - rotorApex[i].x());
+                if ( (r < sphereRadius) && (d <= 1.25) )
                 {
                     influenceCellsI.append(cellI);
                 }
@@ -758,8 +782,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
             {
                 for(int m = 0; m < numBladePoints[i]; m++)
                 {
-                    bladePoints[i][k][m] = rotatePoint(bladePoints[i][k][m], rotorApex[i], uvShaft[i], (360.0/NumBl[j])*k*degRad);
-                    bladeSamplePoints[i][k][m] = rotatePoint(bladeSamplePoints[i][k][m], rotorApex[i], uvShaft[i], (360.0/NumBl[j])*k*degRad);
+                    bladePoints[i][k][m] = rotateVector(bladePoints[i][k][m], rotorApex[i], uvShaft[i], (360.0/NumBl[j])*k*degRad);
+                    bladeSamplePoints[i][k][m] = rotateVector(bladeSamplePoints[i][k][m], rotorApex[i], uvShaft[i], (360.0/NumBl[j])*k*degRad);
                 }
             }
         }
@@ -1011,8 +1035,8 @@ void horizontalAxisWindTurbinesALM_tn::rotateBlades()
         {
             forAll(bladePoints[i][j], k)
             {
-                bladePoints[i][j][k] = rotatePoint(bladePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
-                bladeSamplePoints[i][j][k] = rotatePoint(bladeSamplePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
+                bladePoints[i][j][k] = rotateVector(bladePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
+                bladeSamplePoints[i][j][k] = rotateVector(bladeSamplePoints[i][j][k], rotorApex[i], uvShaft[i], deltaAzimuthI);
             }
         }   
 
@@ -1036,7 +1060,7 @@ void horizontalAxisWindTurbinesALM_tn::yawNacelle()
     forAll(uvTower, i)
     {
         // Rotate the rotor apex first.
-        rotorApex[i] = rotatePoint(rotorApex[i], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+        rotorApex[i] = rotateVector(rotorApex[i], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
 
         // Recompute the shaft unit vector since the shaft has rotated.
         uvShaft[i] = rotorApex[i] - towerShaftIntersect[i];
@@ -1047,22 +1071,22 @@ void horizontalAxisWindTurbinesALM_tn::yawNacelle()
         {
             forAll(bladePoints[i][j], k)
             {
-                bladePoints[i][j][k] = rotatePoint(bladePoints[i][j][k], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
-                bladeSamplePoints[i][j][k] = rotatePoint(bladeSamplePoints[i][j][k], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+                bladePoints[i][j][k] = rotateVector(bladePoints[i][j][k], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+                bladeSamplePoints[i][j][k] = rotateVector(bladeSamplePoints[i][j][k], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
             }
         }   
 
         // Rotate the nacelle points and the nacelle velocity sampling points.
-        nacelleSamplePoint[i] = rotatePoint(nacelleSamplePoint[i], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+        nacelleSamplePoint[i] = rotateVector(nacelleSamplePoint[i], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
         forAll(nacellePoints[i], j)
         {
-            nacellePoints[i][j] = rotatePoint(nacellePoints[i][j], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+            nacellePoints[i][j] = rotateVector(nacellePoints[i][j], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
         }
 
         // Rotate the tower velocity sampling points.
         forAll(towerSamplePoints[i], j)
         {
-            towerSamplePoints[i][j] = rotatePoint(towerSamplePoints[i][j], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
+            towerSamplePoints[i][j] = rotateVector(towerSamplePoints[i][j], towerShaftIntersect[i], uvTower[i], deltaNacYaw[i]);
         }
 
 
@@ -1988,6 +2012,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 
 
     // Compute body force due to blades.
+    g *= 0.0;
     forAll(bladePointForce, i)
     {
         
@@ -2025,6 +2050,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                             if (bladeForceProjectionType[i] == "uniformGaussian")
                             {
                                 spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+                                g[influenceCells[i][m]] += spreading;
                             }
                             else if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
                             {
@@ -2048,14 +2074,21 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
                             {
                                 scalar chord = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeChord[n]);
                                 scalar thickness = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeThickness[n]);
-                                scalar epsilonScalar = bladeEpsilon[i][0];
+                                scalar twistAng = interpolate(bladePointRadius[i][j][k], BladeStation[n], BladeTwist[n]);
+                                scalar epsilonScalar0 = bladeEpsilon[i][0];
+                                scalar epsilonScalar1 = bladeEpsilon[i][1];
+                                scalar epsilonScalar2 = bladeEpsilon[i][2];
                                 vector epsilon = vector::zero;
-                                epsilon[0] = epsilonScalar * chord;
-                                epsilon[1] = epsilonScalar * thickness;
-                                epsilon[2] = epsilonScalar * width;
-                                vector dir0 = bladeAlignedVectors[i][j][0];
-                                vector dir1 = bladeAlignedVectors[i][j][1];
+                                epsilon[0] = epsilonScalar0 * chord;
+                                epsilon[1] = epsilonScalar1 * thickness * chord;
+                                epsilon[2] = epsilonScalar2 * bladeDs[i][k];
+                                vector dir0 = bladeAlignedVectors[i][j][1];
+                                vector dir1 = bladeAlignedVectors[i][j][0];
                                 vector dir2 = bladeAlignedVectors[i][j][2];
+                                dir0 = rotateVector(dir0, vector::zero, dir2, -(twistAng + bladePitch[i])*degRad);
+                                dir1 = rotateVector(dir1, vector::zero, dir2, -(twistAng + bladePitch[i])*degRad);
+                                spreading = generalizedGaussian(epsilon, disVector, dir0, dir1, dir2);
+                                g[influenceCells[i][m]] += spreading;
                             }
                             else
                             {
@@ -2388,17 +2421,22 @@ scalar horizontalAxisWindTurbinesALM_tn::uniformGaussian(scalar epsilon, scalar 
     return f;
 }
 
-
-scalar horizontalAxisWindTurbinesALM_tn::chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
+scalar horizontalAxisWindTurbinesALM_tn::generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
 {
     // Compute the 3-dimensional Gaussian that has different spreading in each direction.
     scalar d0 = d & dir0;
     scalar d1 = d & dir1;
     scalar d2 = d & dir2;
-    scalar c = (1.0 / (epsilon[0]*epsilon[1]*epsilon[3]*Foam::pow(Foam::constant::mathematical::pi,1.5)));
-    scalar g = Foam::exp(-Foam::sqr(d0/epsilon[0])) + 
-               Foam::exp(-Foam::sqr(d1/epsilon[1])) +
-               Foam::exp(-Foam::sqr(d2/epsilon[2]));
+  //Info << "epsilon = " << epsilon << endl;
+  //Info << "dVector = " << d << endl;
+  //Info << "dir0    = " << dir0 << endl;
+  //Info << "dir1    = " << dir1 << endl;
+  //Info << "dir2    = " << dir2 << endl;
+  //Info << "d0      = " << d0 << endl;
+  //Info << "d1      = " << d1 << endl;
+  //Info << "d2      = " << d2 << endl;
+    scalar c = (1.0 / (epsilon[0]*epsilon[1]*epsilon[2]*Foam::pow(Foam::constant::mathematical::pi,1.5)));
+    scalar g = Foam::exp( -Foam::sqr(d0/epsilon[0]) -Foam::sqr(d1/epsilon[1]) -Foam::sqr(d2/epsilon[2]) );
     scalar f = c*g;
     return f;
 }
@@ -2462,7 +2500,7 @@ scalar horizontalAxisWindTurbinesALM_tn::oneDGaussian(scalar x, scalar x0, scala
 
 
 
-vector horizontalAxisWindTurbinesALM_tn::rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle)
+vector horizontalAxisWindTurbinesALM_tn::rotateVector(vector v, vector translation, vector axis, scalar angle)
 {
     // Declare and define the rotation matrix.
     tensor RM;
@@ -2478,17 +2516,16 @@ vector horizontalAxisWindTurbinesALM_tn::rotatePoint(vector point, vector rotati
 
     // Rotation matrices make a rotation about the origin, so need to subtract rotation point
     // off the point to be rotated.
-    point = point - rotationPoint;
+    v = v - translation;
 
     // Perform the rotation.
-    point = RM & point;
+    v = RM & v;
 
     // Return the rotated point to its new location relative to the rotation point.
-    point = point + rotationPoint;
+    v = v + translation;
 
-    return point;
+    return v;
 }
-
 
 
 
