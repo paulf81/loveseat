@@ -144,7 +144,6 @@ int main(int argc, char *argv[])
                 p_rgh.storePrevIter();
             }
 
-            // compute body force from FAST
             for(int turbNo=0; turbNo<turbfast.turbNum; turbNo++)
             {
 
@@ -156,6 +155,7 @@ int main(int argc, char *argv[])
                 fastgetbldpos_(turbfast.bldptx[turbNo], turbfast.bldpty[turbNo], turbfast.bldptz[turbNo]);
                 fastgetbldforce_(turbfast.bldfx[turbNo], turbfast.bldfy[turbNo], turbfast.bldfz[turbNo]);
               }
+
               turbfast.computeBodyForce(turbNo);
             }
 
