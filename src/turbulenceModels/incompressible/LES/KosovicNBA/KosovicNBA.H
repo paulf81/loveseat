@@ -22,28 +22,50 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::incompressible::LESModels::NonLinEddyViscABLABL
+    Foam::incompressible::LESModels::KosovicNBA
 
 Description
-    General base class for all incompressible models that can be implemented
-    as a non linear eddy viscosity, i.e. algebraic and one-equation models. Modified 
-    from original version to better handle the atmospheric SGS models.
+    One Equation Eddy Viscosity Model for incompressible atmospheric flows. 
+    It is based on the original oneEqEddy OpenFOAM model, but has some small
+    modifications, such as buoyancy production, specific to atmospheric flow.
 
-    Contains fields for k (SGS turbulent kinetic energy), gamma
-    (modelled viscosity) and epsilon (SGS dissipation).
+    Eddy viscosity SGS model using a modeled balance equation to simulate the
+    behaviour of k, hence,
+    \verbatim
+        d/dt(k) 
+      + div(U*k)
+        =
+      - dev(R)*(grad(U)
+      + (1/theta_0)*g&q
+      + div(2*nuSgs*grad(k))
+      - eps
+
+    and
+
+        R = 2/3*k*I - 2*nuSgs*dev(D)
+        Reff = 2/3*k*I - 2*nuEff*dev(D)
+        eps = ce*k^(3/2)/l
+
+    where
+
+        D = symm(grad(U));
+        nuSgs = ck*sqrt(k)*delta
+        nuEff = nuSgs + nu
+        theta_0 = reference potential temperature
+        g = gravity
+        q = -2*(nuSgs/Pr_t)*grad(T)
+        l = length scale
+    \endverbatim
 
 SourceFiles
-    NonLinEddyViscABL.C
+    KosovicNBA.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef NonLinEddyViscABL_H
-#define NonLinEddyViscABL_H
+#ifndef KosovicNBA_H
+#define KosovicNBA_H
 
-#include "LESModel.H"
-#include "GenEddyViscABL.H"
-#include "uniformDimensionedFields.H"
-#include "IOdictionary.H"
+#include "NonLinEddyViscABL.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -55,37 +77,39 @@ namespace LESModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class NonLinEddyViscABL Declaration
+                           Class KosovicNBA Declaration
 \*---------------------------------------------------------------------------*/
 
-class NonLinEddyViscABL
+class KosovicNBA
 :
-    virtual public LESModel
-    virtual public GenEddyViscABL
+    public NonLinEddyViscABL
 {
+    // Private data
+
+        volScalarField k_;
+
+        dimensionedScalar ck_;
+
+
     // Private Member Functions
 
+        //- Update sub-grid scale fields
+        void updateSubGridScaleFields();
+
         // Disallow default bitwise copy construct and assignment
-        NonLinEddyViscABL(const NonLinEddyViscABL&);
-        NonLinEddyViscABL& operator=(const NonLinEddyViscABL&);
-
-
-protected:
-
-    // Fields
-
-        volSymmTensorField nonlinearStress_;
+        KosovicNBA(const KosovicNBA&);
+        KosovicNBA& operator=(const KosovicNBA&);
 
 
 public:
 
-    //- Partial Runtime type information
-    static const word typeName;
+    //- Runtime type information
+    TypeName("KosovicNBA");
 
     // Constructors
 
         //- Construct from components
-        NonLinEddyViscABL
+        KosovicNBA
         (
             const volVectorField& U,
             const surfaceScalarField& phi,
@@ -96,25 +120,32 @@ public:
 
 
     //- Destructor
-    virtual ~NonLinEddyViscABL()
+    virtual ~KosovicNBA()
     {}
 
 
     // Member Functions
 
-        //- Return the sub-grid stress tensor.
-        virtual tmp<volSymmTensorField> B() const;
+        //- Return SGS kinetic energy
+        virtual tmp<volScalarField> k() const
+        {
+            return k_;
+        }
 
-        //- Return the effective sub-grid turbulence stress tensor
-        //  including the laminar stress
-        virtual tmp<volSymmTensorField> devBeff() const;
+        //- Return the effective diffusivity for k
+        tmp<volScalarField> DkEff() const
+        {
+            return tmp<volScalarField>
+            (
+                new volScalarField("DkEff", nuSgs_ + nu())
+            );
+        }
 
-        //- Return the deviatoric part of the effective sub-grid
-        //  turbulence stress tensor including the laminar stress
-        virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
+        //- Correct Eddy-Viscosity and related properties
+        virtual void correct(const tmp<volTensorField>& gradU);
 
-        //- Correct the nonlinear terms
-        virtual void correctNonlinearStress(const volTensorField& gradU) = 0;
+        //- Read LESProperties dictionary
+        virtual bool read();
 };
 
 

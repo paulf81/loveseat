@@ -50,78 +50,25 @@ NonLinEddyViscABL::NonLinEddyViscABL
     const word& modelName
 )
 :
-    LESModel(modelName, U, phi, transport, turbulenceModelName),
+
+    GenEddyViscModel(U, phi, transport, turbulenceModelName, modelName),
     
-    
-    ce_
+    nonlinearStress_
     (
         IOobject
         (
-            "ce",
+            "nonlinearStress",
             runTime_.timeName(),
-            mesh_,
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            mesh_
         ),
         mesh_,
-        dimensionedScalar("ce",dimensionSet(0,0,0,0,0,0,0),0.7)
-    ),
-
-    nuSgs_
-    (
-        IOobject
+        dimensionedSymmTensor
         (
-            "nuSgs",
-            runTime_.timeName(),
-            mesh_,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh_
-    ),
-
-    l_
-    (
-        IOobject
-        (
-            "l",
-            runTime_.timeName(),
-            mesh_,
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        delta()
-    ),
-
-    TName_
-    (
-        coeffDict_.lookupOrDefault<word>("TName","T")
-    ),
-
-    kappatName_
-    (
-        coeffDict_.lookupOrDefault<word>("kappatName","kappat")
-    ),
-
-    T_(U.db().lookupObject<volScalarField>(TName_)),
-
-    g_(U.db().lookupObject<uniformDimensionedVectorField>("g")),
-
-    transportDict_
-    (
-        IOobject
-        (
-            "transportProperties",
-            U.time().constant(),
-            U.db(),
-            IOobject::MUST_READ_IF_MODIFIED,
-            IOobject::NO_WRITE
+            "nonlinearStress",
+            sqr(dimVelocity),
+            symmTensor::zero
         )
-    ),
-
-    TRef_(transportDict_.lookup("TRef")) 
-
-
+    )
 
 {
 //    printCoeffs();
@@ -132,13 +79,25 @@ NonLinEddyViscABL::NonLinEddyViscABL
 
 tmp<volSymmTensorField> NonLinEddyViscABL::B() const
 {
-    return ((2.0/3.0)*I)*k() - nuSgs_*twoSymm(fvc::grad(U()));
+   tmp<volSymmTensorField> tB
+   (
+      GenEddyViscModel::B()
+   );
+   tB() += nonlinearStress_;
+   return tB;
 }
 
 
 tmp<volSymmTensorField> NonLinEddyViscABL::devBeff() const
 {
     return -nuEff()*dev(twoSymm(fvc::grad(U())));
+
+    tmp<volSymmTensorField> tdevBeff
+    (
+        GenEddyViscModel::devBeff()
+    );
+    tdevBeff() += nonlinearStress_;
+    return tdevBeff;
 }
 
 
@@ -155,48 +114,13 @@ tmp<fvVectorMatrix> NonLinEddyViscABL::divDevBeff(volVectorField& U) const
     volTensorField SOmega = S & Omega;
     volTensorField OmegaS = Omega & S;
 
-
     return
     (
-      - fvm::laplacian(nuEff(), U) - fvc::div(nuEff()*dev(T(fvc::grad(U))))
+        GenEddyViscModel::divDevBeff(U)
+      + fvc::div(nonlinearStress_)
     );
-}
-
-void NonLinEddyViscABL::computeLengthScale()
-{
-    volVectorField gradT = fvc::grad(T_);
-    const volScalarField& k_ = k();
-    forAll(gradT,i)
-    {
-        // neutral/unstable
-        if ((gradT[i] & g_).value() >= 0.0)
-        {
-            l_[i] = delta()[i];
-        }
-        // stable
-        else
-        {
-            l_[i] = min(delta()[i], 0.76*sqrt(k_[i])*sqrt(TRef_.value()/mag(g_.value() & gradT[i])));
-        }
-    }
-}
-
-void NonLinEddyViscABL::correct(const tmp<volTensorField>& gradU)
-{
-    LESModel::correct(gradU);
-}
 
 
-bool NonLinEddyViscABL::read()
-{
-    if (LESModel::read())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 
