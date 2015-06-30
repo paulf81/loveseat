@@ -4,5 +4,6 @@ dynLagrangianCsBound/dynLagrangianCsBound.C
 GenEddyViscABL/GenEddyViscABL.C
 /*NonLinEddyViscABL/NonLinEddyViscABL.C*/
 oneEqEddyABL/oneEqEddyABL.C
+SmagorinskyABL/SmagorinskyABL.C
 
 LIB = $(FOAM_USER_LIBBIN)/libuserincompressibleLESModels

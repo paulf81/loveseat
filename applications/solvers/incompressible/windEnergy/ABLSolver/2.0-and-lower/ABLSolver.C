@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
             // --- Pressure corrector loop
             for (int corr=0; corr<pimple.nCorr(); corr++)
             {
-                Info << "   Corrector Step " << corr << "..." << endl;
+                Info << "   Corrector Step " << corr + 1 << "..." << endl;
                 #include "pEqn.H"
                 #include "turbulenceCorrect.H"
                 #include "TEqn.H"

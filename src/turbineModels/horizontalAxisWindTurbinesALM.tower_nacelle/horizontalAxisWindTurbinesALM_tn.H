@@ -842,12 +842,9 @@ private:
 
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian(scalar epsilon, scalar d);
-<<<<<<< HEAD
         scalar generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
-=======
       //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
         scalar chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
->>>>>>> cb3ac044ba8bf327236f87feb6c3fa894ba62809
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff);

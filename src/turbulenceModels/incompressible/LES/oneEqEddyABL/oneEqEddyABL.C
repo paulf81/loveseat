@@ -84,6 +84,7 @@ oneEqEddyABL::oneEqEddyABL
         mesh_
     ),
 
+    // Read the Ck input parameter.
     ck_
     (
         dimensioned<scalar>::lookupOrAddToDict
@@ -92,6 +93,21 @@ oneEqEddyABL::oneEqEddyABL
             coeffDict_,
             0.1
         )
+    ),
+
+    // Create the Ce input parameter field.
+    ceField_
+    (
+        IOobject
+        (
+            "ceField",
+            runTime_.timeName(),
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+       ),
+        mesh_,
+        dimensionedScalar("ceField",dimensionSet(0,0,0,0,0,0,0),0.93)
     )
 
 {
@@ -120,9 +136,12 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
     volScalarField Prt = 1.0/(1.0 + (2.0*l_/delta()));
 
 
-    // Ce is stability dependent, so set it here.
-  //ce_ = 0.19 + (0.51*l_/delta());
-    ce_ = 0.93;  // see Moeng and Wyngaard 1988.
+    // Ce is stability dependent, so set it here.  In Moeng's 1984 paper, she says
+    // ce = 0.19 + (0.51*l_/delta()), but later in Moeng and Wyngaard's 1988 paper,
+    // they say that ce = 0.93 is in better agreement with theory and yields better
+    // results.  Here we keep the original variable ce, but allow the user to specify
+    // the base value, i.e, the value when l = delta.
+    ceField_ = ce_ * (0.2714 + (0.7286*l_/delta()));
 
 
     // Ce is also to be set to 3.9 at the lowest level.
@@ -134,7 +153,7 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
             forAll(patches[patchi], faceI)
             {
                 label cellI = patches[patchi].faceCells()[faceI];
-                ce_[cellI] = 3.9;
+                ceField_[cellI] = 3.9;
             }
         }
     }
@@ -154,7 +173,7 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
     ==
        P_shear
      + P_buoyant
-     - fvm::Sp(ce_*sqrt(k_)/l_, k_)
+     - fvm::Sp(ceField_*sqrt(k_)/l_, k_)
     );
 
 

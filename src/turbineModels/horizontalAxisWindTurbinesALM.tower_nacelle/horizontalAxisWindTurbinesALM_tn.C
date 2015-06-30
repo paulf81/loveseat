@@ -519,7 +519,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
     }
    
 
-  
 
     // For each distinct airfoil, read in the bladePointLift and drag versus angle
     // of attack data.
@@ -728,7 +727,6 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         // direction of the wind.
         uvShaft.append(rotorApex[i] - towerShaftIntersect[i]);
         uvShaft[i] = (uvShaft[i]/mag(uvShaft[i])) * uvShaftDir[i];
-
         // Define the vector aligned with the tower pointing from
         // the ground to the nacelle.
         uvTower.append(towerShaftIntersect[i] - baseLocation[i]);
@@ -789,9 +787,8 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         }
 
 
-
         // Compute the location of the tower section center points for each
-    // turbine tower in the array.
+        // turbine tower in the array.
 
         // Calculate the width of each tower actuator section.
         towerDs.append(DynamicList<scalar>(0));
