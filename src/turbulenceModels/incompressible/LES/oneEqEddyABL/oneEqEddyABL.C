@@ -139,9 +139,10 @@ void oneEqEddyABL::correct(const tmp<volTensorField>& gradU)
     // Ce is stability dependent, so set it here.  In Moeng's 1984 paper, she says
     // ce = 0.19 + (0.51*l_/delta()), but later in Moeng and Wyngaard's 1988 paper,
     // they say that ce = 0.93 is in better agreement with theory and yields better
-    // results.  Here we keep the original variable ce, but allow the user to specify
+    // results.  Therefore, this should be revised to ce = 0.19 + (0.74*l_/delta()).
+    // Here we keep the original variable ce, but allow the user to specify
     // the base value, i.e, the value when l = delta.
-    ceField_ = ce_ * (0.2714 + (0.7286*l_/delta()));
+    ceField_ = (ce_/0.93) * (0.19 + (0.74*l_/delta()));
 
 
     // Ce is also to be set to 3.9 at the lowest level.
