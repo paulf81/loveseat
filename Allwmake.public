@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Building with OpenFOAM-"$OPENFOAM_VERSION
+echo "Building with OpenFOAM-"$WM_PROJECT_VERSION
 
 version=${WM_PROJECT_VERSION:0:1}
 variant=${WM_PROJECT_VERSION:2:1}
@@ -29,7 +29,7 @@ elif [ $version -eq 2 ] && [ $variant -ge 3 ]
 then
    dir=$dir23
    dirrm1=$dir20
-   dirrm2=$dir23
+   dirrm2=$dir21
 fi
 
 
@@ -99,5 +99,18 @@ wmake
 cd ../../../../../
 
 cd applications/solvers/incompressible/windEnergy/turbineTestHarness
+wmake
+cd ../../../../../
+
+cd src/openfast/bin
+make
+./libmake
+cd ../../../
+
+cd src/fastturb
+wmake libso
+cd ../../
+
+cd applications/solvers/incompressible/windEnergy/windPlantSolverFAST
 wmake
 cd ../../../../../
