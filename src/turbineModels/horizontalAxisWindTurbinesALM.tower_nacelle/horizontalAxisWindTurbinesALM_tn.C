@@ -645,7 +645,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
         }
        
 
-        bladeProjectionRadius.append(bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
+        bladeProjectionRadius.append(2.0 * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
         nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j] + NacelleLength[j]);
         towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
 
