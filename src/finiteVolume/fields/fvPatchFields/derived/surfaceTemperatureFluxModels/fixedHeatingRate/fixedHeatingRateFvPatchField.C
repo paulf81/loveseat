@@ -644,9 +644,11 @@ void  fixedHeatingRateFvPatchField::qwEvaluate
           //        "uStar0 = " << uStar0 << endl;
 
 
-
             qw = qw0;
-            if (abs(qw) < 1E-6)
+
+            Info << "qw " << qw << endl;
+            Info << "mag(qw) " << mag(qw) << endl;
+            if (mag(qw) < 1E-6)
             {
                 qw = sign(qw)*1E-6;
             }
