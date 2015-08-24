@@ -40,6 +40,8 @@ SourceFiles
 #define KosovicOneEqNBA_H
 
 #include "LESModel.H"
+#include "uniformDimensionedFields.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -65,12 +67,12 @@ protected:
 
         // Model coefficients
 
-            dimensionedScalar Cb_;
-            dimensionedScalar Cs_;
-            dimensionedScalar Ce_;
+            dimensionedScalar cb_;
+            dimensionedScalar cs_;
+            dimensionedScalar ce_;
             dimensionedScalar Ske_;
-            dimensionedScalar C1_;
-            dimensionedScalar C2_;
+            dimensionedScalar c1_;
+            dimensionedScalar c2_;
 
 
         // Fields
@@ -115,6 +117,18 @@ public:
 
 
     // Member Functions
+    
+        //- Return SGS kinetic energy
+        virtual tmp<volScalarField> k() const
+        {
+            return k_;
+        }
+
+        //- Return sub-grid disipation rate
+        virtual tmp<volScalarField> epsilon() const
+        {
+            return ce_*k()*sqrt(k())/delta();
+        }
 
         //- Return the SGS viscosity
         virtual tmp<volScalarField> nuSgs() const
@@ -122,8 +136,25 @@ public:
             return nuSgs_;
         }
 
+        //- Return the sub-grid stress tensor.
+        virtual tmp<volSymmTensorField> B() const;
 
+        //- Return the effective sub-grid turbulence stress tensor
+        //  including the laminar stress
+        virtual tmp<volSymmTensorField> devBeff() const;
 
+        //- Return the deviatoric part of the effective sub-grid
+        //  turbulence stress tensor including the laminar stress
+        virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
+
+        //- Correct the stability-dependent length scale
+        virtual void computeLengthScale();
+
+        //- Correct Eddy-Viscosity and related properties
+        virtual void correct(const tmp<volTensorField>& gradU);
+
+        //- Read LESProperties dictionary
+        virtual bool read();
 };
 
 

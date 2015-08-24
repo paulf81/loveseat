@@ -54,13 +54,58 @@ KosovicOneEqNBA::KosovicOneEqNBA
 :
     LESModel(modelName, U, phi, transport, turbulenceModelName),
 
-    Cb_
+    cb_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "Cb",
+            "cb",
             coeffDict_,
             1.44
+        )
+    ),
+
+    cs_
+    (
+        dimensioned<scalar>
+        (
+           "cs",
+           Foam::sqrt((8.0*(1.0 + cb_))/(27.0*Foam::constant::mathematical::pi))
+        )
+    ),
+
+    ce_
+    (
+        dimensioned<scalar>
+        (
+            "ce",
+            Foam::pow(8.0*Foam::constant::mathematical::pi/27.0,(1.0/3.0))*Foam::pow(cs_,(4.0/3.0))
+        )
+    ),
+
+    Ske_
+    (
+        dimensioned<scalar>
+        (
+            "Ske",
+            0.5
+        )
+    ),
+
+    c1_
+    (
+        dimensioned<scalar>
+        (
+            "c1",
+            (Foam::sqrt(960.0)*cb_)/(7.0*(1.0+cb_)*Ske_)
+        )
+    ),
+
+    c2_
+    (
+        dimensioned<scalar>
+        (
+            "c2",
+            -c1_
         )
     ),
 
@@ -93,19 +138,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
     nonlinearStress_
     (
         "nonlinearStress",
-        symm
-        (
-            pow3(k_)/sqr(epsilon_)
-           *(
-                Ctau1_/fEta_
-               *(
-                    (gradU_ & gradU_)
-                  + (gradU_ & gradU_)().T()
-                )
-              + Ctau2_/fEta_*(gradU_ & gradU_.T())
-              + Ctau3_/fEta_*(gradU_.T() & gradU_)
-            )
-        )
+        symm(delta()*delta()*(fvc::grad(U) & fvc::grad(U)))
     ),
 
     l_
@@ -149,14 +182,6 @@ KosovicOneEqNBA::KosovicOneEqNBA
 
     TRef_(transportDict_.lookup("TRef"))
 
-
-
-
-
-
-
-
-
 {
     bound(k_, kMin_);
 
@@ -166,48 +191,19 @@ KosovicOneEqNBA::KosovicOneEqNBA
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-tmp<volSymmTensorField> KosovicOneEqNBA::R() const
+tmp<volSymmTensorField> KosovicOneEqNBA::B() const
 {
-    return tmp<volSymmTensorField>
-    (
-        new volSymmTensorField
-        (
-            IOobject
-            (
-                "R",
-                runTime_.timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            ((2.0/3.0)*I)*k_ - nut_*twoSymm(fvc::grad(U_)) + nonlinearStress_,
-            k_.boundaryField().types()
-        )
-    );
+    return ((2.0/3.0)*I)*k_ - nuSgs_*twoSymm(fvc::grad(U_)) + nonlinearStress_;
 }
 
 
-tmp<volSymmTensorField> KosovicOneEqNBA::devReff() const
+tmp<volSymmTensorField> KosovicOneEqNBA::devBeff() const
 {
-    return tmp<volSymmTensorField>
-    (
-        new volSymmTensorField
-        (
-            IOobject
-            (
-                "devRhoReff",
-                runTime_.timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-           -nuEff()*dev(twoSymm(fvc::grad(U_))) + nonlinearStress_
-        )
-    );
+    return -nuEff()*dev(twoSymm(fvc::grad(U()))) + nonlinearStress_;
 }
 
 
-tmp<fvVectorMatrix> KosovicOneEqNBA::divDevReff(volVectorField& U) const
+tmp<fvVectorMatrix> KosovicOneEqNBA::divDevBeff(volVectorField& U) const
 {
     return
     (
@@ -217,25 +213,31 @@ tmp<fvVectorMatrix> KosovicOneEqNBA::divDevReff(volVectorField& U) const
     );
 }
 
+void KosovicOneEqNBA::computeLengthScale()
+{
+    volScalarField gradTdotg = fvc::grad(T_) & g_;
+    forAll(gradTdotg,i)
+    {
+        // neutral/unstable
+        if (gradTdotg[i] >= 0.0)
+        {
+            l_[i] = delta()[i];
+        }
+        // stable
+        else
+        {
+            l_[i] = min(delta()[i], 0.76*sqrt(k_[i])*sqrt(TRef_.value()/mag(gradTdotg[i])));
+        }
+    }
+    gradTdotg.clear();
+}
+
 
 bool KosovicOneEqNBA::read()
 {
-    if (RASModel::read())
+    if (LESModel::read())
     {
-        C1_.readIfPresent(coeffDict());
-        C2_.readIfPresent(coeffDict());
-        sigmak_.readIfPresent(coeffDict());
-        sigmaEps_.readIfPresent(coeffDict());
-        A1_.readIfPresent(coeffDict());
-        A2_.readIfPresent(coeffDict());
-        Ctau1_.readIfPresent(coeffDict());
-        Ctau2_.readIfPresent(coeffDict());
-        Ctau3_.readIfPresent(coeffDict());
-        alphaKsi_.readIfPresent(coeffDict());
-
-        kappa_.readIfPresent(coeffDict());
-        E_.readIfPresent(coeffDict());
-
+        cb_.readIfPresent(coeffDict());
         return true;
     }
     else
@@ -245,89 +247,9 @@ bool KosovicOneEqNBA::read()
 }
 
 
-void KosovicOneEqNBA::correct()
+void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 {
     LESModel::correct();
-
-    if (!turbulence_)
-    {
-        return;
-    }
-
-    gradU_ = fvc::grad(U_);
-
-    // generation term
-    tmp<volScalarField> S2 = symm(gradU_) && gradU_;
-
-    volScalarField G
-    (
-        "RASModel::G",
-        Cmu_*sqr(k_)/epsilon_*S2
-      - (nonlinearStress_ && gradU_)
-    );
-
-    #include "nonLinearWallFunctionsI.H"
-
-    // Dissipation equation
-    tmp<fvScalarMatrix> epsEqn
-    (
-        fvm::ddt(epsilon_)
-      + fvm::div(phi_, epsilon_)
-      - fvm::laplacian(DepsilonEff(), epsilon_)
-      ==
-        C1_*G*epsilon_/k_
-      - fvm::Sp(C2_*epsilon_/k_, epsilon_)
-    );
-
-    epsEqn().relax();
-
-    #include "wallDissipationI.H"
-
-    solve(epsEqn);
-    bound(epsilon_, epsilonMin_);
-
-
-    // Turbulent kinetic energy equation
-
-    tmp<fvScalarMatrix> kEqn
-    (
-        fvm::ddt(k_)
-      + fvm::div(phi_, k_)
-      - fvm::laplacian(DkEff(), k_)
-      ==
-        G
-      - fvm::Sp(epsilon_/k_, k_)
-    );
-
-    kEqn().relax();
-    solve(kEqn);
-    bound(k_, kMin_);
-
-
-    // Re-calculate viscosity
-
-    eta_ = k_/epsilon_*sqrt(2.0*magSqr(0.5*(gradU_ + gradU_.T())));
-    ksi_ = k_/epsilon_*sqrt(2.0*magSqr(0.5*(gradU_ - gradU_.T())));
-    Cmu_ = 2.0/(3.0*(A1_ + eta_ + alphaKsi_*ksi_));
-    fEta_ = A2_ + pow(eta_, 3.0);
-
-    nut_ = Cmu_*sqr(k_)/epsilon_;
-
-    #include "wallNonlinearViscosityI.H"
-
-    nonlinearStress_ = symm
-    (
-        pow(k_, 3.0)/sqr(epsilon_)
-       *(
-            Ctau1_/fEta_
-           *(
-                (gradU_ & gradU_)
-              + (gradU_ & gradU_)().T()
-            )
-          + Ctau2_/fEta_*(gradU_ & gradU_.T())
-          + Ctau3_/fEta_*(gradU_.T() & gradU_)
-        )
-    );
 }
 
 
