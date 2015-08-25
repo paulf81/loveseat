@@ -141,11 +141,37 @@ KosovicOneEqNBA::KosovicOneEqNBA
         symm(delta()*delta()*(fvc::grad(U) & fvc::grad(U)))
     ),
 
-    l_
+    leps_
     (
         IOobject
         (
-            "l",
+            "leps",
+            runTime_.timeName(),
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        delta()
+    ),
+
+    ln_
+    (
+        IOobject
+        (
+            "ln",
+            runTime_.timeName(),
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        delta()
+    ),
+
+    ls_
+    (
+        IOobject
+        (
+            "ls",
             runTime_.timeName(),
             mesh_,
             IOobject::READ_IF_PRESENT,
@@ -213,23 +239,23 @@ tmp<fvVectorMatrix> KosovicOneEqNBA::divDevBeff(volVectorField& U) const
     );
 }
 
-void KosovicOneEqNBA::computeLengthScale()
+void KosovicOneEqNBA::computeLengthScales()
 {
     volScalarField gradTdotg = fvc::grad(T_) & g_;
+    volVectorField gradUdotg = fvc::grad(U_) & g_;
     forAll(gradTdotg,i)
     {
-        // neutral/unstable
-        if (gradTdotg[i] >= 0.0)
-        {
-            l_[i] = delta()[i];
-        }
-        // stable
-        else
-        {
-            l_[i] = min(delta()[i], 0.76*sqrt(k_[i])*sqrt(TRef_.value()/mag(gradTdotg[i])));
-        }
+        // Compute buoyancy length scale.
+        ln_[i] = 0.76*sqrt(k_[i])*sqrt(TRef_.value()/max(1.0E-6,mag(gradTdotg[i])));
+
+        // Compute the shear length scale.
+        ls_[i] = 2.76*sqrt(k_[i])/max(1.0E-6,sqrt(Foam::sqr(gradUdotg[i].x()) + Foam::sqr(gradUdotg[i].y())));
+
+        // Compute the dissipation length scale.
+        leps_[i] = 1.0/Foam::sqrt((1.0/(Foam::sqr(delta()[i])))+(1.0/(Foam::sqr(ln_[i])))+(1.0/(Foam::sqr(ls_[i]))));
     }
     gradTdotg.clear();
+    gradUdotg.clear();
 }
 
 
@@ -249,7 +275,65 @@ bool KosovicOneEqNBA::read()
 
 void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 {
-    LESModel::correct();
+    // Update the molecular viscosity, and the grid-dependent length scale.
+    LESModel::correct(gradU);
+
+
+    // Update the stability-dependent length scale.
+    KosovicOneEqNBA::computeLengthScales();
+
+
+    // Use the stability-dependent and grid-dependent length scales to form the
+    // turbulent Prandtl number.
+    volScalarField Prt = 1.0/(1.0 + (2.0*leps_/delta()));
+
+
+    // Form the SGS-energy production terms, using old values of velocity and temperature.
+    tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
+    tmp<volScalarField> P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+
+
+    // Build the SGS-energy equation matrix system.
+    tmp<fvScalarMatrix> kEqn
+    (
+       fvm::ddt(k_)
+     + fvm::div(phi(), k_)
+     - fvm::laplacian(2.0*DkEff(), k_)
+    ==
+       P_shear
+     + P_buoyant
+     - fvm::Sp(ce_*sqrt(k_)/leps_, k_)
+    );
+
+
+    // Solve the SGS-energy equation system.
+    kEqn().relax();
+    kEqn().solve();
+
+
+    // Bound the SGS-energy to have a minimum value set by kMin_.
+    bound(k_, kMin_);
+
+
+    // Computes eddy viscosity.
+    nuSgs_ = ce_*delta()*sqrt(k_);
+
+
+    // Update the SGS thermal conductivity.
+    volScalarField& kappat_ = const_cast<volScalarField&>(U().db().lookupObject<volScalarField>(kappatName_));
+    kappat_ = nuSgs_/Prt;
+//  kappat_.correctBoundaryConditions();   
+
+
+    // Compute the nonlinear term.
+    volSymmTensorField S = symm(gradU);
+    volTensorField O = skew(gradU);
+    nonlinearStress_ = -ce_ * delta() * delta() * Foam::pow(cs_,(2.0/3.0)) * Foam::pow((27.0/(8.0*Foam::constant::mathematical::pi)),(1.0/3.0)) *
+    (
+         c1_ * ((S & S) - ((1.0/3.0) * I * (S && S)))
+       + c2_ * (twoSymm(S & O))
+    );
+
 }
 
 

@@ -80,7 +80,9 @@ protected:
             volScalarField k_;
             volScalarField nuSgs_;
             volSymmTensorField nonlinearStress_;
-            volScalarField l_;
+            volScalarField leps_;
+            volScalarField ln_;
+            volScalarField ls_;
 
       
         // Other model parameters or needed information.
@@ -127,13 +129,22 @@ public:
         //- Return sub-grid disipation rate
         virtual tmp<volScalarField> epsilon() const
         {
-            return ce_*k()*sqrt(k())/delta();
+            return ce_*k()*sqrt(k())/leps_;
         }
 
         //- Return the SGS viscosity
         virtual tmp<volScalarField> nuSgs() const
         {
             return nuSgs_;
+        }
+
+        //- Return the effective diffusivity for k
+        tmp<volScalarField> DkEff() const
+        {
+            return tmp<volScalarField>
+            (
+                new volScalarField("DkEff", nuSgs_ + nu())
+            );
         }
 
         //- Return the sub-grid stress tensor.
@@ -147,8 +158,8 @@ public:
         //  turbulence stress tensor including the laminar stress
         virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
 
-        //- Correct the stability-dependent length scale
-        virtual void computeLengthScale();
+        //- Correct the stability-dependent length scales
+        virtual void computeLengthScales();
 
         //- Correct Eddy-Viscosity and related properties
         virtual void correct(const tmp<volTensorField>& gradU);
