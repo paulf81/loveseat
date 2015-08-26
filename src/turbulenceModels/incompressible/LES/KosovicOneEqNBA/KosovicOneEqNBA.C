@@ -60,7 +60,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         (
             "cb",
             coeffDict_,
-            1.44
+            0.36
         )
     ),
 
@@ -69,7 +69,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         dimensioned<scalar>
         (
            "cs",
-           Foam::sqrt((8.0*(1.0 + cb_))/(27.0*Foam::constant::mathematical::pi))
+           Foam::sqrt((8.0*(1.0 + cb_))/(27.0*Foam::sqr(Foam::constant::mathematical::pi)))
         )
     ),
 
@@ -242,20 +242,23 @@ tmp<fvVectorMatrix> KosovicOneEqNBA::divDevBeff(volVectorField& U) const
 void KosovicOneEqNBA::computeLengthScales()
 {
     volScalarField gradTdotg = fvc::grad(T_) & g_;
-    volVectorField gradUdotg = fvc::grad(U_) & g_;
+    volVectorField gradUdotz = T(fvc::grad(U())) & (g_/mag(g_));
+   
+    Info << "gradUdotz = " << gradUdotz[3775] << endl;
+    Info << "gradTdotg = " << gradTdotg[3775] << endl;
     forAll(gradTdotg,i)
     {
         // Compute buoyancy length scale.
         ln_[i] = 0.76*sqrt(k_[i])*sqrt(TRef_.value()/max(1.0E-6,mag(gradTdotg[i])));
 
         // Compute the shear length scale.
-        ls_[i] = 2.76*sqrt(k_[i])/max(1.0E-6,sqrt(Foam::sqr(gradUdotg[i].x()) + Foam::sqr(gradUdotg[i].y())));
+        ls_[i] = 2.76*sqrt(k_[i])/max(1.0E-6,sqrt(Foam::sqr(gradUdotz[i].x()) + Foam::sqr(gradUdotz[i].y())));
 
         // Compute the dissipation length scale.
         leps_[i] = 1.0/Foam::sqrt((1.0/(Foam::sqr(delta()[i])))+(1.0/(Foam::sqr(ln_[i])))+(1.0/(Foam::sqr(ls_[i]))));
     }
     gradTdotg.clear();
-    gradUdotg.clear();
+    gradUdotz.clear();
 }
 
 
@@ -286,11 +289,20 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     // Use the stability-dependent and grid-dependent length scales to form the
     // turbulent Prandtl number.
     volScalarField Prt = 1.0/(1.0 + (2.0*leps_/delta()));
+    Info << "Prt = " << Prt[3775] << endl;
 
 
     // Form the SGS-energy production terms, using old values of velocity and temperature.
-    tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
-    tmp<volScalarField> P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+    volSymmTensorField devB = KosovicOneEqNBA::devBeff();
+    volSymmTensorField B = KosovicOneEqNBA::B();
+  //tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
+    volScalarField P_shear = -(devB && T(gradU));
+    volScalarField P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+    Info << "devB = " << devB[3775] << endl;
+    Info << "B = " << B[3775] << endl;
+    Info << "nuSgs = " << nuSgs_[3775] << endl;
+    Info << "P_shear = " << P_shear[3775] << endl;
+    Info << "P_buoyant = " << P_buoyant[3775] << endl;
 
 
     // Build the SGS-energy equation matrix system.
@@ -326,13 +338,36 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 
 
     // Compute the nonlinear term.
-    volSymmTensorField S = symm(gradU);
-    volTensorField O = skew(gradU);
+    volSymmTensorField S = symm(fvc::grad(U()));
+    volTensorField O = T(skew(fvc::grad(U())));
+    volSymmTensorField SS = (S & S) - ((1.0/3.0) * I * (S && S));
+    volTensorField SO = (S & O);
+    volTensorField OS = (O & S);
+    volTensorField SOmOS1 = SO - OS;
+    volSymmTensorField SOmOS2 = twoSymm(S & O);
+    Info << "S = " << S[3775] << endl;
+    Info << "O = " << O[3775] << endl;
+    Info << "SS = " << SS[3775] << endl;
+    Info << "SO = " << SO[3775] << endl;
+    Info << "OS = " << OS[3775] << endl;
+    Info << "SOmOS1 = " << SOmOS1[3775] << endl;
+    Info << "SOmOS2 = " << SOmOS2[3775] << endl;
+    Info << "leps = " << leps_[3775] << endl;
+    Info << "ln = " << ln_[3775] << endl;
+    Info << "ls = " << ls_[3775] << endl;
+    Info << "k_ = " << k_[3775] << endl;
+    Info << "ce = " << ce_ << endl;
+    Info << "cs = " << cs_ << endl;
+    Info << "c1 = " << c1_ << endl;
+    Info << "c2 = " << c2_ << endl;
+
+
     nonlinearStress_ = -ce_ * delta() * delta() * Foam::pow(cs_,(2.0/3.0)) * Foam::pow((27.0/(8.0*Foam::constant::mathematical::pi)),(1.0/3.0)) *
     (
          c1_ * ((S & S) - ((1.0/3.0) * I * (S && S)))
        + c2_ * (twoSymm(S & O))
     );
+    Info << "nonlinearStress = " << nonlinearStress_[3775] << endl;
 
 }
 
