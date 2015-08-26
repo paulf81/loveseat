@@ -296,7 +296,7 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     volSymmTensorField devB = KosovicOneEqNBA::devBeff();
     volSymmTensorField B = KosovicOneEqNBA::B();
   //tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
-    volScalarField P_shear = -(devB && T(gradU));
+    volScalarField P_shear = -(B && T(gradU));
     volScalarField P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
     Info << "devB = " << devB[3775] << endl;
     Info << "B = " << B[3775] << endl;
