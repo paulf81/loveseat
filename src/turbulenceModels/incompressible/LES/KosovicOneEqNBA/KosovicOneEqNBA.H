@@ -150,18 +150,18 @@ public:
         //- Return the sub-grid stress tensor.
         virtual tmp<volSymmTensorField> B() const;
 
-        //- Return the effective sub-grid turbulence stress tensor
-        //  including the laminar stress
+        //- Return the effective sub-grid turbulence deviatoric stress
+        //  tensor including the laminar stress
         virtual tmp<volSymmTensorField> devBeff() const;
 
-        //- Return the deviatoric part of the effective sub-grid
-        //  turbulence stress tensor including the laminar stress
+        //- Return the divergence of the deviatoric part of the effective
+        //  sub-grid turbulence stress tensor including the laminar stress
         virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
 
         //- Correct the stability-dependent length scales
         virtual void computeLengthScales();
 
-        //- Correct Eddy-Viscosity and related properties
+        //- Correct eddy-viscosity and related properties
         virtual void correct(const tmp<volTensorField>& gradU);
 
         //- Read LESProperties dictionary

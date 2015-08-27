@@ -52,8 +52,11 @@ KosovicOneEqNBA::KosovicOneEqNBA
     const word& modelName
 )
 :
+    // Inherit the properties of the LESModel class.
     LESModel(modelName, U, phi, transport, turbulenceModelName),
 
+
+    // Define the model constants.
     cb_
     (
         dimensioned<scalar>::lookupOrAddToDict
@@ -109,6 +112,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         )
     ),
 
+    // Initialize the SGS energy variable.
     k_
     (
         IOobject
@@ -122,6 +126,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         mesh_
     ),
 
+    // Initialize the SGS viscosity variable.
     nuSgs_
     (
         IOobject
@@ -135,12 +140,16 @@ KosovicOneEqNBA::KosovicOneEqNBA
         mesh_
     ),
 
+    // Initialize the nonlinear part of the stress to something
+    // that has the correct units.
     nonlinearStress_
     (
         "nonlinearStress",
         symm(delta()*delta()*(fvc::grad(U) & fvc::grad(U)))
     ),
 
+    // Initialize the length scales (the grid length scale is already
+    // there from the LESModel class).
     leps_
     (
         IOobject
@@ -180,20 +189,27 @@ KosovicOneEqNBA::KosovicOneEqNBA
         delta()
     ),
 
+    // Look up the name of the potential temperature variable.
     TName_
     (
         coeffDict_.lookupOrDefault<word>("TName","T")
     ),
 
+    // Look up the name of the eddy diffusivity for the temperature
+    // equation.
     kappatName_
     (
         coeffDict_.lookupOrDefault<word>("kappatName","kappat")
     ),
 
+    // Get access to the potential temperature variable.
     T_(U.db().lookupObject<volScalarField>(TName_)),
 
+    // Get access to the gravity vector.
     g_(U.db().lookupObject<uniformDimensionedVectorField>("g")),
 
+    // Define the dictionary file to look for the reference
+    // potential temperature.
     transportDict_
     (
         IOobject
@@ -206,9 +222,12 @@ KosovicOneEqNBA::KosovicOneEqNBA
         )
     ),
 
+    // Get the reference potential temperature.
     TRef_(transportDict_.lookup("TRef"))
 
 {
+    // Bound SGS energy from below so that it doesn't become
+    // negative.
     bound(k_, kMin_);
 
     printCoeffs();
@@ -217,18 +236,20 @@ KosovicOneEqNBA::KosovicOneEqNBA
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+// Returns the SGS stress tensor.
 tmp<volSymmTensorField> KosovicOneEqNBA::B() const
 {
     return ((2.0/3.0)*I)*k_ - nuSgs_*twoSymm(fvc::grad(U_)) + nonlinearStress_;
 }
 
-
+// Returns the combined SGS + viscous stress tensor (deviatoric part)
 tmp<volSymmTensorField> KosovicOneEqNBA::devBeff() const
 {
     return -nuEff()*dev(twoSymm(fvc::grad(U()))) + nonlinearStress_;
 }
 
-
+// Returns the divergence of the deviatoric part of devBeff.  It treats
+// as much of this implicitly as possible.
 tmp<fvVectorMatrix> KosovicOneEqNBA::divDevBeff(volVectorField& U) const
 {
     return
@@ -239,13 +260,19 @@ tmp<fvVectorMatrix> KosovicOneEqNBA::divDevBeff(volVectorField& U) const
     );
 }
 
+// Compute the relevant length scales
 void KosovicOneEqNBA::computeLengthScales()
 {
+
+    // Get the temperature gradient dotted with gravity (so, the vertical
+    // component of the temperature gradient times gravity).  Also, get
+    // the vertical component of the velocity gradient using gravity to find
+    // vertical (rather than just assuming z is up).
     volScalarField gradTdotg = fvc::grad(T_) & g_;
     volVectorField gradUdotz = T(fvc::grad(U())) & (g_/mag(g_));
    
-    Info << "gradUdotz = " << gradUdotz[3775] << endl;
-    Info << "gradTdotg = " << gradTdotg[3775] << endl;
+  //Info << "gradUdotz = " << gradUdotz[3775] << endl;
+  //Info << "gradTdotg = " << gradTdotg[3775] << endl;
     forAll(gradTdotg,i)
     {
         // Compute buoyancy length scale.
@@ -261,12 +288,13 @@ void KosovicOneEqNBA::computeLengthScales()
     gradUdotz.clear();
 }
 
-
+// Read the two model constants that must be set.
 bool KosovicOneEqNBA::read()
 {
     if (LESModel::read())
     {
         cb_.readIfPresent(coeffDict());
+        Ske_.readIfPresent(coeffDict());
         return true;
     }
     else
@@ -275,7 +303,7 @@ bool KosovicOneEqNBA::read()
     }
 }
 
-
+// Do the actual computation of the SGS model.
 void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 {
     // Update the molecular viscosity, and the grid-dependent length scale.
@@ -289,20 +317,20 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     // Use the stability-dependent and grid-dependent length scales to form the
     // turbulent Prandtl number.
     volScalarField Prt = 1.0/(1.0 + (2.0*leps_/delta()));
-    Info << "Prt = " << Prt[3775] << endl;
+  //Info << "Prt = " << Prt[3775] << endl;
 
 
     // Form the SGS-energy production terms, using old values of velocity and temperature.
-    volSymmTensorField devB = KosovicOneEqNBA::devBeff();
-    volSymmTensorField B = KosovicOneEqNBA::B();
+  //volSymmTensorField devB = KosovicOneEqNBA::devBeff();
+    tmp<volSymmTensorField> B = KosovicOneEqNBA::B();
   //tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
-    volScalarField P_shear = -(B && T(gradU));
-    volScalarField P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
-    Info << "devB = " << devB[3775] << endl;
-    Info << "B = " << B[3775] << endl;
-    Info << "nuSgs = " << nuSgs_[3775] << endl;
-    Info << "P_shear = " << P_shear[3775] << endl;
-    Info << "P_buoyant = " << P_buoyant[3775] << endl;
+    tmp<volScalarField> P_shear = -(B && T(gradU));
+    tmp<volScalarField> P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+  //Info << "devB = " << devB[3775] << endl;
+  //Info << "B = " << B[3775] << endl;
+  //Info << "nuSgs = " << nuSgs_[3775] << endl;
+  //Info << "P_shear = " << P_shear[3775] << endl;
+  //Info << "P_buoyant = " << P_buoyant[3775] << endl;
 
 
     // Build the SGS-energy equation matrix system.
@@ -327,8 +355,17 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     bound(k_, kMin_);
 
 
-    // Computes eddy viscosity.
+    // Computes eddy viscosity and update the boundary conditions. There
+    // are a couple of options on how to compute eddy viscosity with a 
+    // nonlinear model.  It can be computed in the standard way as a
+    // constant times a length scale times a velocity scale or it could
+    // be computed as the least squares fit of the strain rate tensor to
+    // the stress tensor.  We use the standard way following what Kosovic
+    // shows for the diffusivity in the k-equation, in the linear part of
+    // the stress-strain relation, and in the thermal eddy diffusivity.
     nuSgs_ = ce_*delta()*sqrt(k_);
+    nuSgs_.correctBoundaryConditions();
+
 
 
     // Update the SGS thermal conductivity.
@@ -337,37 +374,40 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 //  kappat_.correctBoundaryConditions();   
 
 
-    // Compute the nonlinear term.
+    // Compute the nonlinear term.  First form the strain-rate tensor
+    // S, and the rotation-rate tensor, W.  Note that W is not just the
+    // skew-symmetric part of gradU, but has to be transposed because the
+    // way OpenFOAM orders the gradient of a vector is transposed from
+    // how we normally think about it.
     volSymmTensorField S = symm(fvc::grad(U()));
-    volTensorField O = T(skew(fvc::grad(U())));
-    volSymmTensorField SS = (S & S) - ((1.0/3.0) * I * (S && S));
-    volTensorField SO = (S & O);
-    volTensorField OS = (O & S);
-    volTensorField SOmOS1 = SO - OS;
-    volSymmTensorField SOmOS2 = twoSymm(S & O);
-    Info << "S = " << S[3775] << endl;
-    Info << "O = " << O[3775] << endl;
-    Info << "SS = " << SS[3775] << endl;
-    Info << "SO = " << SO[3775] << endl;
-    Info << "OS = " << OS[3775] << endl;
-    Info << "SOmOS1 = " << SOmOS1[3775] << endl;
-    Info << "SOmOS2 = " << SOmOS2[3775] << endl;
-    Info << "leps = " << leps_[3775] << endl;
-    Info << "ln = " << ln_[3775] << endl;
-    Info << "ls = " << ls_[3775] << endl;
-    Info << "k_ = " << k_[3775] << endl;
-    Info << "ce = " << ce_ << endl;
-    Info << "cs = " << cs_ << endl;
-    Info << "c1 = " << c1_ << endl;
-    Info << "c2 = " << c2_ << endl;
-
+    volTensorField W = T(skew(fvc::grad(U())));
+  //volSymmTensorField SS = (S & S) - ((1.0/3.0) * I * (S && S));
+  //volTensorField SO = (S & W);
+  //volTensorField WS = (W & S);
+  //volTensorField SOmOS1 = SW - WS;
+  //volSymmTensorField SOmOS2 = twoSymm(S & W);
+  //Info << "S = " << S[3775] << endl;
+  //Info << "W = " << W[3775] << endl;
+  //Info << "SS = " << SS[3775] << endl;
+  //Info << "SW = " << SW[3775] << endl;
+  //Info << "WS = " << WS[3775] << endl;
+  //Info << "SWmOW1 = " << SWmWS1[3775] << endl;
+  //Info << "SWmOW2 = " << SWmWS2[3775] << endl;
+  //Info << "leps = " << leps_[3775] << endl;
+  //Info << "ln = " << ln_[3775] << endl;
+  //Info << "ls = " << ls_[3775] << endl;
+  //Info << "k_ = " << k_[3775] << endl;
+  //Info << "ce = " << ce_ << endl;
+  //Info << "cs = " << cs_ << endl;
+  //Info << "c1 = " << c1_ << endl;
+  //Info << "c2 = " << c2_ << endl;
 
     nonlinearStress_ = -ce_ * delta() * delta() * Foam::pow(cs_,(2.0/3.0)) * Foam::pow((27.0/(8.0*Foam::constant::mathematical::pi)),(1.0/3.0)) *
     (
          c1_ * ((S & S) - ((1.0/3.0) * I * (S && S)))
-       + c2_ * (twoSymm(S & O))
+       + c2_ * (twoSymm(S & W))
     );
-    Info << "nonlinearStress = " << nonlinearStress_[3775] << endl;
+  //Info << "nonlinearStress = " << nonlinearStress_[3775] << endl;
 
 }
 
