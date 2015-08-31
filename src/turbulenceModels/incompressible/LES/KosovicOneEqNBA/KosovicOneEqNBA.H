@@ -70,6 +70,7 @@ protected:
             dimensionedScalar cb_;
             dimensionedScalar cs_;
             dimensionedScalar ce_;
+            dimensionedScalar ceps_;
             dimensionedScalar Ske_;
             dimensionedScalar c1_;
             dimensionedScalar c2_;
@@ -129,7 +130,7 @@ public:
         //- Return sub-grid disipation rate
         virtual tmp<volScalarField> epsilon() const
         {
-            return ce_*k()*sqrt(k())/leps_;
+            return ceps_*k()*sqrt(k())/leps_;
         }
 
         //- Return the SGS viscosity

@@ -183,7 +183,7 @@ void fixedHeatingRateFvPatchField::evaluate
     const scalarField z1 = 1.0/patch().deltaCoeffs();
     scalar z1Mean = gSum(z1 * area)/areaTotal;
 
-    Info << "z1Mean = " << z1Mean << endl;
+    //Info << "z1Mean = " << z1Mean << endl;
 
     //    Get the average surface roughness height
     scalar z0Mean = gSum(z0_ * area)/areaTotal;
@@ -646,8 +646,6 @@ void  fixedHeatingRateFvPatchField::qwEvaluate
 
             qw = qw0;
 
-            Info << "qw " << qw << endl;
-            Info << "mag(qw) " << mag(qw) << endl;
             if (mag(qw) < 1E-6)
             {
                 qw = sign(qw)*1E-6;

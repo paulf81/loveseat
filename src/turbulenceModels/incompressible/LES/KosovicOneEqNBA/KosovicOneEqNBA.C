@@ -61,9 +61,9 @@ KosovicOneEqNBA::KosovicOneEqNBA
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "cb",
-            coeffDict_,
-            0.36
+             "cb",
+             coeffDict_,
+             0.36
         )
     ),
 
@@ -71,8 +71,8 @@ KosovicOneEqNBA::KosovicOneEqNBA
     (
         dimensioned<scalar>
         (
-           "cs",
-           Foam::sqrt((8.0*(1.0 + cb_))/(27.0*Foam::sqr(Foam::constant::mathematical::pi)))
+            "cs",
+            Foam::sqrt((8.0*(1.0 + cb_))/(27.0*Foam::sqr(Foam::constant::mathematical::pi)))
         )
     ),
 
@@ -85,11 +85,22 @@ KosovicOneEqNBA::KosovicOneEqNBA
         )
     ),
 
+    ceps_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "ceps",
+            coeffDict_,
+            0.93
+        )
+    ),
+
     Ske_
     (
-        dimensioned<scalar>
+        dimensioned<scalar>::lookupOrAddToDict
         (
             "Ske",
+            coeffDict_,
             0.5
         )
     ),
@@ -99,7 +110,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         dimensioned<scalar>
         (
             "c1",
-            (Foam::sqrt(960.0)*cb_)/(7.0*(1.0+cb_)*Ske_)
+            (Foam::sqrt(960.0)*cb_)/(7.0*(1.0+cb_)*0.5)
         )
     ),
 
@@ -108,7 +119,7 @@ KosovicOneEqNBA::KosovicOneEqNBA
         dimensioned<scalar>
         (
             "c2",
-            -c1_
+           -c1_
         )
     ),
 
@@ -230,7 +241,16 @@ KosovicOneEqNBA::KosovicOneEqNBA
     // negative.
     bound(k_, kMin_);
 
-    printCoeffs();
+    Info << "KosovicOneEqNBA Model Coefficients" << endl;
+    Info << "    cb " << tab << tab << tab << cb_.value() << endl;
+    Info << "    cs " << tab << tab << tab << cs_.value() << endl;
+    Info << "    ce " << tab << tab << tab << ce_.value() << endl;
+    Info << "    ceps " << tab << tab << ceps_.value() << endl;
+    Info << "    S(ke) " << tab << tab << Ske_.value() << endl;
+    Info << "    c1 " << tab << tab << tab << c1_.value() << endl;
+    Info << "    c2 " << tab << tab << tab << c2_.value() << endl;
+    Info << "    TName " << tab << tab << TName_ << endl;
+    Info << "    kappatName " << tab << tab << kappatName_ << endl;
 }
 
 
@@ -294,6 +314,7 @@ bool KosovicOneEqNBA::read()
     if (LESModel::read())
     {
         cb_.readIfPresent(coeffDict());
+        ceps_.readIfPresent(coeffDict());
         Ske_.readIfPresent(coeffDict());
         return true;
     }
@@ -322,10 +343,10 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
 
     // Form the SGS-energy production terms, using old values of velocity and temperature.
   //volSymmTensorField devB = KosovicOneEqNBA::devBeff();
-    tmp<volSymmTensorField> B = KosovicOneEqNBA::B();
+    volSymmTensorField B = KosovicOneEqNBA::B();
   //tmp<volScalarField> P_shear = 2.0*nuSgs_*magSqr(symm(gradU));
-    tmp<volScalarField> P_shear = -(B && T(gradU));
-    tmp<volScalarField> P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
+    volScalarField P_shear = -(B && T(gradU));
+    volScalarField P_buoyant = (1.0/TRef_)*g_&((nuSgs_/Prt)*fvc::grad(T_));
   //Info << "devB = " << devB[3775] << endl;
   //Info << "B = " << B[3775] << endl;
   //Info << "nuSgs = " << nuSgs_[3775] << endl;
@@ -342,7 +363,7 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     ==
        P_shear
      + P_buoyant
-     - fvm::Sp(ce_*sqrt(k_)/leps_, k_)
+     - fvm::Sp(ceps_*sqrt(k_)/leps_, k_)
     );
 
 
@@ -382,10 +403,10 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
     volSymmTensorField S = symm(fvc::grad(U()));
     volTensorField W = T(skew(fvc::grad(U())));
   //volSymmTensorField SS = (S & S) - ((1.0/3.0) * I * (S && S));
-  //volTensorField SO = (S & W);
+  //volTensorField SW = (S & W);
   //volTensorField WS = (W & S);
-  //volTensorField SOmOS1 = SW - WS;
-  //volSymmTensorField SOmOS2 = twoSymm(S & W);
+  //volTensorField SWmWS1 = SW - WS;
+  //volSymmTensorField SWmWS2 = twoSymm(S & W);
   //Info << "S = " << S[3775] << endl;
   //Info << "W = " << W[3775] << endl;
   //Info << "SS = " << SS[3775] << endl;
@@ -396,6 +417,7 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
   //Info << "leps = " << leps_[3775] << endl;
   //Info << "ln = " << ln_[3775] << endl;
   //Info << "ls = " << ls_[3775] << endl;
+  //Info << "nuSgs = " << nuSgs_[3775] << endl;
   //Info << "k_ = " << k_[3775] << endl;
   //Info << "ce = " << ce_ << endl;
   //Info << "cs = " << cs_ << endl;
@@ -408,6 +430,8 @@ void KosovicOneEqNBA::correct(const tmp<volTensorField>& gradU)
        + c2_ * (twoSymm(S & W))
     );
   //Info << "nonlinearStress = " << nonlinearStress_[3775] << endl;
+  //volSymmTensorField R =  ((2.0/3.0)*I)*k_ - nuSgs_*twoSymm(fvc::grad(U())) + nonlinearStress_;
+  //Info << "B = " << R[3775] << endl;
 
 }
 
