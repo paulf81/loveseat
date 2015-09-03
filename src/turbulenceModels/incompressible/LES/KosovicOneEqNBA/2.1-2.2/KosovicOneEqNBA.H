@@ -22,23 +22,22 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::incompressible::LESModels::GenEddyViscABL
+    Foam::incompressible::LESModels::KosovicOneEqNBA
 
 Description
-    General base class for all incompressible models that can be implemented
-    as an eddy viscosity, i.e. algebraic and one-equation models. Modified 
-    from original version to better handle the atmospheric SGS models.
+    Kosovic's one-equation nonlinear anisotropic backscatter SGS model.
 
-    Contains fields for k (SGS turbulent kinetic energy), gamma
-    (modelled viscosity) and epsilon (SGS dissipation).
+    Kosovic, B. and Curry J., "A Large Eddy Simulation Study of a Quasi-Steady,
+    Stably Stratified Atmospheric Boundary Layer," Journal of the Atmospheric
+    Sciences, Vol 57, pp. 1052--1068, 2000.
 
 SourceFiles
-    GenEddyViscABL.C
+    KosovicOneEqNBA.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef GenEddyViscABL_H
-#define GenEddyViscABL_H
+#ifndef KosovicOneEqNBA_H
+#define KosovicOneEqNBA_H
 
 #include "LESModel.H"
 #include "uniformDimensionedFields.H"
@@ -54,56 +53,58 @@ namespace LESModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class GenEddyViscABL Declaration
+                      Class KosovicOneEqNBA Declaration
 \*---------------------------------------------------------------------------*/
 
-class GenEddyViscABL
+class KosovicOneEqNBA
 :
-    virtual public LESModel
+    public LESModel
 {
-    // Private Member Functions
-
-        // Disallow default bitwise copy construct and assignment
-        GenEddyViscABL(const GenEddyViscABL&);
-        GenEddyViscABL& operator=(const GenEddyViscABL&);
-
 
 protected:
 
-    // Model coefficients
-   
-        dimensionedScalar ce_;
+    // Protected data
 
-    // Fields
+        // Model coefficients
 
-        volScalarField nuSgs_;
+            dimensionedScalar cb_;
+            dimensionedScalar cs_;
+            dimensionedScalar ce_;
+            dimensionedScalar ceps_;
+            dimensionedScalar Ske_;
+            dimensionedScalar c1_;
+            dimensionedScalar c2_;
 
-        volScalarField l_;
 
-    // Other model parameters or needed information.
+        // Fields
 
-        word TName_;
+            volScalarField k_;
+            volScalarField nuSgs_;
+            volSymmTensorField nonlinearStress_;
+            volScalarField leps_;
+            volScalarField ln_;
+            volScalarField ls_;
 
-        word kappatName_;
+      
+        // Other model parameters or needed information.
 
-        const volScalarField& T_;
-
-        const uniformDimensionedVectorField& g_;
-
-        IOdictionary transportDict_;
-
-        dimensionedScalar TRef_;
+            word TName_;
+            word kappatName_;
+            const volScalarField& T_;
+            const uniformDimensionedVectorField& g_;
+            IOdictionary transportDict_;
+            dimensionedScalar TRef_;
 
 
 public:
 
-    //- Partial Runtime type information
-    static const word typeName;
+    //- Runtime type information
+    TypeName("KosovicOneEqNBA");
 
     // Constructors
 
         //- Construct from components
-        GenEddyViscABL
+        KosovicOneEqNBA
         (
             const volVectorField& U,
             const surfaceScalarField& phi,
@@ -114,39 +115,54 @@ public:
 
 
     //- Destructor
-    virtual ~GenEddyViscABL()
+    virtual ~KosovicOneEqNBA()
     {}
 
 
     // Member Functions
+    
+        //- Return SGS kinetic energy
+        virtual tmp<volScalarField> k() const
+        {
+            return k_;
+        }
 
         //- Return sub-grid disipation rate
         virtual tmp<volScalarField> epsilon() const
         {
-            return ce_*k()*sqrt(k())/delta();
+            return ceps_*k()*sqrt(k())/leps_;
         }
 
-        //- Return the SGS viscosity.
+        //- Return the SGS viscosity
         virtual tmp<volScalarField> nuSgs() const
         {
             return nuSgs_;
         }
 
+        //- Return the effective diffusivity for k
+        tmp<volScalarField> DkEff() const
+        {
+            return tmp<volScalarField>
+            (
+                new volScalarField("DkEff", nuSgs_ + nu())
+            );
+        }
+
         //- Return the sub-grid stress tensor.
         virtual tmp<volSymmTensorField> B() const;
 
-        //- Return the deviatoric part of the effective sub-grid 
-        //  turbulence stress tensor including the laminar stress
+        //- Return the effective sub-grid turbulence deviatoric stress
+        //  tensor including the laminar stress
         virtual tmp<volSymmTensorField> devBeff() const;
 
-        //- Return the divergence of the effective deviatoric sub-grid
-        //  turbulence stress tensor including the laminar stress
+        //- Return the divergence of the deviatoric part of the effective
+        //  sub-grid turbulence stress tensor including the laminar stress
         virtual tmp<fvVectorMatrix> divDevBeff(volVectorField& U) const;
 
-        //- Correct the stability-dependent length scale
-        virtual void computeLengthScale();
+        //- Correct the stability-dependent length scales
+        virtual void computeLengthScales();
 
-        //- Correct Eddy-Viscosity and related properties
+        //- Correct eddy-viscosity and related properties
         virtual void correct(const tmp<volTensorField>& gradU);
 
         //- Read LESProperties dictionary
