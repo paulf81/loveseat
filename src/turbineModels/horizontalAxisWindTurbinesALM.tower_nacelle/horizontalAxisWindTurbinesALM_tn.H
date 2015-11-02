@@ -120,7 +120,7 @@ private:
 
         //- Body force field applied to fluid by turbine.
         volVectorField bodyForce;
-        volScalarField g;
+        volScalarField gBlade;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
@@ -495,6 +495,12 @@ private:
                 //- Twist at this height (degrees).
                 DynamicList<DynamicList<scalar> > TowerTwist;
 
+                //- Thickness at this height (percentage of chord).
+                DynamicList<DynamicList<scalar> > TowerThickness;
+
+                //- Placeholder for some other user-defined property at this station.
+                DynamicList<DynamicList<scalar> > TowerUserDef;
+
                 //- Airfoil type ID at this height.
                 DynamicList<DynamicList<label> > TowerAirfoilTypeID;
 
@@ -576,8 +582,24 @@ private:
             //- Blade radius away from rotor apex.  Must take into account coning.
             DynamicList<List<List<scalar> > > bladePointRadius;
 
+            //- Blade chord, twist, thickness, user defined quantity, and airfoil type
+            //  interpolated to the blade actuator elements from the blade definition.
+            DynamicList<List<List<scalar> > > bladePointChord;
+            DynamicList<List<List<scalar> > > bladePointTwist;
+            DynamicList<List<List<scalar> > > bladePointThickness;
+            DynamicList<List<List<scalar> > > bladePointUserDef;
+            DynamicList<List<List<label> > > bladePointAirfoil;
+
             //- Tower height from ground.
             DynamicList<List<scalar> > towerPointHeight;
+
+            //- Tower chord, twist, thickness, user defined quantity, and airfoil type
+            //  interpolated to the tower actuator elements from the blade definition.
+            DynamicList<List<scalar> > towerPointChord;
+            DynamicList<List<scalar> > towerPointTwist;
+            DynamicList<List<scalar> > towerPointThickness;
+            DynamicList<List<scalar> > towerPointUserDef;
+            DynamicList<List<label> > towerPointAirfoil;
 
             //- An indicator of shaft direction.  The convention is that when viewed
             //  from upwind, the rotor turns clockwise for positive rotation angles,
@@ -834,6 +856,16 @@ private:
         //  coordinates at each actuator point.
         void computeWindVectors();
 
+        //- Compute the vectors that define the blade orientation (this is on a
+        //  per blade basis.  It should be updated in the future to be on a per
+        //  blade element basis to account for blade curvature due to deformation
+        //  or base geometry.
+        void computeBladeAlignedVectors();
+
+        //- Function to compute the projection function at a given mesh cell for
+        //  the blade force.
+        scalar computeBladeProjectionFunction(vector disVector, int turbineNumber, int bladeNumber, int elementNumber);
+
         //- Compute blade forces.
         void computeBladeForce();
         
@@ -843,7 +875,6 @@ private:
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian(scalar epsilon, scalar d);
         scalar generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
-      //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
         scalar chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);

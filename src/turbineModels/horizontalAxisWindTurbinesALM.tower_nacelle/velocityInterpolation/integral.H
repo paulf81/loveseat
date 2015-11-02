@@ -2,20 +2,15 @@
 // gradient information.
 forAll(influenceCells[i], m)
 {
-    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - point);
+    vector disVector = (mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
+    scalar dis = mag(disVector);
     if (dis <= bladeProjectionRadius[i])
     {
-        // Currently only uniform Gaussian blade distribution is implemented.
-        scalar spreading = 1.0;
-        if (bladeForceProjectionType[i] == "uniformGaussian")
-        {
-            spreading = uniformGaussian(bladeEpsilon[i][0], dis);
-        }
-        else
-        {
-            spreading = uniformGaussian(bladeEpsilon[i][0], dis);
-        }
+        // Compute the body force projection.
+        scalar spreading = computeBladeProjectionFunction(disVector,i,j,k);
 
+        // Sum up this mesh cell's contribution to the integrated velocity, 
+        // weighted by the projection function.
         velocity += U_[influenceCells[i][m]] * spreading * mesh_.V()[influenceCells[i][m]];
     }
 }
