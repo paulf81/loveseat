@@ -51,7 +51,7 @@ Description
 #include "pimpleControl.H"
 #include "IFstream.H"
 #include "OFstream.H"
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
     #include "readGravitationalAcceleration.H"
+
     #include "createFields.H"
     #include "createDivSchemeBlendingField.H"
     #include "createGradP.H"
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
 
     Info << nl << "Starting time loop\n" << endl;
 
-    // Update boundary conditions before starting in case anything needs
+    // Update boundary conditions before starting in case anything needs 
     // updating, for example after using mapFields to interpolate initial
     // field.
     U.correctBoundaryConditions();
@@ -107,13 +108,18 @@ int main(int argc, char *argv[])
         #include "updateDivSchemeBlendingField.H"
 
         // --- Pressure-velocity PIMPLE corrector loop
-        while (pimple.loop())
+        for (pimple.start(); pimple.loop(); pimple++)
         {
+            if (pimple.nOuterCorr() != 1)
+            {
+                p_rgh.storePrevIter();
+            }
+
             #include "UEqn.H"
             #include "TEqn.H"
 
             // --- Pressure corrector loop
-            while (pimple.correct())
+            for (int corr=0; corr<pimple.nCorr(); corr++)
             {
                 #include "pEqn.H"
                 #include "TEqn.H"

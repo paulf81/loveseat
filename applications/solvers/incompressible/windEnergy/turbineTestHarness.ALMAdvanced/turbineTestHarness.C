@@ -31,7 +31,7 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 #include "interpolateXY.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

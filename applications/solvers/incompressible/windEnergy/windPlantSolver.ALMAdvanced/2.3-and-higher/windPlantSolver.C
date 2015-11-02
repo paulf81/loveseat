@@ -51,7 +51,7 @@ Description
 #include "pimpleControl.H"
 #include "IFstream.H"
 #include "OFstream.H"
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -14,4 +14,4 @@
 
     #include "createPhi.H"
 
-    turbineModels::horizontalAxisWindTurbinesALM_tn turbines(U);
+    turbineModels::horizontalAxisWindTurbinesALMAdvanced turbines(U);
