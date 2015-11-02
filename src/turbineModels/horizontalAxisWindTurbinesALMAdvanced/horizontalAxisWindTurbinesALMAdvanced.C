@@ -33,7 +33,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 #include "interpolateXY.H"
 
 namespace Foam
@@ -43,7 +43,7 @@ namespace turbineModels
 
 // * * * * * * * * * * * * * *  Constructor  * * * * * * * * * * * * * * * * //
 
-horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
+horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 (
     const volVectorField& U
 )
@@ -1051,7 +1051,7 @@ horizontalAxisWindTurbinesALM_tn::horizontalAxisWindTurbinesALM_tn
 
 // * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * * //
 
-void horizontalAxisWindTurbinesALM_tn::rotateBlades()
+void horizontalAxisWindTurbinesALMAdvanced::rotateBlades()
 {  
     // Perform rotation turbine by turbine.
     forAll(uvShaft, i)
@@ -1092,7 +1092,7 @@ void horizontalAxisWindTurbinesALM_tn::rotateBlades()
 }
         
 
-void horizontalAxisWindTurbinesALM_tn::yawNacelle()
+void horizontalAxisWindTurbinesALMAdvanced::yawNacelle()
 {
     // Perform rotation turbine by turbine.
     forAll(uvTower, i)
@@ -1143,7 +1143,7 @@ void horizontalAxisWindTurbinesALM_tn::yawNacelle()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::computeRotSpeed()
+void horizontalAxisWindTurbinesALMAdvanced::computeRotSpeed()
 {
     // Proceed turbine by turbine.
     forAll(rotorSpeed, i)
@@ -1180,7 +1180,7 @@ void horizontalAxisWindTurbinesALM_tn::computeRotSpeed()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::filterRotSpeed()
+void horizontalAxisWindTurbinesALMAdvanced::filterRotSpeed()
 {
     // Proceed turbine by turbine.
     forAll(rotorSpeedF, i)
@@ -1197,7 +1197,7 @@ void horizontalAxisWindTurbinesALM_tn::filterRotSpeed()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::controlGenTorque()
+void horizontalAxisWindTurbinesALMAdvanced::controlGenTorque()
 {
     // Proceed turbine by turbine.
     forAll(generatorTorque, i)
@@ -1241,7 +1241,7 @@ void horizontalAxisWindTurbinesALM_tn::controlGenTorque()
 }
         
 
-void horizontalAxisWindTurbinesALM_tn::controlNacYaw()
+void horizontalAxisWindTurbinesALMAdvanced::controlNacYaw()
 {
     // Proceed turbine by turbine.
     forAll(deltaNacYaw, i)
@@ -1278,7 +1278,7 @@ void horizontalAxisWindTurbinesALM_tn::controlNacYaw()
 }
         
 
-void horizontalAxisWindTurbinesALM_tn::controlBladePitch()
+void horizontalAxisWindTurbinesALMAdvanced::controlBladePitch()
 {
     // Proceed turbine by turbine.
     forAll(bladePitch, i)
@@ -1317,7 +1317,7 @@ void horizontalAxisWindTurbinesALM_tn::controlBladePitch()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
+void horizontalAxisWindTurbinesALMAdvanced::findControlProcNo()
 {
     // Create a local and global list of minimum distance cells to velocity sampling 
     // points of turbines that this processor controls.  Initialize the values to huge.
@@ -1485,7 +1485,7 @@ void horizontalAxisWindTurbinesALM_tn::findControlProcNo()
 }   
 
 
-void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
+void horizontalAxisWindTurbinesALMAdvanced::computeWindVectors()
 {
     // Create a list of wind velocity in x, y, z coordinates for each blade, nacelle, and tower sample point.
     List<vector> bladeWindVectorsLocal(totBladePoints,vector::zero);
@@ -1677,7 +1677,7 @@ void horizontalAxisWindTurbinesALM_tn::computeWindVectors()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::computeBladeAlignedVectors()
+void horizontalAxisWindTurbinesALMAdvanced::computeBladeAlignedVectors()
 {
     forAll(bladePoints,i)
     {
@@ -1712,7 +1712,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeAlignedVectors()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
+void horizontalAxisWindTurbinesALMAdvanced::computeBladeForce()
 {
     // The nacelle wind vector is in the Cartesian coordinate system so no need to 
     // transform it.
@@ -2025,7 +2025,7 @@ void horizontalAxisWindTurbinesALM_tn::computeBladeForce()
 }
 
 
-scalar horizontalAxisWindTurbinesALM_tn::computeBladeProjectionFunction(vector disVector, int turbineNumber, int bladeNumber, int elementNumber)
+scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vector disVector, int turbineNumber, int bladeNumber, int elementNumber)
 {
     int i = turbineNumber;
     int j = bladeNumber;
@@ -2080,7 +2080,7 @@ scalar horizontalAxisWindTurbinesALM_tn::computeBladeProjectionFunction(vector d
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
+void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
 {  
     // Zero out the body force to begin with.
     bodyForce *= 0.0;
@@ -2464,14 +2464,14 @@ void horizontalAxisWindTurbinesALM_tn::computeBodyForce()
 }
 
 
-scalar horizontalAxisWindTurbinesALM_tn::uniformGaussian(scalar epsilon, scalar d)
+scalar horizontalAxisWindTurbinesALMAdvanced::uniformGaussian(scalar epsilon, scalar d)
 {
     // Compute the 3-dimensional Gaussian.
     scalar f = (1.0 / (Foam::pow(epsilon,3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * Foam::exp(-Foam::sqr(d/epsilon));
     return f;
 }
 
-scalar horizontalAxisWindTurbinesALM_tn::generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
+scalar horizontalAxisWindTurbinesALMAdvanced::generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
 {
     // Compute the 3-dimensional Gaussian that has different spreading in each direction.
     scalar d0 = d & dir0;
@@ -2492,7 +2492,7 @@ scalar horizontalAxisWindTurbinesALM_tn::generalizedGaussian(vector epsilon, vec
 }
 
 
-scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
+scalar horizontalAxisWindTurbinesALMAdvanced::diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
 {
     // Compute a spreading function that is constant over some width radially, then dies off like a Gaussian,
     // but is also Gaussian in the axial direction.
@@ -2520,7 +2520,7 @@ scalar horizontalAxisWindTurbinesALM_tn::diskGaussian(scalar rEpsilon, scalar xE
     return f;
 }
 
-scalar horizontalAxisWindTurbinesALM_tn::ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
+scalar horizontalAxisWindTurbinesALMAdvanced::ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
 {
     // Compute a spreading function that is a ring of Gaussian distribution,
     // but is also Gaussian in the axial direction.
@@ -2540,7 +2540,7 @@ scalar horizontalAxisWindTurbinesALM_tn::ringGaussian(scalar rEpsilon, scalar xE
     return f;
 }
 
-scalar horizontalAxisWindTurbinesALM_tn::oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff)
+scalar horizontalAxisWindTurbinesALMAdvanced::oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff)
 {
     // Compute a 1D Gaussian function centered about x0 with width epsilon and scaled by coeff.
     scalar f = coeff * Foam::exp(-Foam::sqr((x - x0)/epsilon));
@@ -2550,7 +2550,7 @@ scalar horizontalAxisWindTurbinesALM_tn::oneDGaussian(scalar x, scalar x0, scala
 
 
 
-vector horizontalAxisWindTurbinesALM_tn::rotateVector(vector v, vector translation, vector axis, scalar angle)
+vector horizontalAxisWindTurbinesALMAdvanced::rotateVector(vector v, vector translation, vector axis, scalar angle)
 {
     // Declare and define the rotation matrix.
     tensor RM;
@@ -2579,7 +2579,7 @@ vector horizontalAxisWindTurbinesALM_tn::rotateVector(vector v, vector translati
 
 
 
-vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP)
+vector horizontalAxisWindTurbinesALMAdvanced::transformVectorCartToLocal(vector v, vector xP, vector yP, vector zP)
 {
     // Transform from the Cartesian (x,y,z) system into the local (x',y',z')
     // system using v' = T'v
@@ -2624,7 +2624,7 @@ vector horizontalAxisWindTurbinesALM_tn::transformVectorCartToLocal(vector v, ve
 
 
 
-vector horizontalAxisWindTurbinesALM_tn::transformVectorLocalToCart(vector vP, vector xP, vector yP, vector zP)
+vector horizontalAxisWindTurbinesALMAdvanced::transformVectorLocalToCart(vector vP, vector xP, vector yP, vector zP)
 {
     // Transform from the local (x',y',z') system to the Cartesian (x,y,z) system 
     // using v = Tv'
@@ -2675,7 +2675,7 @@ vector horizontalAxisWindTurbinesALM_tn::transformVectorLocalToCart(vector vP, v
 
 
 
-scalar horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<scalar>& yOld)
+scalar horizontalAxisWindTurbinesALMAdvanced::interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<scalar>& yOld)
 {
     label index = 0;
     label indexP = 0;
@@ -2729,7 +2729,7 @@ scalar horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<sc
 }
 
 
-label horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<label>& yOld)
+label horizontalAxisWindTurbinesALMAdvanced::interpolate(scalar xNew, DynamicList<scalar>& xOld, DynamicList<label>& yOld)
 {
     label index = 0;
     label indexP = 0;
@@ -2782,7 +2782,7 @@ label horizontalAxisWindTurbinesALM_tn::interpolate(scalar xNew, DynamicList<sca
     }
 }
 
-scalar horizontalAxisWindTurbinesALM_tn::compassToStandard(scalar dir)
+scalar horizontalAxisWindTurbinesALMAdvanced::compassToStandard(scalar dir)
 {
     dir += 180.0;
     if (dir >= 360.0)
@@ -2797,7 +2797,7 @@ scalar horizontalAxisWindTurbinesALM_tn::compassToStandard(scalar dir)
     return dir;
 }
 
-scalar horizontalAxisWindTurbinesALM_tn::standardToCompass(scalar dir)
+scalar horizontalAxisWindTurbinesALMAdvanced::standardToCompass(scalar dir)
 {
     dir = 90.0 - dir;
     if (dir < 0.0)
@@ -2812,7 +2812,7 @@ scalar horizontalAxisWindTurbinesALM_tn::standardToCompass(scalar dir)
     return dir;
 }
     
-void horizontalAxisWindTurbinesALM_tn::update()
+void horizontalAxisWindTurbinesALMAdvanced::update()
 {
     // Update the time step size.
     dt = runTime_.deltaT().value();
@@ -2894,7 +2894,7 @@ void horizontalAxisWindTurbinesALM_tn::update()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
+void horizontalAxisWindTurbinesALMAdvanced::openOutputFiles()
 {
     if (Pstream::master())
     {
@@ -3115,7 +3115,7 @@ void horizontalAxisWindTurbinesALM_tn::openOutputFiles()
 }
 
 
-void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
+void horizontalAxisWindTurbinesALMAdvanced::printOutputFiles()
 {
     if (Pstream::master())
     {
@@ -3368,7 +3368,7 @@ void horizontalAxisWindTurbinesALM_tn::printOutputFiles()
 }
    
      
-void horizontalAxisWindTurbinesALM_tn::printDebug()
+void horizontalAxisWindTurbinesALMAdvanced::printDebug()
 {
     Info << "Print Debugging Information" << endl;
     Info << "turbineType = " << turbineType << endl;
@@ -3470,7 +3470,7 @@ void horizontalAxisWindTurbinesALM_tn::printDebug()
 }
 
 
-volVectorField& horizontalAxisWindTurbinesALM_tn::force()
+volVectorField& horizontalAxisWindTurbinesALMAdvanced::force()
 {
     // Return the body force field to the solver
     return bodyForce;

@@ -35,7 +35,7 @@ Namespace
     None
 
 Class
-    horizontalAxisWindTurbinesALM_tn
+    horizontalAxisWindTurbinesALMAdvanced
 
 Description
     Version of the older actuator line model that includes acutator tower and
@@ -52,12 +52,12 @@ Description
     files.
 
 SourceFiles
-    horizontalAxisWindTurbinesALM_tn.C
+    horizontalAxisWindTurbinesALMAdvanced.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef horizontalAxisWindTurbinesALM_tn_H
-#define horizontalAxisWindTurbinesALM_tn_H
+#ifndef horizontalAxisWindTurbinesALMAdvanced_H
+#define horizontalAxisWindTurbinesALMAdvanced_H
 
 #include "HashPtrTable.H"
 #include "IOdictionary.H"
@@ -74,10 +74,10 @@ namespace turbineModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class horizontalAxisWindTurbinesALM_tn declaration
+                           Class horizontalAxisWindTurbinesALMAdvanced declaration
 \*---------------------------------------------------------------------------*/
 
-class horizontalAxisWindTurbinesALM_tn
+class horizontalAxisWindTurbinesALMAdvanced
 {
 
 private:
@@ -120,6 +120,7 @@ private:
 
         //- Body force field applied to fluid by turbine.
         volVectorField bodyForce;
+        volScalarField gBlade;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
@@ -471,6 +472,12 @@ private:
                 //- Twist at this station (degrees).
                 DynamicList<DynamicList<scalar> > BladeTwist;
 
+                //- Thickness at this station (percentage of chord).
+                DynamicList<DynamicList<scalar> > BladeThickness;
+
+                //- Placeholder for some other user-defined property at this station.
+                DynamicList<DynamicList<scalar> > BladeUserDef;
+
                 //- Airfoil type ID at this station.
                 DynamicList<DynamicList<label> > BladeAirfoilTypeID;
 
@@ -487,6 +494,12 @@ private:
 
                 //- Twist at this height (degrees).
                 DynamicList<DynamicList<scalar> > TowerTwist;
+
+                //- Thickness at this height (percentage of chord).
+                DynamicList<DynamicList<scalar> > TowerThickness;
+
+                //- Placeholder for some other user-defined property at this station.
+                DynamicList<DynamicList<scalar> > TowerUserDef;
 
                 //- Airfoil type ID at this height.
                 DynamicList<DynamicList<label> > TowerAirfoilTypeID;
@@ -569,8 +582,24 @@ private:
             //- Blade radius away from rotor apex.  Must take into account coning.
             DynamicList<List<List<scalar> > > bladePointRadius;
 
+            //- Blade chord, twist, thickness, user defined quantity, and airfoil type
+            //  interpolated to the blade actuator elements from the blade definition.
+            DynamicList<List<List<scalar> > > bladePointChord;
+            DynamicList<List<List<scalar> > > bladePointTwist;
+            DynamicList<List<List<scalar> > > bladePointThickness;
+            DynamicList<List<List<scalar> > > bladePointUserDef;
+            DynamicList<List<List<label> > > bladePointAirfoil;
+
             //- Tower height from ground.
             DynamicList<List<scalar> > towerPointHeight;
+
+            //- Tower chord, twist, thickness, user defined quantity, and airfoil type
+            //  interpolated to the tower actuator elements from the blade definition.
+            DynamicList<List<scalar> > towerPointChord;
+            DynamicList<List<scalar> > towerPointTwist;
+            DynamicList<List<scalar> > towerPointThickness;
+            DynamicList<List<scalar> > towerPointUserDef;
+            DynamicList<List<label> > towerPointAirfoil;
 
             //- An indicator of shaft direction.  The convention is that when viewed
             //  from upwind, the rotor turns clockwise for positive rotation angles,
@@ -827,6 +856,16 @@ private:
         //  coordinates at each actuator point.
         void computeWindVectors();
 
+        //- Compute the vectors that define the blade orientation (this is on a
+        //  per blade basis.  It should be updated in the future to be on a per
+        //  blade element basis to account for blade curvature due to deformation
+        //  or base geometry.
+        void computeBladeAlignedVectors();
+
+        //- Function to compute the projection function at a given mesh cell for
+        //  the blade force.
+        scalar computeBladeProjectionFunction(vector disVector, int turbineNumber, int bladeNumber, int elementNumber);
+
         //- Compute blade forces.
         void computeBladeForce();
         
@@ -835,14 +874,15 @@ private:
 
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian(scalar epsilon, scalar d);
-      //scalar generalizedGaussian(scalar xEpsilon, scalar yEpsilon; scalar zEpsilon, vector uX, vector uY, vector uZ, vector d);
+        scalar generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
+        scalar chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff);
 
-        //- Rotates a point about a rotation axis and rotation point by the specified
+        //- Rotates a point/vector about a rotation axis and rotation point by the specified
         //  angle in radians.
-        vector rotatePoint(vector point, vector rotationPoint, vector axis, scalar angle);
+        vector rotateVector(vector v, vector translation, vector axis, scalar angle);
 
         //- Transform a vector from one coordinate system to another.
         vector transformVectorCartToLocal(vector v,  vector xP, vector yP, vector zP);
@@ -872,14 +912,14 @@ private:
 public:
     
     //- Constructor
-    horizontalAxisWindTurbinesALM_tn
+    horizontalAxisWindTurbinesALMAdvanced
     (
         const volVectorField& U
     );
     
     
     //- Destructor
-    virtual ~horizontalAxisWindTurbinesALM_tn()
+    virtual ~horizontalAxisWindTurbinesALMAdvanced()
     {}
     
     
