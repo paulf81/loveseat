@@ -102,7 +102,7 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/windPlantSolver.towerNacelle
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.ALMAdvanced
 rm pEqn.H
 rm windPlantSolver.C
 rm Make/options
@@ -131,7 +131,7 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.towerNacelle
+cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.ALMAdvanced
 rm pisoFoamTurbine.C
 rm Make/options
 ln -s $dir/pisoFoamTurbine.C
@@ -147,7 +147,7 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/turbineTestHarness.towerNacelle
+cd applications/solvers/incompressible/windEnergy/turbineTestHarness.ALMAdvanced
 rm Make/options
 ln -s ../$dir/options ./Make
 rm -rf $dirrm1 $dirrm2

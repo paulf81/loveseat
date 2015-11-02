@@ -35,7 +35,7 @@ Description
 #include "fvCFD.H"
 #include "singlePhaseTransportModel.H"
 #include "turbulenceModel.H"
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

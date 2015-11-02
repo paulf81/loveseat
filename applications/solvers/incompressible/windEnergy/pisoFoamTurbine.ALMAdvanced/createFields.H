@@ -71,4 +71,4 @@
         incompressible::turbulenceModel::New(U, phi, laminarTransport)
     );
 
-    turbineModels::horizontalAxisWindTurbinesALM_tn turbines(U);
+    turbineModels::horizontalAxisWindTurbinesALMAdvanced turbines(U);

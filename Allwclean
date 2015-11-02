@@ -41,7 +41,7 @@ rmdepall
 wclean
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/windPlantSolver.towerNacelle
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.ALMAdvanced
 rmdepall
 wclean
 cd ../../../../../
@@ -56,7 +56,7 @@ rmdepall
 wclean
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.towerNacelle
+cd applications/solvers/incompressible/windEnergy/pisoFoamTurbine.ALMAdvanced
 rmdepall
 wclean
 cd ../../../../../
@@ -66,7 +66,7 @@ rmdepall
 wclean
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/turbineTestHarness.towerNacelle
+cd applications/solvers/incompressible/windEnergy/turbineTestHarness.ALMAdvanced
 rmdepall
 wclean
 cd ../../../../../

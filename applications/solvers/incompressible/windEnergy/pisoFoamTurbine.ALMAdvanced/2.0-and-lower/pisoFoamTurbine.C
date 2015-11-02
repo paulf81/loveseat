@@ -35,7 +35,7 @@ Description
 #include "fvCFD.H"
 #include "singlePhaseTransportModel.H"
 #include "turbulenceModel.H"
-#include "horizontalAxisWindTurbinesALM_tn.H"
+#include "horizontalAxisWindTurbinesALMAdvanced.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -87,16 +87,11 @@ int main(int argc, char *argv[])
             {
                 volScalarField rAU(1.0/UEqn.A());
 
-                volVectorField HbyA("HbyA", U);
-                HbyA = rAU*UEqn.H();
-                surfaceScalarField phiHbyA
-                (
-                    "phiHbyA",
-                    (fvc::interpolate(HbyA) & mesh.Sf())
-                   + fvc::interpolate(rAU)*fvc::ddtCorr(U, phi)
-                );
+                U = rAU*UEqn.H();
+                phi = (fvc::interpolate(U) & mesh.Sf())
+                    + fvc::ddtPhiCorr(rAU, U, phi);
 
-                adjustPhi(phiHbyA, U, p);
+                adjustPhi(phi, U, p);
 
                 // Non-orthogonal pressure corrector loop
                 for (int nonOrth=0; nonOrth<=nNonOrthCorr; nonOrth++)
@@ -105,7 +100,7 @@ int main(int argc, char *argv[])
 
                     fvScalarMatrix pEqn
                     (
-                        fvm::laplacian(rAU, p) == fvc::div(phiHbyA)
+                        fvm::laplacian(rAU, p) == fvc::div(phi)
                     );
 
                     pEqn.setReference(pRefCell, pRefValue);
@@ -125,12 +120,12 @@ int main(int argc, char *argv[])
 
                     if (nonOrth == nNonOrthCorr)
                     {
-                        phi = phiHbyA - pEqn.flux();
+                        phi -= pEqn.flux();
                     }
                 }
 
                 // Velocity corrector
-                U = HbyA - rAU*fvc::grad(p);
+                U -= rAU*fvc::grad(p);
                 U.correctBoundaryConditions();
             }
         }
