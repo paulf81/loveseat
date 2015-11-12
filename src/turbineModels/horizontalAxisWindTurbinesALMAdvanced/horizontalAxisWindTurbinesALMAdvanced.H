@@ -121,6 +121,10 @@ private:
         //- Body force field applied to fluid by turbine.
         volVectorField bodyForce;
         volScalarField gBlade;
+
+        //- Mark the cells that will be searched with integers.  0 for not a search cell, 
+        //  1 for rotor cells, 2 for nacelle cells, 3 for tower cells.
+        volLabelField searchCells;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every

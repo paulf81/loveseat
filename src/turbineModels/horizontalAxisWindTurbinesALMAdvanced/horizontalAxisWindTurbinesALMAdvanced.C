@@ -119,6 +119,20 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         ),
         mesh_,
         dimensionedScalar("gBlade",dimless/dimVolume,0.0)
+    ),
+
+    searchCells
+    (
+        IOobject
+        (
+            "searchCells",
+            time,
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh_,
+        0
     )
 
 
