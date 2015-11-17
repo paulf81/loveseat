@@ -973,16 +973,24 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
     computeBladeAlignedVectors();
 
     // Find out which processors control each actuator line point.
-    findControlProcNo();
+    findBladePointControlProcNo();
+    findNacellePointControlProcNo();
+    findTowerPointControlProcNo();
 
     // Compute the wind vectors at this initial time step.
-    computeWindVectors();
+    computeBladePointWindVectors();
+    computeNacellePointWindVectors();
+    computeTowerPointWindVectors();
 
     // Compute the blade forces due to this wind at the initial time step.
-    computeBladeForce();
+    computeBladePointForce();
+    computeNacellePointForce();
+    computeTowerPointForce();
 
     // Compute the resultant body force at this initial time step.
-    computeBodyForce();
+    computeBladeBodyForce();
+    computeNacelleBodyForce();
+    computeTowerBodyForce();
 
     // Open the turbine data output files and print initial information.
     openOutputFiles();
@@ -2071,7 +2079,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeAlignedVectors()
 }
 
 
-void horizontalAxisWindTurbinesALMAdvanced::computeBladeForce()
+void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
 {
     // Take the x,y,z wind vectors and project them into the blade coordinate system.
     // Proceed turbine by turbine.
@@ -2208,7 +2216,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeForce()
 
 
 
-void horizontalAxisWindTurbinesALMAdvanced::computeNacelleForce()
+void horizontalAxisWindTurbinesALMAdvanced::computeNacellePointForce()
 {
     // The tower nacelle wind vector is in the Cartesian coordinate system so no need
     // to transform it either.
@@ -2294,7 +2302,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacelleForce()
 
 
 
-void horizontalAxisWindTurbinesALMAdvanced::computeTowerForce()
+void horizontalAxisWindTurbinesALMAdvanced::computeTowerPointForce()
 {
     // The tower nacelle wind vector is in the Cartesian coordinate system so no need
     // to transform it either.
@@ -3192,8 +3200,13 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
         // Find out which processor controls which actuator point,
         // and with that informatio sample the wind at the actuator
         // points.
-        findControlProcNo();
-        computeWindVectors();
+        findBladePointControlProcNo();
+        findNacellePointControlProcNo();
+        findTowerPointControlProcNo();
+
+        computeBladePointWindVectors();
+        computeNacellePointWindVectors();
+        computeTowerPointWindVectors();
 
         // Update the rotor state.
         filterRotSpeed();
@@ -3248,15 +3261,27 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
         // Find out which processor controls which actuator point,
         // and with that information sample the wind at the actuator
         // points.
-        findControlProcNo();
-        computeWindVectors();
+        findBladePointControlProcNo();
+        findNacellePointControlProcNo();
+        findTowerPointControlProcNo();
+
+        computeBladePointWindVectors();
+        computeNacellePointWindVectors();
+        computeTowerPointWindVectors();
     }
 
-    // Compute the blade forces.
-    computeBladeForce();
+    // Compute the actuator point forces.
+    computeBladePointForce();
+    computeNacellePointForce();
+    computeTowerPointForce();
 
-    // Project the blade forces as body forces.
-    computeBodyForce();
+    // Zero out the body forces.
+    bodyForce *= 0.0;
+    
+    // Project the actuator forces as body forces.
+    computeBladeBodyForce();
+    computeNacelleBodyForce();
+    computeTowerBodyForce();
 
     // Print turbine output to file.
     outputIndex++;

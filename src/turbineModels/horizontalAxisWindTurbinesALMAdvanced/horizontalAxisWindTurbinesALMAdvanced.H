@@ -882,9 +882,9 @@ private:
         void computeBladeAlignedVectors();
 
         //- Compute blade forces.
-        void computeBladeForce();
-        void computeNacelleForce();
-        void computeTowerForce();
+        void computeBladePointForce();
+        void computeNacellePointForce();
+        void computeTowerPointForce();
 
         //- Function to compute the projection function at a given mesh cell for
         //  the blade force.
