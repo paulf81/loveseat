@@ -124,7 +124,7 @@ private:
 
         //- Mark the cells that will be searched with integers.  0 for not a search cell, 
         //  1 for rotor cells, 2 for nacelle cells, 3 for tower cells.
-        volLabelField searchCells;
+        volScalarField searchCells;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
@@ -190,6 +190,9 @@ private:
             DynamicList<word> bladeActuatorPointInterpType;
             DynamicList<word> nacelleActuatorPointInterpType;
             DynamicList<word> towerActuatorPointInterpType;
+
+            //- List of the method to define blade related search cells.
+            DynamicList<word> bladeSearchCellMethod;
 
             //- List of how the blades are updated in time.  "oldPosition" means that for
             //  computing the body force due to the blades for t^(n+1), the velocity is
@@ -549,10 +552,12 @@ private:
             //- List of locations of the rotor apex relative to the origin (m).
             DynamicList<vector> rotorApex;
 
-            //- List of list of labels of cells that turbine could lie within.  
-            //  This is a cylinder about the tower with a hemisphere capping
-            //  the cylinder to envelop the rotor
-            DynamicList<DynamicList<label> > influenceCells;
+            //- List of list of labels of cells that turbine could lie within to narrow
+            //  the search for cells for integral velocity sampling and for body force
+            //  projection.  
+            DynamicList<DynamicList<label> > bladeInfluenceCells;
+            DynamicList<DynamicList<label> > towerInfluenceCells;
+            DynamicList<DynamicList<label> > nacelleInfluenceCells;
 
             //- Actuator element width.
             DynamicList<DynamicList<scalar> > bladeDs;
@@ -829,6 +834,14 @@ private:
           
     
     // Private Member Functions
+
+        //- Define the rotor, nacelle, and tower search cells.
+        void findRotorSearchCells(int turbineNumber);
+        void findNacelleSearchCells(int turbineNumber);
+        void findTowerSearchCells(int turbineNumber);
+
+        //- Update the list of turbines controlled by this processor.
+        void updateTurbinesControlled();
         
         //- Rotate the blades.
         void rotateBlades();

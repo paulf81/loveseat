@@ -1,8 +1,8 @@
 // Use trilinear interpolation using nearest cell center and cell-center
 // gradient information.
-forAll(influenceCells[i], m)
+forAll(bladeInfluenceCells[i], m)
 {
-    vector disVector = (mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
+    vector disVector = (mesh_.C()[bladeInfluenceCells[i][m]] - bladePoints[i][j][k]);
     scalar dis = mag(disVector);
     if (dis <= bladeProjectionRadius[i])
     {
@@ -11,6 +11,6 @@ forAll(influenceCells[i], m)
 
         // Sum up this mesh cell's contribution to the integrated velocity, 
         // weighted by the projection function.
-        velocity += U_[influenceCells[i][m]] * spreading * mesh_.V()[influenceCells[i][m]];
+        velocity += U_[bladeInfluenceCells[i][m]] * spreading * mesh_.V()[bladeInfluenceCells[i][m]];
     }
 }
