@@ -866,12 +866,14 @@ private:
 
         //- Find out which processor zone each actuator line point lies within.
         //  (Which processor is controlling each actuator line point?)
-        void findControlProcNo();
+        void findBladePointControlProcNo();
+        void findNacellePointControlProcNo();
+        void findTowerPointControlProcNo();
         
-        //- Compute the unit vector at all blade points in blade-aligned
-        //  coordinates.  Then, compute the wind vector in these blade-aligned
-        //  coordinates at each actuator point.
-        void computeWindVectors();
+        //- Compute the wind vector at each actuator point.
+        void computeBladePointWindVectors();
+        void computeNacellePointWindVectors();
+        void computeTowerPointWindVectors();
 
         //- Compute the vectors that define the blade orientation (this is on a
         //  per blade basis.  It should be updated in the future to be on a per
@@ -879,15 +881,19 @@ private:
         //  or base geometry.
         void computeBladeAlignedVectors();
 
+        //- Compute blade forces.
+        void computeBladeForce();
+        void computeNacelleForce();
+        void computeTowerForce();
+
         //- Function to compute the projection function at a given mesh cell for
         //  the blade force.
         scalar computeBladeProjectionFunction(vector disVector, int turbineNumber, int bladeNumber, int elementNumber);
-
-        //- Compute blade forces.
-        void computeBladeForce();
         
         //- Compute body forces.
-        void computeBodyForce();
+        void computeBladeBodyForce();
+        void computeNacelleBodyForce();
+        void computeTowerBodyForce();
 
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian(scalar epsilon, scalar d);
