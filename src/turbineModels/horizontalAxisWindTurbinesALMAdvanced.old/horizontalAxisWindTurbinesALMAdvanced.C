@@ -132,7 +132,7 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
             IOobject::AUTO_WRITE
         ),
         mesh_,
-        dimensionedScalar("searchCells",dimless,0.0)
+        0
     )
 
 
@@ -196,8 +196,6 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         bladeActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeActuatorPointInterpType")));
         nacelleActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleActuatorPointInterpType")));
         towerActuatorPointInterpType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerActuatorPointInterpType")));
-
-        bladeSearchCellMethod.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeSearchCellMethod")));
 
         actuatorUpdateType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("actuatorUpdateType")));
 
@@ -634,6 +632,100 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 
 
 
+    // Define the cells that can possibly be influenced by the force
+    // exerted each turbine.  In otherwords, define a sphere of cell IDs
+    // around each turbine that will be saved into memory so that the
+    // entire domain need not be passed through when applying the force 
+    // field.  (The i-index is at the turbine array level for each 
+    // turbine, the j-index is for each type of turbine--if all turbines
+    // are the same, j is always 0, and the k-index is at the individual
+    // blade level.)
+    for(int i = 0; i < numTurbines; i++)
+    {
+        int j = turbineTypeID[i];
+
+        // First compute the radius of the force projection (to the radius
+        // where the projection is only 0.001 its maximum value - this seems
+        // recover 99.9% of the total forces when integrated).
+        scalar bladeEpsilonMax = -1.0E6;
+        scalar towerEpsilonMax = -1.0E6;
+        scalar nacelleEpsilonMax = -1.0E6;
+        for (int k = 0; k < 3; k++)
+        {
+            if(bladeEpsilon[i][k] > bladeEpsilonMax)
+            {
+                bladeEpsilonMax = bladeEpsilon[i][k];
+            }
+            if(nacelleEpsilon[i][k] > nacelleEpsilonMax)
+            {
+                nacelleEpsilonMax = nacelleEpsilon[i][k];
+            }
+            if(towerEpsilon[i][k] > towerEpsilonMax)
+            {
+                towerEpsilonMax = towerEpsilon[i][k];
+            }
+        }
+       
+
+        bladeProjectionRadius.append(2.0 * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
+        nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[j] + NacelleLength[j]);
+        towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + TowerChord[j][0]);
+
+        // Calculate the sphere of influence radius (The sphere that 
+        // envelops the rotor at all yaw angles).
+        scalar sphereRadius = 0.0;
+        forAll(PreCone[j],k)
+        {
+            scalar sphereRadiusI = Foam::sqrt(Foam::sqr((OverHang[j] + UndSling[j]) + TipRad[j]*Foam::sin(PreCone[j][k])) + Foam::sqr(TipRad[j]*Foam::cos(PreCone[j][k])));
+            if(sphereRadiusI > sphereRadius)
+            {
+                sphereRadius = sphereRadiusI;
+            }
+        } 
+        sphereRadius += max(nacelleSampleDistance[i],bladeProjectionRadius[i]);
+
+        // Find the cells within the region of influence.
+        DynamicList<label> influenceCellsI;
+        forAll(U_.mesh().cells(),cellI)
+        {
+        if ((includeTower[i]) && (U_.mesh().C()[cellI].z() <= towerShaftIntersect[i].z()))
+            {
+                if ( Foam::sqrt(Foam::sqr(U_.mesh().C()[cellI].x() - baseLocation[i].x()) + 
+                                Foam::sqr(U_.mesh().C()[cellI].y() - baseLocation[i].y())) )
+                {
+                    influenceCellsI.append(cellI);
+                }
+            }
+            else if (((includeTower[i]) && (U_.mesh().C()[cellI].z() > towerShaftIntersect[i].z())) || (includeTower[i] != true))
+            {
+                if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
+                {
+                    influenceCellsI.append(cellI);
+                }
+
+              //scalar x = U_.mesh().C()[cellI].x();
+              //scalar y = U_.mesh().C()[cellI].y();
+              //scalar z = U_.mesh().C()[cellI].z();
+              //scalar r = Foam::sqrt(Foam::sqr(y) + Foam::sqr(z));
+              //scalar d = mag(x - rotorApex[i].x());
+              //if ( (r < sphereRadius) && (d <= 1.25) )
+              //{
+              //    influenceCellsI.append(cellI);
+              //}
+            }
+        }
+        influenceCells.append(influenceCellsI);
+        influenceCellsI.clear();
+
+        // Create a list of turbines that this processor could forseeably control.
+        // If influenceCells[i] is not empty, then turbine i belongs in the list.
+        if (influenceCells[i].size() > 0)
+        {
+            turbinesControlled.append(i);
+        }
+    }
+
+
     // Create the actuator line points (not yet rotated for initial nacelle
     // yaw or initial rotor azimuth), the actuator tower points, and the
     // actuator nacelle points. i-index is at array level, j-index is
@@ -936,11 +1028,6 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         bladeMinDisCellID.append(List<List<label> >(NumBl[j], List<label>(numBladePoints[i],-1)));
         nacelleMinDisCellID.append(-1);
         towerMinDisCellID.append(List<label>(numTowerPoints[i],-1));
-
-        DynamicList<label> influenceCellsI;
-        bladeInfluenceCells.append(influenceCellsI);
-        nacelleInfluenceCells.append(influenceCellsI);
-        towerInfluenceCells.append(influenceCellsI);
     }
     Pstream::scatter(bladePointsPerturbVector);
     Pstream::scatter(nacellePointPerturbVector);
@@ -955,19 +1042,6 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
     // Rotate the rotor to initial azimuth angle.
     deltaAzimuth =  rotorAzimuth;
     rotateBlades(); 
-
-    // Define the sets of search cells when sampling velocity and projecting
-    // the body force.
-    for(int i = 0; i < numTurbines; i++)
-    {
-        findRotorSearchCells(i);
-        findNacelleSearchCells(i);
-        findTowerSearchCells(i);
-    }
-
-    // If there are search cells for a particular turbine, then this processor
-    // must do calculations for this turbine, so check for that.
-    updateTurbinesControlled();
 
     // Compute the blade aligned vectors.
     computeBladeAlignedVectors();
@@ -990,305 +1064,6 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 }
 
 // * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * * //
-
-void horizontalAxisWindTurbinesALMAdvanced::findRotorSearchCells(int turbineNumber)
-{
-    // Define the cells that can possibly be influenced by the force
-    // exerted each turbine by the rotor.  In otherwords, define a set 
-    // of cell IDs around each turbine that will be saved into memory 
-    // so that the entire domain need not be passed through when  
-    // applying the force field.  (The i-index is at the turbine array  
-    // level for each turbine, the m-index is for each type of turbine--
-    // if all turbines are the same, m is always 0, and the j-index is 
-    // at the individual blade level.)
-    int i = turbineNumber;
-    
-    int m = turbineTypeID[i];
-
-    // First compute the radius of the force projection (to the radius
-    // where the projection is only 0.001 its maximum value - this seems
-    // recover 99.9% of the total forces when integrated).
-    scalar bladeEpsilonMax = -1.0E6;
-    for (int j = 0; j < 3; j++)
-    {
-        if(bladeEpsilon[i][j] > bladeEpsilonMax)
-        {
-            bladeEpsilonMax = bladeEpsilon[i][j];
-        }
-    }
-
-    scalar bladeChordMax = -1.0E6;
-    forAll (BladeChord[m],j)
-    {
-        if(BladeChord[m][j] > bladeChordMax)
-        {
-            bladeChordMax = BladeChord[m][j];
-        }
-    }
-
-    scalar bladeUserDefMax = -1.0E6;
-    forAll (BladeUserDef[m],j)
-    {
-        if(BladeUserDef[m][j] > bladeUserDefMax)
-        {
-            bladeUserDefMax = BladeUserDef[m][j];
-        }
-    }
-
-    if (bladeForceProjectionType[i] == "uniformGaussian")
-    {
-        bladeProjectionRadius.append(bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
-    }
-    else if (bladeForceProjectionType[i] == "variableUniformGaussianUserDef")
-    {
-        bladeProjectionRadius.append(bladeUserDefMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
-    }
-    else if ((bladeForceProjectionType[i] == "variableUniformGaussianChord") ||
-             (bladeForceProjectionType[i] == "chordThicknessGaussian"))
-    {
-        bladeProjectionRadius.append(bladeChordMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
-    }
-        
-    // Defines the search cell set a all cells within a sphere that occupies
-    // the volume that the rotor lies in for any yaw angle.  This is a fairly
-    // large volume, so possibly inefficient for fine meshes.  See the "disk"
-    // option below.
-    DynamicList<label> influenceCellsI;
-    if (bladeSearchCellMethod[i] == "sphere")
-    {
-        scalar sphereRadius = 0.0;
-        forAll(PreCone[m],j)
-        {
-            scalar sphereRadiusI = Foam::sqrt(Foam::sqr((OverHang[m] + UndSling[m]) + TipRad[m]*Foam::sin(PreCone[m][j])) + Foam::sqr(TipRad[m]*Foam::cos(PreCone[m][j])));
-            if(sphereRadiusI > sphereRadius)
-            {
-                sphereRadius = sphereRadiusI;
-            }
-        } 
-        sphereRadius += bladeProjectionRadius[i];
-
-        // Find the cells within the region of influence.
-        forAll(U_.mesh().cells(),cellI)
-        {
-            if (mag(U_.mesh().C()[cellI] - towerShaftIntersect[i]) <= sphereRadius)
-            {
-                influenceCellsI.append(cellI);
-                searchCells[cellI] = 1;
-            }
-        }
-    }
-    // Defines the search cell set as a disk with thickness that surrounds the 
-    // rotor revolution plane.  It isn't really a disk because it accounts for
-    // rotor precone, so it is more of a disk that is coned.
-    else if (bladeSearchCellMethod[i] == "disk")
-    {
-        forAll(U_.mesh().cells(),cellI)
-        {
-            vector xP = vector::zero;
-            vector yP = vector::zero;
-            vector zP = vector::zero;
-            vector vP = vector::zero;
-            vector v = vector::zero;
-            scalar r = 0.0;
-            scalar xBlade = 0.0;
-            v = U_.mesh().C()[cellI] - rotorApex[i];
-            zP.z() = 1.0;
-            xP = uvShaft[i];
-            xP /= mag(xP);
-            yP = zP ^ xP;
-            yP /= mag(yP);
-            zP = xP ^ yP;
-            zP /= mag(zP);
-            vP = transformVectorCartToLocal(v,xP,yP,zP);
-            r = Foam::sqrt(Foam::sqr(vP.y()) + Foam::sqr(vP.z()));
-            xBlade = r * Foam::sin(PreCone[m][0]);
-            if (((vP.x() >= xBlade - bladeProjectionRadius[i]) && (vP.x() <= xBlade + bladeProjectionRadius[i])) &&
-                (r <= TipRad[m]*Foam::cos(PreCone[m][0]) + bladeProjectionRadius[i]))
-            {
-                influenceCellsI.append(cellI);
-                searchCells[cellI] = 1;
-            }
-        }     
-    }
-    bladeInfluenceCells[i].clear();
-    bladeInfluenceCells[i] = influenceCellsI;
-    influenceCellsI.clear();
-}
-
-
-void horizontalAxisWindTurbinesALMAdvanced::findNacelleSearchCells(int turbineNumber)
-{
-    // Define the cells that can possibly be influenced by the force
-    // exerted each turbine by the nacelle.  In otherwords, define a set 
-    // of cell IDs around each turbine that will be saved into memory 
-    // so that the entire domain need not be passed through when  
-    // applying the force field.  (The i-index is at the turbine array  
-    // level for each turbine, the m-index is for each type of turbine--
-    // if all turbines are the same, m is always 0, and the j-index is 
-    // at the individual blade level.)
-    int i = turbineNumber;
-
-    int m = turbineTypeID[i];
-
-    // First compute the radius of the force projection (to the radius
-    // where the projection is only 0.001 its maximum value - this seems
-    // recover 99.9% of the total forces when integrated).
-    scalar nacelleEpsilonMax = -1.0E6;
-    for (int j = 0; j < 3; j++)
-    {
-        if(nacelleEpsilon[i][j] > nacelleEpsilonMax)
-        {
-            nacelleEpsilonMax = nacelleEpsilon[i][j];
-        }
-    }
-    nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[m]);
-
-
-    // Find the cells within the region of influence.  These are cells within a
-    // cylinder with hemispherical end caps around the line of nacelle points, 
-    // and also in a sphere around the nacelle sample point.
-    DynamicList<label> influenceCellsI;
-    if (includeNacelle[i])
-    {
-        forAll(U_.mesh().cells(),cellI)
-        {
-            vector xP = vector::zero;
-            vector yP = vector::zero;
-            vector zP = vector::zero;
-            vector vP = vector::zero;
-            vector v1 = vector::zero;
-            vector v2 = vector::zero;
-            scalar r1 = 0.0;
-            scalar r2 = 0.0;
-            v1 = U_.mesh().C()[cellI] - rotorApex[i];
-            v2 = U_.mesh().C()[cellI] - nacelleSamplePoint[i];
-            zP.z() = 1.0;
-            xP = uvShaft[i];
-            xP /= mag(xP);
-            yP = zP ^ xP;
-            yP /= mag(yP);
-            zP = xP ^ yP;
-            zP /= mag(zP);
-            vP = transformVectorCartToLocal(v1,xP,yP,zP);
-                
-            // Searching for cells around the nacelle points.
-            if (vP.x() < 0.0)
-            {
-                r1 = Foam::sqrt(Foam::sqr(vP.x()) + Foam::sqr(vP.y()) + Foam::sqr(vP.z()));
-            }
-            else if (vP.x() > NacelleLength[m])
-            {
-                r1 = Foam::sqrt(Foam::sqr(vP.x() - NacelleLength[m]) + Foam::sqr(vP.y()) + Foam::sqr(vP.z()));
-            }
-            else
-            {
-                r1 = Foam::sqrt(Foam::sqr(vP.y()) + Foam::sqr(vP.z()));
-            }
-
-            // Searching for cells around the nacelle velocity sampling points.
-            r2 = Foam::sqrt(Foam::sqr(v2.x()) + Foam::sqr(v2.y()) + Foam::sqr(v2.z()));
-            if ((r1 <= nacelleProjectionRadius[i]) || (r2 <= nacelleProjectionRadius[i]))
-            {
-                influenceCellsI.append(cellI);
-                searchCells[cellI] = 2;
-            }
-        }
-    }
-    nacelleInfluenceCells[i].clear();
-    nacelleInfluenceCells[i] = influenceCellsI;
-    influenceCellsI.clear();
-}
-
-
-void horizontalAxisWindTurbinesALMAdvanced::findTowerSearchCells(int turbineNumber)
-{
-    // Define the cells that can possibly be influenced by the force
-    // exerted each turbine by the tower.  In otherwords, define a set 
-    // of cell IDs around each turbine that will be saved into memory 
-    // so that the entire domain need not be passed through when  
-    // applying the force field.  (The i-index is at the turbine array  
-    // level for each turbine, the m-index is for each type of turbine--
-    // if all turbines are the same, m is always 0, and the j-index is 
-    // at the individual blade level.)
-    int i = turbineNumber;
-
-    int m = turbineTypeID[i];
-
-    // First compute the radius of the force projection (to the radius
-    // where the projection is only 0.001 its maximum value - this seems
-    // recover 99.9% of the total forces when integrated).
-    scalar towerEpsilonMax = -1.0E6;
-    for (int j = 0; j < 3; j++)
-    {
-        if (towerEpsilon[i][j] > towerEpsilonMax)
-        {
-            towerEpsilonMax = towerEpsilon[i][j];
-        }
-    }
-    scalar towerChordMax = 0.0;
-    forAll (TowerChord[m],j)
-    {
-        if (TowerChord[m][j] > towerChordMax)
-        {
-            towerChordMax = TowerChord[m][j];
-        }
-    }
-    towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + 0.5*towerChordMax);
-
-
-    // Find the cells within the region of influence.  This is a cylinder around the tower
-    // and around the tower sampling line.
-    DynamicList<label> influenceCellsI;
-    if (includeTower[i])
-    {
-        forAll(U_.mesh().cells(),cellI)
-        {
-            if (U_.mesh().C()[cellI].z() <= towerShaftIntersect[i].z())
-            {
-                scalar cellRadius1 = Foam::sqrt(Foam::sqr(U_.mesh().C()[cellI].x() - baseLocation[i].x()) + 
-                                                Foam::sqr(U_.mesh().C()[cellI].y() - baseLocation[i].y()));
-                scalar cellRadius2 = Foam::sqrt(Foam::sqr(U_.mesh().C()[cellI].x() - towerSamplePoints[i][0].x()) + 
-                                                Foam::sqr(U_.mesh().C()[cellI].y() - towerSamplePoints[i][0].y()));
-                if ( (cellRadius1 <= towerProjectionRadius[i]) || (cellRadius2 <= towerProjectionRadius[i]) )
-                {
-                    influenceCellsI.append(cellI);
-                    searchCells[cellI] = 3;
-                }
-            }
-        }
-    }
-    towerInfluenceCells[i].clear();
-    towerInfluenceCells[i] = influenceCellsI;
-    influenceCellsI.clear();
-}
-
-
-void horizontalAxisWindTurbinesALMAdvanced::updateTurbinesControlled()
-{
-    // This function determines if this processor has search cells for a 
-    // particular turbine.  It creates a list of turbines that this processor
-    // has search cells for, and should therefore perform searches and body
-    // force projection for.
-
-    // Clear out the turbines controlled list and recalculate.
-    turbinesControlled.clear();
-
-    // If there are any blade, nacelle, or tower influence cells, than this
-    // processor controls at least part of this turbine.
-    for(int i = 0; i < numTurbines; i++)
-    {
-        int j = 0;
-        j = max(j,bladeInfluenceCells[i].size());
-        j = max(j,nacelleInfluenceCells[i].size());
-        j = max(j,towerInfluenceCells[i].size());
-        if (j > 0)
-        {
-            turbinesControlled.append(i);
-        }
-    }
-}
-
-
 
 void horizontalAxisWindTurbinesALMAdvanced::rotateBlades()
 {  
@@ -1368,7 +1143,7 @@ void horizontalAxisWindTurbinesALMAdvanced::yawNacelle()
 
 
 
-        // Compute the new yaw angle and make sure it isn't
+    // Compute the new yaw angle and make sure it isn't
         // bigger than 2*pi.
         if (pastFirstTimeStep)
         {
@@ -1592,15 +1367,15 @@ void horizontalAxisWindTurbinesALMAdvanced::findControlProcNo()
             {
                 // Find the cell that the sampling point lies within and the distance
                 // from the sampling point to that cell center.
-                label cellID = bladeInfluenceCells[i][0];
+                label cellID = influenceCells[i][0];
                 scalar minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
 
-                forAll(bladeInfluenceCells[i], m)
+                forAll(influenceCells[i], m)
                 {
-                    scalar dis = mag(mesh_.C()[bladeInfluenceCells[i][m]] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
+                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
                     if(dis <= minDis)
                     {
-                        cellID = bladeInfluenceCells[i][m];
+                        cellID = influenceCells[i][m];
                     }
                     minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
                 }
@@ -1616,15 +1391,15 @@ void horizontalAxisWindTurbinesALMAdvanced::findControlProcNo()
         {
             forAll(towerSamplePoints[i],j)
             {
-                label cellID = towerInfluenceCells[i][0];
+                label cellID = influenceCells[i][0];
                 scalar minDis = mag(mesh_.C()[cellID] - (towerSamplePoints[i][j] + towerPointsPerturbVector[i][j]));
 
-                forAll(towerInfluenceCells[i], m)
+                forAll(influenceCells[i], m)
                 {
-                    scalar dis = mag(mesh_.C()[towerInfluenceCells[i][m]] - (towerSamplePoints[i][j] + towerPointsPerturbVector[i][j]));
+                    scalar dis = mag(mesh_.C()[influenceCells[i][m]] - (towerSamplePoints[i][j] + towerPointsPerturbVector[i][j]));
                     if(dis <= minDis)
                     {
-                        cellID = towerInfluenceCells[i][m];
+                        cellID = influenceCells[i][m];
                     }
                     minDis = mag(mesh_.C()[cellID] - (towerSamplePoints[i][j] + towerPointsPerturbVector[i][j]));
                 }
@@ -1638,15 +1413,15 @@ void horizontalAxisWindTurbinesALMAdvanced::findControlProcNo()
         // Nacelle sampling point.
         if(includeNacelleSomeTrue)
         {
-            label cellID = nacelleInfluenceCells[i][0];
+            label cellID = influenceCells[i][0];
             scalar minDis = mag(mesh_.C()[cellID] - (nacelleSamplePoint[i] + nacellePointPerturbVector[i]));
            
-            forAll(nacelleInfluenceCells[i], m)
+            forAll(influenceCells[i], m)
             {
-                scalar dis = mag(mesh_.C()[nacelleInfluenceCells[i][m]] - (nacelleSamplePoint[i] + nacellePointPerturbVector[i]));
+                scalar dis = mag(mesh_.C()[influenceCells[i][m]] - (nacelleSamplePoint[i] + nacellePointPerturbVector[i]));
                 if(dis <= minDis)
                 {
-                    cellID = nacelleInfluenceCells[i][m];
+                    cellID = influenceCells[i][m];
                 }
                 minDis = mag(mesh_.C()[cellID] - (nacelleSamplePoint[i] + nacellePointPerturbVector[i]));
             }
@@ -2347,7 +2122,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
         int n = turbineTypeID[i];
         
         // Proceed to compute body forces for turbine i only if there are influence cells on this processor for this turbine.
-        if (bladeInfluenceCells[i].size() > 0)
+        if (influenceCells[i].size() > 0)
         {
 
             // Get necessary axes.
@@ -2366,10 +2141,10 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                 // For each blade point.
                 forAll(bladePointForce[i][j], k)
                 {
-                    // For each influence cell.
-                    forAll(bladeInfluenceCells[i], m)
+                    // For each sphere cell.
+                    forAll(influenceCells[i], m)
                     {
-                        vector disVector = (mesh_.C()[bladeInfluenceCells[i][m]] - bladePoints[i][j][k]);
+                        vector disVector = (mesh_.C()[influenceCells[i][m]] - bladePoints[i][j][k]);
                         scalar dis = mag(disVector);
                         if (dis <= bladeProjectionRadius[i])
                         {
@@ -2377,14 +2152,14 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                             scalar spreading = computeBladeProjectionFunction(disVector,i,j,k);
 
                             // Add this spreading to the overall force projection field.
-                            gBlade[bladeInfluenceCells[i][m]] += spreading;
+                            gBlade[influenceCells[i][m]] += spreading;
 
                             // Compute the body force contribution.
-                            bodyForce[bladeInfluenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
+                            bodyForce[influenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
 
                             // Compute global body-force-derived forces/moments.
-                            rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-                            rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                            rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
+                            rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[influenceCells[i][m]]) 
                                                    & bladeAlignedVectors[i][j][1];
                         }
                     }
@@ -2427,9 +2202,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                 horizontalVector = horizontalVector / mag(horizontalVector);
 
             
-                forAll(towerInfluenceCells[i], m)
+                forAll(influenceCells[i], m)
                 {
-                    vector d = mesh_.C()[towerInfluenceCells[i][m]] - towerPoints[i][j];
+                    vector d = mesh_.C()[influenceCells[i][m]] - towerPoints[i][j];
                     scalar dis = mag(d);
                     if (dis <= towerProjectionRadius[i])
                     {
@@ -2494,15 +2269,15 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
 
 
                             bodyForceContrib = mag(towerPointForce[i][j]) * spreading * forceBase * towerNormal;
-                            bodyForce[towerInfluenceCells[i][m]] += bodyForceContrib;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
                         // Otherwise make the force drag only.
                         else
                         {
                             bodyForceContrib = towerPointForce[i][j] * spreading;
-                            bodyForce[towerInfluenceCells[i][m]] += bodyForceContrib;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
-                        towerAxialForceBodySum += -(bodyForceContrib * mesh_.V()[towerInfluenceCells[i][m]]) & axialVector;
+                        towerAxialForceBodySum += -(bodyForceContrib * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
             }
@@ -2538,9 +2313,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                 horizontalVector = horizontalVector / mag(horizontalVector);
 
             
-                forAll(nacelleInfluenceCells[i], m)
+                forAll(influenceCells[i], m)
                 {
-                    vector d = mesh_.C()[nacelleInfluenceCells[i][m]] - nacellePoints[i][j];
+                    vector d = mesh_.C()[influenceCells[i][m]] - nacellePoints[i][j];
                     scalar dis = mag(d);
                     if (dis <= nacelleProjectionRadius[i])
                     {
@@ -2563,7 +2338,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                         }
                         else if ((nacelleForceProjectionType[i] == "advanced1") || (nacelleForceProjectionType[i] == "advanced2"))
                         {
-                            vector v = mesh_.C()[nacelleInfluenceCells[i][m]] - rotorApex[i];
+                            vector v = mesh_.C()[influenceCells[i][m]] - rotorApex[i];
 
                             zP = vector::zero;
                             zP.z() = 1.0;
@@ -2679,15 +2454,15 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBodyForce()
                             //bodyForceContrib.x() = theta*180.0/pi;
                             //bodyForceContrib.x() = spreading;
                             bodyForceContrib = mag(nacellePointForce[i][j]) * spreading * forceBase * nacelleNormal;
-                            bodyForce[nacelleInfluenceCells[i][m]] += bodyForceContrib;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
                         // Otherwise make the force drag only.
                         else
                         {
                             bodyForceContrib = nacellePointForce[i][j] * spreading;
-                            bodyForce[nacelleInfluenceCells[i][m]] += bodyForceContrib;
+                            bodyForce[influenceCells[i][m]] += bodyForceContrib;
                         }
-                        nacelleAxialForceBodySum += (-nacellePointForce[i][j] * spreading * mesh_.V()[nacelleInfluenceCells[i][m]]) & axialVector;
+                        nacelleAxialForceBodySum += (-nacellePointForce[i][j] * spreading * mesh_.V()[influenceCells[i][m]]) & axialVector;
                     }
                 }
             }
@@ -3076,20 +2851,6 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
-
-        // Find search cells.
-        for(int i = 0; i < numTurbines; i++)
-        {
-            if (deltaNacYaw[i] != 0.0)
-            {
-                findRotorSearchCells(i);
-                findNacelleSearchCells(i);
-                findTowerSearchCells(i);
-            }
-        }
-        updateTurbinesControlled();
-
-        // Recompute the blade-aligned coordinate system.
         computeBladeAlignedVectors();
     }
     else if(actuatorUpdateType[0] == "newPosition")
@@ -3102,20 +2863,6 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
-
-        // Find search cells.
-        for(int i = 0; i < numTurbines; i++)
-        {
-            if (deltaNacYaw[i] != 0.0)
-            {
-                findRotorSearchCells(i);
-                findNacelleSearchCells(i);
-                findTowerSearchCells(i);
-            }
-        }
-        updateTurbinesControlled();
-
-        // Recompute the blade-aligned coordinate system.
         computeBladeAlignedVectors();
 
         // Find out which processor controls which actuator point,
@@ -3709,9 +3456,7 @@ void horizontalAxisWindTurbinesALMAdvanced::printDebug()
     Info << "airfoilCl = " << airfoilCl << endl;
     Info << "airfoilCd = " << airfoilCd << endl;
 
-    Info << "bladeInfluenceCells = " << bladeInfluenceCells << endl << endl << endl;
-    Info << "nacelleInfluenceCells = " << nacelleInfluenceCells << endl << endl << endl;
-    Info << "towerInfluenceCells = " << towerInfluenceCells << endl << endl << endl;
+    Info << "influenceCells = " << influenceCells << endl << endl << endl;
 
     Info << "bladeDs = " << bladeDs << endl;
     Info << "towerDs = " << towerDs << endl;
