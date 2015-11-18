@@ -157,7 +157,7 @@ private:
             DynamicList<word> turbineType;
 
             //- List of booleans for including nacelle and a global boolean that is
-            //  true if at least one turbine nacelle is included..
+            //  true if at least one turbine nacelle is included.
             DynamicList<bool> includeNacelle;
             bool includeNacelleSomeTrue;
 
@@ -535,8 +535,10 @@ private:
 
 
         //- Important Actuator Line Geometry Data.
-            //- List of turbines that this processor can forseeably control.
-            DynamicList<label> turbinesControlled;
+            //- List of rotors, nacelles, and tower that this processor can forseeably control.
+            DynamicList<label> bladesControlled;
+            DynamicList<label> nacellesControlled;
+            DynamicList<label> towersControlled;
 
             //- List of cell ID that contains a certain actuator line velocity sampling 
             //  point on theprocessor in control of that point.  If the value is -1,
@@ -896,12 +898,11 @@ private:
         void computeTowerBodyForce();
 
         //- Compute body force spreading/projection using different methods.
-        scalar uniformGaussian(scalar epsilon, scalar d);
-        scalar generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
-        scalar chordThicknessGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
+        scalar uniformGaussian3D(scalar epsilon, scalar d);
+        scalar generalizedGaussian3D(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
-        scalar oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff);
+        scalar gaussian1D(scalar x, scalar x0, scalar epsilon, scalar coeff);
 
         //- Rotates a point/vector about a rotation axis and rotation point by the specified
         //  angle in radians.

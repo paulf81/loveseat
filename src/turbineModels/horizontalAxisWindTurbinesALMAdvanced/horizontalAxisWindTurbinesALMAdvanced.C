@@ -941,6 +941,10 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         bladeInfluenceCells.append(influenceCellsI);
         nacelleInfluenceCells.append(influenceCellsI);
         towerInfluenceCells.append(influenceCellsI);
+
+        bladeProjectionRadius.append(0.0);
+        nacelleProjectionRadius.append(0.0);
+        towerProjectionRadius.append(0.0);
     }
     Pstream::scatter(bladePointsPerturbVector);
     Pstream::scatter(nacellePointPerturbVector);
@@ -961,8 +965,14 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
     for(int i = 0; i < numTurbines; i++)
     {
         findRotorSearchCells(i);
-        findNacelleSearchCells(i);
-        findTowerSearchCells(i);
+        if (includeNacelle[i])
+        {
+            findNacelleSearchCells(i);
+        }
+        if (includeTower[i])
+        {
+            findTowerSearchCells(i);
+        }
     }
 
     // If there are search cells for a particular turbine, then this processor
@@ -1045,16 +1055,16 @@ void horizontalAxisWindTurbinesALMAdvanced::findRotorSearchCells(int turbineNumb
 
     if (bladeForceProjectionType[i] == "uniformGaussian")
     {
-        bladeProjectionRadius.append(bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
+        bladeProjectionRadius[i] = bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
     else if (bladeForceProjectionType[i] == "variableUniformGaussianUserDef")
     {
-        bladeProjectionRadius.append(bladeUserDefMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
+        bladeProjectionRadius[i] = bladeUserDefMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
     else if ((bladeForceProjectionType[i] == "variableUniformGaussianChord") ||
              (bladeForceProjectionType[i] == "chordThicknessGaussian"))
     {
-        bladeProjectionRadius.append(bladeChordMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)));
+        bladeProjectionRadius[i] = bladeChordMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
         
     // Defines the search cell set a all cells within a sphere that occupies
@@ -1149,7 +1159,7 @@ void horizontalAxisWindTurbinesALMAdvanced::findNacelleSearchCells(int turbineNu
             nacelleEpsilonMax = nacelleEpsilon[i][j];
         }
     }
-    nacelleProjectionRadius.append(nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[m]);
+    nacelleProjectionRadius[i] = nacelleEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + NacelleEquivalentRadius[m];
 
 
     // Find the cells within the region of influence.  These are cells within a
@@ -1241,7 +1251,7 @@ void horizontalAxisWindTurbinesALMAdvanced::findTowerSearchCells(int turbineNumb
             towerChordMax = TowerChord[m][j];
         }
     }
-    towerProjectionRadius.append(towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + 0.5*towerChordMax);
+    towerProjectionRadius[i] = towerEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001)) + 0.5*towerChordMax;
 
 
     // Find the cells within the region of influence.  This is a cylinder around the tower
@@ -1278,20 +1288,26 @@ void horizontalAxisWindTurbinesALMAdvanced::updateTurbinesControlled()
     // has search cells for, and should therefore perform searches and body
     // force projection for.
 
-    // Clear out the turbines controlled list and recalculate.
-    turbinesControlled.clear();
+    // Clear out the blades, nacelles, and towers controlled list and recalculate.
+    bladesControlled.clear();
+    nacellesControlled.clear();
+    towersControlled.clear();
 
     // If there are any blade, nacelle, or tower influence cells, than this
-    // processor controls at least part of this turbine.
+    // processor controls those sampling/body force distribution points.
     for(int i = 0; i < numTurbines; i++)
     {
-        int j = 0;
-        j = max(j,bladeInfluenceCells[i].size());
-        j = max(j,nacelleInfluenceCells[i].size());
-        j = max(j,towerInfluenceCells[i].size());
-        if (j > 0)
+        if (bladeInfluenceCells[i].size() > 0)
         {
-            turbinesControlled.append(i);
+            bladesControlled.append(i);
+        }
+        if (nacelleInfluenceCells[i].size() > 0)
+        {
+            nacellesControlled.append(i);
+        }
+        if (towerInfluenceCells[i].size() > 0)
+        {
+            towersControlled.append(i);
         }
     }
 }
@@ -1573,9 +1589,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findBladePointControlProcNo()
     List<scalar> minDisGlobalBlade(totBladePoints,1.0E30);
 
 
-    forAll(turbinesControlled, p)
+    forAll(bladesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = bladesControlled[p];
         int iterBlade = 0;
         if(i > 0)
         {
@@ -1585,30 +1601,32 @@ void horizontalAxisWindTurbinesALMAdvanced::findBladePointControlProcNo()
             }
         }
         
-
         // Blade sampling points.
-        forAll(bladeSamplePoints[i], j)
+        if (bladeActuatorPointInterpType[i] != "integral")
         {
-            forAll(bladeSamplePoints[i][j], k)
+            forAll(bladeSamplePoints[i], j)
             {
-                // Find the cell that the sampling point lies within and the distance
-                // from the sampling point to that cell center.
-                label cellID = bladeInfluenceCells[i][0];
-                scalar minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
-
-                forAll(bladeInfluenceCells[i], m)
+                forAll(bladeSamplePoints[i][j], k)
                 {
-                    scalar dis = mag(mesh_.C()[bladeInfluenceCells[i][m]] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
-                    if(dis <= minDis)
+                    // Find the cell that the sampling point lies within and the distance
+                    // from the sampling point to that cell center.
+                    label cellID = bladeInfluenceCells[i][0];
+                    scalar minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
+
+                    forAll(bladeInfluenceCells[i], m)
                     {
-                        cellID = bladeInfluenceCells[i][m];
+                        scalar dis = mag(mesh_.C()[bladeInfluenceCells[i][m]] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
+                        if(dis <= minDis)
+                        {
+                            cellID = bladeInfluenceCells[i][m];
+                        }
+                        minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
                     }
-                    minDis = mag(mesh_.C()[cellID] - (bladeSamplePoints[i][j][k] + bladePointsPerturbVector[i][j][k]));
+                    minDisLocalBlade[iterBlade] = minDis;
+                    minDisGlobalBlade[iterBlade] = minDis;
+                    bladeMinDisCellID[i][j][k] = cellID;
+                    iterBlade++;
                 }
-                minDisLocalBlade[iterBlade] = minDis;
-                minDisGlobalBlade[iterBlade] = minDis;
-                bladeMinDisCellID[i][j][k] = cellID;
-                iterBlade++;
             }
         }
     }
@@ -1620,9 +1638,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findBladePointControlProcNo()
 
      // Compare the global to local lists.  Where the lists agree, this processor controls
     // the actuator line point.
-    forAll(turbinesControlled, p)
+    forAll(bladesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = bladesControlled[p];
         int iterBlade = 0;
         if(i > 0)
         {
@@ -1632,15 +1650,18 @@ void horizontalAxisWindTurbinesALMAdvanced::findBladePointControlProcNo()
             }
         }
         
-        forAll(bladeSamplePoints[i], j)
+        if (bladeActuatorPointInterpType[i] != "integral")
         {
-            forAll(bladeSamplePoints[i][j], k)
+            forAll(bladeSamplePoints[i], j)
             {
-                if(minDisGlobalBlade[iterBlade] != minDisLocalBlade[iterBlade])
+                forAll(bladeSamplePoints[i][j], k)
                 {
-                    bladeMinDisCellID[i][j][k] = -1;
+                    if(minDisGlobalBlade[iterBlade] != minDisLocalBlade[iterBlade])
+                    {
+                        bladeMinDisCellID[i][j][k] = -1;
+                    }
+                    iterBlade++;
                 }
-                iterBlade++;
             }
         }
     }
@@ -1656,9 +1677,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findNacellePointControlProcNo()
     List<scalar> minDisGlobalNacelle(numTurbines,1.0E30);
 
 
-    forAll(turbinesControlled, p)
+    forAll(nacellesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = nacellesControlled[p];
         int iterNacelle = 0;
         if(i > 0)
         {
@@ -1702,9 +1723,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findNacellePointControlProcNo()
 
     // Compare the global to local lists.  Where the lists agree, this processor controls
     // the actuator line point.
-    forAll(turbinesControlled, p)
+    forAll(nacellesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = nacellesControlled[p];
         int iterNacelle = 0;
         if(i > 0)
         {
@@ -1730,9 +1751,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findTowerPointControlProcNo()
     List<scalar> minDisGlobalTower(totTowerPoints,1.0E30);
 
 
-    forAll(turbinesControlled, p)
+    forAll(towersControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = towersControlled[p];
         int iterTower = 0;
         if(i > 0)
         {
@@ -1778,9 +1799,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findTowerPointControlProcNo()
 
     // Compare the global to local lists.  Where the lists agree, this processor controls
     // the actuator line point.
-    forAll(turbinesControlled, p)
+    forAll(towersControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = towersControlled[p];
         int iterTower = 0;
         if(i > 0)
         {
@@ -1811,9 +1832,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointWindVectors()
     // points is used, we need velocity gradient information.
     gradU = fvc::grad(U_);
 
-    forAll(turbinesControlled, p)
+    forAll(bladesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = bladesControlled[p];
         int iterBlade = 0;
         if(i > 0)
         {
@@ -1908,9 +1929,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacellePointWindVectors()
     // points is used, we need velocity gradient information.
     gradU = fvc::grad(U_);
 
-    forAll(turbinesControlled, p)
+    forAll(nacellesControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = nacellesControlled[p];
         int iterNacelle = 0;
         if(i > 0)
         {
@@ -1921,11 +1942,12 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacellePointWindVectors()
         }
                 
 
-        if(nacelleMinDisCellID[i] != -1)
+        vector velocity(vector::zero);
+        label cellID = nacelleMinDisCellID[i];
+        vector point = nacelleSamplePoint[i];
+
+        if(cellID != -1)
         {
-            vector velocity(vector::zero);
-            label cellID = nacelleMinDisCellID[i];
-            vector point = nacelleSamplePoint[i];
 
             // If the velocity interpolation is "cellCenter", then just use 
             // the velocity at the center of the cell within which this
@@ -1957,7 +1979,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacellePointWindVectors()
 
     // Put the gathered/scattered wind vectors into the windVector variable.
     // Proceed turbine by turbine.
-        int iterNacelle = 0;
+    int iterNacelle = 0;
     forAll(nacelleWindVector, i)
     {
         nacelleWindVector[i] = vector::zero;
@@ -1978,9 +2000,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerPointWindVectors()
     // points is used, we need velocity gradient information.
     gradU = fvc::grad(U_);
 
-    forAll(turbinesControlled, p)
+    forAll(towersControlled, p)
     {
-        int i = turbinesControlled[p];
+        int i = towersControlled[p];
         int iterTower = 0;
         if(i > 0)
         {
@@ -1992,11 +2014,12 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerPointWindVectors()
 
         forAll(towerPoints[i], j)
         {
-            if(towerMinDisCellID[i][j] != -1)
+            vector velocity(vector::zero);
+            label cellID = towerMinDisCellID[i][j];
+            vector point = towerSamplePoints[i][j];
+
+            if(cellID != -1)
             {
-                vector velocity(vector::zero);
-                label cellID = towerMinDisCellID[i][j];
-                vector point = towerSamplePoints[i][j];
 
                 // If the velocity interpolation is "cellCenter", then just use 
                 // the velocity at the center of the cell within which this
@@ -2021,7 +2044,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerPointWindVectors()
 
     // Perform a parallel gather of this local list to the master processor and
     // and then parallel scatter the list back out to all the processors.
-        if(includeTowerSomeTrue)
+    if(includeTowerSomeTrue)
     {
         Pstream::gather(towerWindVectorsLocal,sumOp<List<vector> >());
         Pstream::scatter(towerWindVectorsLocal);
@@ -2406,7 +2429,7 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
 
     if (bladeForceProjectionType[i] == "uniformGaussian")
     {
-        spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+        spreading = uniformGaussian3D(bladeEpsilon[i][0], dis);
     }
     else if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
     {
@@ -2414,7 +2437,7 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         scalar epsilonMin = bladeEpsilon[i][1];
         scalar epsilonMax = bladeEpsilon[i][2];
         scalar epsilon = max(min((epsilonScalar * bladePointChord[i][j][k]), epsilonMax), epsilonMin);
-        spreading = uniformGaussian(epsilon, dis);
+        spreading = uniformGaussian3D(epsilon, dis);
     }
     else if (bladeForceProjectionType[i] == "variableUniformGaussianUserDef")
     {
@@ -2422,7 +2445,7 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         scalar epsilonMin = bladeEpsilon[i][1];
         scalar epsilonMax = bladeEpsilon[i][2];
         scalar epsilon = max(min((epsilonScalar * bladePointUserDef[i][j][k]), epsilonMax), epsilonMin);
-        spreading = uniformGaussian(epsilon, dis);
+        spreading = uniformGaussian3D(epsilon, dis);
     }
     else if (bladeForceProjectionType[i] == "chordThicknessGaussian")
     {
@@ -2438,11 +2461,11 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         vector dir2 = bladeAlignedVectors[i][j][2];
         dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
         dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-        spreading = generalizedGaussian(epsilon, disVector, dir0, dir1, dir2);
+        spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1, dir2);
     }
     else
     {
-        spreading = uniformGaussian(bladeEpsilon[i][0], dis);
+        spreading = uniformGaussian3D(bladeEpsilon[i][0], dis);
     }
 
     return spreading;
@@ -2570,7 +2593,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacelleBodyForce()
 
                         if (nacelleForceProjectionType[i] == "uniformGaussian")
                         {
-                            spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
+                            spreading = uniformGaussian3D(nacelleEpsilon[i][0], dis);
                         }
                         else if (nacelleForceProjectionType[i] == "diskGaussian")
                         {
@@ -2622,11 +2645,11 @@ void horizontalAxisWindTurbinesALMAdvanced::computeNacelleBodyForce()
                                                    2.0 * pow(pi,1.5) * epsilonR * (2.0*sqr(r0) + sqr(epsilonR)) * erf(r0 / epsilonR) +
                                                    2.0 * pi * sqr(epsilonR) * r0 * exp(-sqr(r0 / epsilonR)) );
 
-                            spreading = oneDGaussian(r, NacelleEquivalentRadius[n], nacelleEpsilon[i][0], coeff);
+                            spreading = gaussian1D(r, NacelleEquivalentRadius[n], nacelleEpsilon[i][0], coeff);
                         }
                         else
                         {
-                            spreading = uniformGaussian(nacelleEpsilon[i][0], dis);
+                            spreading = uniformGaussian3D(nacelleEpsilon[i][0], dis);
                         }
 
 
@@ -2755,7 +2778,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerBodyForce()
                         scalar spreading = 1.0;
                         if (towerForceProjectionType[i] == "uniformGaussian")
                         {
-                            spreading = uniformGaussian(towerEpsilon[i][0], dis);
+                            spreading = uniformGaussian3D(towerEpsilon[i][0], dis);
                         }
                         else if (towerForceProjectionType[i] == "diskGaussian")
                         {
@@ -2769,7 +2792,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerBodyForce()
                         }
                         else
                         {
-                            spreading = uniformGaussian(towerEpsilon[i][0], dis);
+                            spreading = uniformGaussian3D(towerEpsilon[i][0], dis);
                         }
 
 
@@ -2838,14 +2861,14 @@ void horizontalAxisWindTurbinesALMAdvanced::computeTowerBodyForce()
 
 
 
-scalar horizontalAxisWindTurbinesALMAdvanced::uniformGaussian(scalar epsilon, scalar d)
+scalar horizontalAxisWindTurbinesALMAdvanced::uniformGaussian3D(scalar epsilon, scalar d)
 {
     // Compute the 3-dimensional Gaussian.
     scalar f = (1.0 / (Foam::pow(epsilon,3)*Foam::pow(Foam::constant::mathematical::pi,1.5))) * Foam::exp(-Foam::sqr(d/epsilon));
     return f;
 }
 
-scalar horizontalAxisWindTurbinesALMAdvanced::generalizedGaussian(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
+scalar horizontalAxisWindTurbinesALMAdvanced::generalizedGaussian3D(vector epsilon, vector d, vector dir0, vector dir1, vector dir2)
 {
     // Compute the 3-dimensional Gaussian that has different spreading in each direction.
     scalar d0 = d & dir0;
@@ -2914,7 +2937,7 @@ scalar horizontalAxisWindTurbinesALMAdvanced::ringGaussian(scalar rEpsilon, scal
     return f;
 }
 
-scalar horizontalAxisWindTurbinesALMAdvanced::oneDGaussian(scalar x, scalar x0, scalar epsilon, scalar coeff)
+scalar horizontalAxisWindTurbinesALMAdvanced::gaussian1D(scalar x, scalar x0, scalar epsilon, scalar coeff)
 {
     // Compute a 1D Gaussian function centered about x0 with width epsilon and scaled by coeff.
     scalar f = coeff * Foam::exp(-Foam::sqr((x - x0)/epsilon));
@@ -3223,8 +3246,14 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
             if (deltaNacYaw[i] != 0.0)
             {
                 findRotorSearchCells(i);
-                findNacelleSearchCells(i);
-                findTowerSearchCells(i);
+                if (includeNacelle[i])
+                {
+                    findNacelleSearchCells(i);
+                }
+                if (includeTower[i])
+                {
+                    findTowerSearchCells(i);
+                }
             }
         }
         updateTurbinesControlled();
@@ -3249,10 +3278,17 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
             if (deltaNacYaw[i] != 0.0)
             {
                 findRotorSearchCells(i);
-                findNacelleSearchCells(i);
-                findTowerSearchCells(i);
+                if (includeNacelle[i])
+                {
+                    findNacelleSearchCells(i);
+                }
+                if (includeTower[i])
+                {
+                    findTowerSearchCells(i);
+                }
             }
         }
+
         updateTurbinesControlled();
 
         // Recompute the blade-aligned coordinate system.
@@ -3277,7 +3313,7 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
 
     // Zero out the body forces.
     bodyForce *= 0.0;
-    
+
     // Project the actuator forces as body forces.
     computeBladeBodyForce();
     computeNacelleBodyForce();
