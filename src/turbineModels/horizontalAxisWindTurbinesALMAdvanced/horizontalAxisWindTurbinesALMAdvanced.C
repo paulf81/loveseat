@@ -1018,9 +1018,12 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 
     // If the blade body force projection is aligned with streamlines, then
     // compute the radius from the main shaft axis of the CFD mesh cells.
-    if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+    for (int i = 0; i < numTurbines; i++)
     {
-        updateRadius(i);
+        if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+        {
+            updateRadius(i);
+        }
     }
 
     // Find out which processors control each actuator line point.
@@ -2561,9 +2564,10 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         epsilon[1] = epsilonScalar1 * bladePointThickness[i][j][k] * bladePointChord[i][j][k];
         vector dir0 = bladeAlignedVectors[i][j][1];
         vector dir1 = bladeAlignedVectors[i][j][0];
+        vector dir2 = bladeAlignedVectors[i][j][2];
         dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
         dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-        spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1);
+        spreading = generalizedGaussian2D(epsilon, disVector, dir0, dir1);
     }
     else
     {
@@ -2641,7 +2645,6 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                                 scalar Uhat = bladePointVmag[i][j][k];
                                 scalar Cl = bladePointCl[i][j][k];
                                 scalar Cd = bladePointCd[i][j][k];
-                                scalar g = spreading;
                                 vector ez = bladeAlignedVectors[i][j][2];
 
                                 // Equation 2 from Spalart.
