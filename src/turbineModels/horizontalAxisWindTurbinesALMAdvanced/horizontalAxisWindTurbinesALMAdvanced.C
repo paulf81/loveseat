@@ -1875,8 +1875,9 @@ void horizontalAxisWindTurbinesALMAdvanced::updateRadius(int turbineNumber)
     // frame
     int i = turbineNumber;
 
-    forAll(bladeInfluenceCells[i], cellI)
+    forAll(bladeInfluenceCells[i], m)
     {
+        label cellI = bladeInfluenceCells[i][m];
         vector xP = vector::zero;
         vector yP = vector::zero;
         vector zP = vector::zero;
