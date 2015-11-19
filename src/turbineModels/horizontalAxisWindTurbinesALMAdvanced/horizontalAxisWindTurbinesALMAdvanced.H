@@ -125,6 +125,13 @@ private:
         //- Mark the cells that will be searched with integers.  0 for not a search cell, 
         //  1 for rotor cells, 2 for nacelle cells, 3 for tower cells.
         volScalarField searchCells;
+
+        //- It sometimes is useful to have the velocity field relative to the rotor, rather
+        //  than in the fixed frame.  This is the superposition of the actual flow speed
+        //  and the rotor speed as a function of radius.  The radius is measured normal from
+        //  the main shaft axis.
+        volScalarField rFromShaft;
+        volVectorField Urel;
         
         //- Write every "outputInterval" time steps or seconds.  Options are
         //  "timeStep" or "runTime".  "runTime" writes out as closely to every
@@ -182,11 +189,13 @@ private:
             DynamicList<word> nacellePointDistType;
 
             //- List of description of how velocity field is interpolated from the 
-            //  CFD mesh to the actuator line points.  Options are "cellCenter" or
-            //  "linear".  "cellCenter" uses the value at the cell center of the cell
+            //  CFD mesh to the actuator line points.  Options are "cellCenter", "linear",
+            //  or "integral".  "cellCenter" uses the value at the cell center of the cell
             //  within which the actuator point lies.  "linear" uses linear
             //  interpolation from the cell within which the actuator point lies and
-            //  from neighboring cells.
+            //  from neighboring cells. "integral" computes the actuator point velocity as
+            //  the integral of the local velocity and the force distribution function following
+            //  Spalart's formulation.
             DynamicList<word> bladeActuatorPointInterpType;
             DynamicList<word> nacelleActuatorPointInterpType;
             DynamicList<word> towerActuatorPointInterpType;
@@ -221,6 +230,15 @@ private:
             DynamicList<word> bladeForceProjectionType;
             DynamicList<word> nacelleForceProjectionType;
             DynamicList<word> towerForceProjectionType;
+
+            //- There are two options for how the direction of lift and drag of the blades is set.
+            //  In the "sampleVelocityAligned" option, the lift component of the body force is everywhere
+            //  perpendicular to the sampled velocity vector and the blade span direction and the drag 
+            //  is parallel to the sampled velocity vector.  In the "localVelocityAligned" option, the 
+            //  lift component of the body force is everywhere perpendicular to the local velocity and the
+            //  spanwise direction, and the drage is pareallel to the local velocity vector.  The second
+            //  option follows Spalart's formulation.
+            DynamicList<word> bladeForceProjectionDirection;
 
             //- List of body force normalization parameter for each turbine (m). This controls
             //  the width of the Gaussian projection.  It should be tied to grid width.
@@ -871,6 +889,10 @@ private:
         void findBladePointControlProcNo();
         void findNacellePointControlProcNo();
         void findTowerPointControlProcNo();
+
+        //- Compute the radius of the blade reference cells from the main shaft
+        //  axis.
+        void updateRadius(int turbineNumber);
         
         //- Compute the wind vector at each actuator point.
         void computeBladePointWindVectors();
@@ -900,6 +922,7 @@ private:
         //- Compute body force spreading/projection using different methods.
         scalar uniformGaussian3D(scalar epsilon, scalar d);
         scalar generalizedGaussian3D(vector epsilon, vector d, vector dir0, vector dir1, vector dir2);
+        scalar generalizedGaussian2D(vector epsilon, vector d, vector dir0, vector dir1);
         scalar diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar ringGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d);
         scalar gaussian1D(scalar x, scalar x0, scalar epsilon, scalar coeff);

@@ -106,7 +106,9 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         mesh_,
         dimensionedVector("bodyForce",dimForce/dimVolume/dimDensity,vector::zero)
     ),
-
+    
+    // Initialize the summed distribution function (not needed for calculation,
+    // but helps in understanding distribution function shape).
     gBlade
     (
         IOobject
@@ -121,6 +123,8 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         dimensionedScalar("gBlade",dimless/dimVolume,0.0)
     ),
 
+    // Initialize the search cell index (not needed for actual calculation, just 
+    // for checking that search cell identification is correct).
     searchCells
     (
         IOobject
@@ -133,9 +137,37 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         ),
         mesh_,
         dimensionedScalar("searchCells",dimless,0.0)
+    ),
+
+    // Initialize the radius from the main shaft axis field.
+    rFromShaft
+    (
+        IOobject
+        (
+            "rFromShaft",
+            time,
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("rFromShaft",dimLength,0.0)
+    ),
+    
+    // Initialize the relative velocity field.
+    Urel
+    (
+        IOobject
+        (
+            "Urel",
+            time,
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("Urel",dimLength/dimTime,vector::zero)
     )
-
-
 
 
 {   
@@ -204,6 +236,8 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         bladeForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeForceProjectionType")));
         nacelleForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleForceProjectionType")));
         towerForceProjectionType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("towerForceProjectionType")));
+
+        bladeForceProjectionDirection.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeForceProjectionDirection")));
 
         bladeEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("bladeEpsilon")));
         nacelleEpsilon.append(vector(turbineArrayProperties.subDict(turbineName[i]).lookup("nacelleEpsilon")));
@@ -981,6 +1015,13 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 
     // Compute the blade aligned vectors.
     computeBladeAlignedVectors();
+
+    // If the blade body force projection is aligned with streamlines, then
+    // compute the radius from the main shaft axis of the CFD mesh cells.
+    if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+    {
+        updateRadius(i);
+    }
 
     // Find out which processors control each actuator line point.
     findBladePointControlProcNo();
@@ -1823,6 +1864,36 @@ void horizontalAxisWindTurbinesALMAdvanced::findTowerPointControlProcNo()
 } 
 
 
+void horizontalAxisWindTurbinesALMAdvanced::updateRadius(int turbineNumber)
+{
+    // This computes the radius normal to turbine i's main shaft axis of
+    // each grid cell within the influence cell set.  This can then be used
+    // later on to compute the relative velocity from the blade reference
+    // frame
+    int i = turbineNumber;
+
+    forAll(bladeInfluenceCells[i], cellI)
+    {
+        vector xP = vector::zero;
+        vector yP = vector::zero;
+        vector zP = vector::zero;
+        vector vP = vector::zero;
+        vector v = vector::zero;
+
+        v = U_.mesh().C()[cellI] - rotorApex[i];
+        zP.z() = 1.0;
+        xP = uvShaft[i];
+        xP /= mag(xP);
+        yP = zP ^ xP;
+        yP /= mag(yP);
+        zP = xP ^ yP;
+        zP /= mag(zP);
+        vP = transformVectorCartToLocal(v,xP,yP,zP);
+        rFromShaft[cellI] = Foam::sqrt(Foam::sqr(vP.y()) + Foam::sqr(vP.z()));
+    }
+}
+
+
 void horizontalAxisWindTurbinesALMAdvanced::computeBladePointWindVectors()
 {
     // Create a list of wind velocity in x, y, z coordinates for each blade sample point.
@@ -2447,6 +2518,15 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         scalar epsilon = max(min((epsilonScalar * bladePointUserDef[i][j][k]), epsilonMax), epsilonMin);
         spreading = uniformGaussian3D(epsilon, dis);
     }
+    else if (bladeForceProjectionType[i] == "generalizedGaussian")
+    {
+        vector dir0 = bladeAlignedVectors[i][j][1];
+        vector dir1 = bladeAlignedVectors[i][j][0];
+        vector dir2 = bladeAlignedVectors[i][j][2];
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        spreading = generalizedGaussian3D(bladeEpsilon[i], disVector, dir0, dir1, dir2);
+    }
     else if (bladeForceProjectionType[i] == "chordThicknessGaussian")
     {
         scalar epsilonScalar0 = bladeEpsilon[i][0];
@@ -2462,6 +2542,28 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
         dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
         spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1, dir2);
+    }
+    else if (bladeForceProjectionType[i] == "generalizedGaussian2D")
+    {
+        vector dir0 = bladeAlignedVectors[i][j][1];
+        vector dir1 = bladeAlignedVectors[i][j][0];
+        vector dir2 = bladeAlignedVectors[i][j][2];
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        spreading = generalizedGaussian2D(bladeEpsilon[i], disVector, dir0, dir1);
+    }
+    else if (bladeForceProjectionType[i] == "chordThicknessGaussian2D")
+    {
+        scalar epsilonScalar0 = bladeEpsilon[i][0];
+        scalar epsilonScalar1 = bladeEpsilon[i][1];
+        vector epsilon = vector::zero;
+        epsilon[0] = epsilonScalar0 * bladePointChord[i][j][k];
+        epsilon[1] = epsilonScalar1 * bladePointThickness[i][j][k] * bladePointChord[i][j][k];
+        vector dir0 = bladeAlignedVectors[i][j][1];
+        vector dir1 = bladeAlignedVectors[i][j][0];
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1);
     }
     else
     {
@@ -2523,7 +2625,36 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                             gBlade[bladeInfluenceCells[i][m]] += spreading;
 
                             // Compute the body force contribution.
-                            bodyForce[bladeInfluenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
+                            if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+                            {
+                                // Get the local velocity in the fixed frame of reference.
+                                vector localVelocity = U_[bladeInfluenceCells[i][m]];
+
+                                // Add on the relative velocity due to blade rotation.
+                                localVelocity += rFromShaft[bladeInfluenceCells[i][m]] * rotorSpeed[i] * bladeAlignedVectors[i][j][1];
+                                Urel[bladeInfluenceCells[i][m]] = localVelocity;
+
+                                // Get the lift component of the bodyForce and make it normal to both
+                                // the local velocity vector and the blade radial vector.
+                                scalar c = bladePointChord[i][j][k];
+                                scalar w = bladeDs[i][k];
+                                scalar Uhat = bladePointVmag[i][j][k];
+                                scalar Cl = bladePointCl[i][j][k];
+                                scalar Cd = bladePointCd[i][j][k];
+                                scalar g = spreading;
+                                vector ez = bladeAlignedVectors[i][j][2];
+
+                                // Equation 2 from Spalart.
+                                bodyForce[bladeInfluenceCells[i][m]] = -((c*w)/2.0) * Uhat * (((Cl*ez) ^ localVelocity) + (Cd * localVelocity)) * spreading;
+                            }
+                            else if (bladeForceProjectionDirection[i] == "sampledVelocityAligned")
+                            {
+                                bodyForce[bladeInfluenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
+                            }
+                            else
+                            {
+                                bodyForce[bladeInfluenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
+                            }
 
                             // Compute global body-force-derived forces/moments.
                             rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
@@ -2888,6 +3019,22 @@ scalar horizontalAxisWindTurbinesALMAdvanced::generalizedGaussian3D(vector epsil
     return f;
 }
 
+scalar horizontalAxisWindTurbinesALMAdvanced::generalizedGaussian2D(vector epsilon, vector d, vector dir0, vector dir1)
+{
+    // Compute the 3-dimensional Gaussian that has different spreading in each direction.
+    scalar d0 = d & dir0;
+    scalar d1 = d & dir1;
+  //Info << "epsilon = " << epsilon << endl;
+  //Info << "dVector = " << d << endl;
+  //Info << "dir0    = " << dir0 << endl;
+  //Info << "dir1    = " << dir1 << endl;
+  //Info << "d0      = " << d0 << endl;
+  //Info << "d1      = " << d1 << endl;
+    scalar c = (1.0 / (epsilon[0]*epsilon[1]*Foam::constant::mathematical::pi));
+    scalar g = Foam::exp( -Foam::sqr(d0/epsilon[0]) -Foam::sqr(d1/epsilon[1]) );
+    scalar f = c*g;
+    return f;
+}
 
 scalar horizontalAxisWindTurbinesALMAdvanced::diskGaussian(scalar rEpsilon, scalar xEpsilon, vector u, scalar r0, vector d)
 {
@@ -3260,6 +3407,17 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
 
         // Recompute the blade-aligned coordinate system.
         computeBladeAlignedVectors();
+
+        // Recompute radius from main shaft axis if body force
+        // is projected normal to the streamlines
+        for (int i = 0; i < numTurbines; i++)
+        {
+            if ((bladeForceProjectionDirection[i] == "localVelocityAligned") &&
+                (deltaNacYaw[i] != 0.0))
+            {
+                updateRadius(i);
+            }
+        }
     }
     else if(actuatorUpdateType[0] == "newPosition")
     {
@@ -3293,6 +3451,17 @@ void horizontalAxisWindTurbinesALMAdvanced::update()
 
         // Recompute the blade-aligned coordinate system.
         computeBladeAlignedVectors();
+
+        // Recompute radius from main shaft axis if body force
+        // is projected normal to the streamlines
+        for (int i = 0; i < numTurbines; i++)
+        {
+            if ((bladeForceProjectionDirection[i] == "localVelocityAligned") &&
+                (deltaNacYaw[i] != 0.0))
+            {
+                updateRadius(i);
+            }
+        }
 
         // Find out which processor controls which actuator point,
         // and with that information sample the wind at the actuator
