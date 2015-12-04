@@ -1097,7 +1097,9 @@ void horizontalAxisWindTurbinesALMAdvanced::findRotorSearchCells(int turbineNumb
         }
     }
 
-    if (bladeForceProjectionType[i] == "uniformGaussian")
+    if ((bladeForceProjectionType[i] == "uniformGaussian") ||
+        (bladeForceProjectionType[i] == "generalizedGaussian") ||
+        (bladeForceProjectionType[i] == "generalizedGaussian2D"))
     {
         bladeProjectionRadius[i] = bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
@@ -1106,7 +1108,8 @@ void horizontalAxisWindTurbinesALMAdvanced::findRotorSearchCells(int turbineNumb
         bladeProjectionRadius[i] = bladeUserDefMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
     else if ((bladeForceProjectionType[i] == "variableUniformGaussianChord") ||
-             (bladeForceProjectionType[i] == "chordThicknessGaussian"))
+             (bladeForceProjectionType[i] == "chordThicknessGaussian") ||
+             (bladeForceProjectionType[i] == "chordThicknessGaussian2D"))
     {
         bladeProjectionRadius[i] = bladeChordMax * bladeEpsilonMax * Foam::sqrt(Foam::log(1.0/0.001));
     }
@@ -1987,6 +1990,12 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointWindVectors()
                 bladeWindVectors[i][j][k] = vector::zero;
                 bladeWindVectors[i][j][k] = bladeWindVectorsLocal[iterBlade];
 
+
+                vector v = vector::zero;
+                v.x() = 60.0;
+                bladeWindVectors[i][j][k] = v;
+
+
                 iterBlade++;
             }
         }
@@ -2172,6 +2181,8 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeAlignedVectors()
             // blade sees.
             bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][1]^bladeAlignedVectors[i][j][2];
             bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][0]/mag(bladeAlignedVectors[i][j][0]);
+
+            Info << "bladeAlignedVector = " <<  bladeAlignedVectors << endl;
         }
     }
 }
@@ -2247,7 +2258,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
                 // Use airfoil look-up tables to get coefficient of bladePointLift and drag.
                 bladePointCl[i][j][k] = interpolate(bladePointAlpha[i][j][k], airfoilAlpha[bladePointAirfoil[i][j][k]], airfoilCl[bladePointAirfoil[i][j][k]]);
                 bladePointCd[i][j][k] = interpolate(bladePointAlpha[i][j][k], airfoilAlpha[bladePointAirfoil[i][j][k]], airfoilCd[bladePointAirfoil[i][j][k]]);
-
+                
                 // Apply tip/root-loss correction factor.
                 // Tip/root-loss correction factor of Glauert.
                 scalar F = 1.0;
@@ -2289,6 +2300,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
 
                 // Add up bladePointLift and drag to get the resultant force/density applied to this blade element.
                 bladePointForce[i][j][k] = liftVector + dragVector;
+                Info << "bladePointForce = " <<  bladePointForce[i][j][k] << endl;
 
                 // Find the component of the blade element force/density in the different directions.
                 // Axial is horizontal but aligned with the shaft.
@@ -2566,8 +2578,10 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         vector dir0 = bladeAlignedVectors[i][j][1];
         vector dir1 = bladeAlignedVectors[i][j][0];
         vector dir2 = bladeAlignedVectors[i][j][2];
-        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+      //dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+      //dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
         spreading = generalizedGaussian2D(epsilon, disVector, dir0, dir1);
     }
     else
@@ -2609,6 +2623,8 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
             vector horizontalVector = -(axialVector ^ verticalVector);
             horizontalVector = horizontalVector / mag(horizontalVector);
 
+            Info << "axialVector = " << axialVector << endl;
+
 
             // For each blade.
             forAll(bladePointForce[i], j)
@@ -2616,6 +2632,14 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                 // For each blade point.
                 forAll(bladePointForce[i][j], k)
                 {
+                    scalar forceLift = 0.0;
+                    scalar forceDrag = 0.0;
+
+                    scalar forceDragPosSum = 0.0;
+                    scalar forceDragNegSum = 0.0;
+                    scalar forceLiftSum = 0.0;
+                    vector forceSum = vector::zero;
+
                     // For each influence cell.
                     forAll(bladeInfluenceCells[i], m)
                     {
@@ -2649,7 +2673,21 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                                 vector ez = bladeAlignedVectors[i][j][2];
 
                                 // Equation 2 from Spalart.
-                                bodyForce[bladeInfluenceCells[i][m]] = -((c*w)/2.0) * Uhat * (((Cl*ez) ^ localVelocity) + (Cd * localVelocity)) * spreading;
+                                vector force = -((c*w)/2.0) * Uhat * ((localVelocity ^ (Cl*ez)) + (Cd * localVelocity)) * spreading;
+                                bodyForce[bladeInfluenceCells[i][m]] += force;
+
+                                vector dragVector = bladeAlignedVectors[i][j][0]*bladeWindVectors[i][j][k].x() + bladeAlignedVectors[i][j][1]*bladeWindVectors[i][j][k].y();
+                                dragVector = dragVector/mag(dragVector);
+
+                                vector liftVector = dragVector^bladeAlignedVectors[i][j][2];
+                                liftVector = liftVector/mag(liftVector);
+
+                                forceLift = (force & liftVector) * mesh_.V()[bladeInfluenceCells[i][m]];
+                                forceDrag = (force & dragVector) * mesh_.V()[bladeInfluenceCells[i][m]];
+                                forceLiftSum += forceLift;
+                                forceDragPosSum += max(0.0,forceDrag);
+                                forceDragNegSum += min(0.0,forceDrag);
+                                forceSum += force * mesh_.V()[bladeInfluenceCells[i][m]];
                             }
                             else if (bladeForceProjectionDirection[i] == "sampledVelocityAligned")
                             {
@@ -2661,11 +2699,23 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                             }
 
                             // Compute global body-force-derived forces/moments.
-                            rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-                            rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+//                          rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                            rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+//                          rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+//                                                 & bladeAlignedVectors[i][j][1];
+                            rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
                                                    & bladeAlignedVectors[i][j][1];
                         }
                     }
+                    reduce(forceLiftSum,sumOp<scalar>());
+                    reduce(forceDragPosSum,sumOp<scalar>());
+                    reduce(forceDragNegSum,sumOp<scalar>());
+                    reduce(forceSum,sumOp<vector>());
+                    Info << "forceLiftSum = " << forceLiftSum << endl;
+                    Info << "forceDragPosSum = " << forceDragPosSum << endl;
+                    Info << "forceDragNegSum = " << forceDragNegSum << endl;
+                    Info << "forceDragPosSum + forceDragNegSum = " << forceDragPosSum + forceDragNegSum << endl;
+                    Info << "forceSum = " << forceSum << endl;
                 }  
             }
         }
@@ -2675,6 +2725,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
     }
     reduce(rotorAxialForceBodySum,sumOp<scalar>());
     reduce(rotorTorqueBodySum,sumOp<scalar>());
+
 
     // Print information comparing the actual rotor thrust and torque to the integrated body force.
     Info << "Rotor Axial Force from Body Force = " << rotorAxialForceBodySum << tab << "Rotor Axial Force from Actuator = " << rotorAxialForceSum << tab
