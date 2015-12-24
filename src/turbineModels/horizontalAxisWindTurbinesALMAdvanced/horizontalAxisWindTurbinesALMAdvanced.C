@@ -2555,8 +2555,10 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         vector dir0 = bladeAlignedVectors[i][j][1];
         vector dir1 = bladeAlignedVectors[i][j][0];
         vector dir2 = bladeAlignedVectors[i][j][2];
-        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+      //dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+      //dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
         spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1, dir2);
     }
     else if (bladeForceProjectionType[i] == "generalizedGaussian2D")
@@ -2623,8 +2625,6 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
             vector horizontalVector = -(axialVector ^ verticalVector);
             horizontalVector = horizontalVector / mag(horizontalVector);
 
-            Info << "axialVector = " << axialVector << endl;
-
 
             // For each blade.
             forAll(bladePointForce[i], j)
@@ -2654,7 +2654,8 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                             gBlade[bladeInfluenceCells[i][m]] += spreading;
 
                             // Compute the body force contribution.
-                            if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+                            if ((bladeForceProjectionDirection[i] == "localVelocityAligned") ||
+                                (bladeForceProjectionDirection[i] == "localVelocityAlignedCorrected"))
                             {
                                 // Get the local velocity in the fixed frame of reference.
                                 vector localVelocity = U_[bladeInfluenceCells[i][m]];
@@ -2674,7 +2675,13 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
 
                                 // Equation 2 from Spalart.
                                 vector force = -((c*w)/2.0) * Uhat * ((localVelocity ^ (Cl*ez)) + (Cd * localVelocity)) * spreading;
-                                bodyForce[bladeInfluenceCells[i][m]] += force;
+
+                                // If we're not correcting to recover desired lift and drag, then go ahead
+                                // and add on to the bodyForce field.
+                                if (bladeForceProjectionDirection[i] == "localVelocityAligned")
+                                {
+                                    bodyForce[bladeInfluenceCells[i][m]] += force;
+                                }
 
                                 vector dragVector = bladeAlignedVectors[i][j][0]*bladeWindVectors[i][j][k].x() + bladeAlignedVectors[i][j][1]*bladeWindVectors[i][j][k].y();
                                 dragVector = dragVector/mag(dragVector);
@@ -2698,24 +2705,125 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                                 bodyForce[bladeInfluenceCells[i][m]] += bladePointForce[i][j][k] * spreading;
                             }
 
-                            // Compute global body-force-derived forces/moments.
-//                          rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-                            rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-//                          rotorTorqueBodySum += ( bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
-//                                                 & bladeAlignedVectors[i][j][1];
-                            rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
-                                                   & bladeAlignedVectors[i][j][1];
+                            
+                            // Compute global body-force-derived forces/moments for all force projection directions except
+                            // the local-velocity-aligned method that is corrected.  We will do this after correction.
+                            if (bladeForceProjectionDirection[i] != "localVelocityAlignedCorrected")
+                            {
+                                rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                                rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                                                      & bladeAlignedVectors[i][j][1];
+                            }
                         }
                     }
-                    reduce(forceLiftSum,sumOp<scalar>());
-                    reduce(forceDragPosSum,sumOp<scalar>());
-                    reduce(forceDragNegSum,sumOp<scalar>());
-                    reduce(forceSum,sumOp<vector>());
-                    Info << "forceLiftSum = " << forceLiftSum << endl;
-                    Info << "forceDragPosSum = " << forceDragPosSum << endl;
-                    Info << "forceDragNegSum = " << forceDragNegSum << endl;
-                    Info << "forceDragPosSum + forceDragNegSum = " << forceDragPosSum + forceDragNegSum << endl;
-                    Info << "forceSum = " << forceSum << endl;
+
+                    // Parallel sum the integrated body force lift and +/- drag.
+                    if (bladeForceProjectionDirection[i] == "localVelocityAlignedCorrected")
+                    {
+                        reduce(forceLiftSum,sumOp<scalar>());
+                        reduce(forceDragPosSum,sumOp<scalar>());
+                        reduce(forceDragNegSum,sumOp<scalar>());
+                        reduce(forceSum,sumOp<vector>());  
+                        Info << "forceLiftSum = " << forceLiftSum << endl;
+                        Info << "forceDragPosSum = " << forceDragPosSum << endl;
+                        Info << "forceDragNegSum = " << forceDragNegSum << endl;
+                        Info << "forceDragPosSum + forceDragNegSum = " << forceDragPosSum + forceDragNegSum << endl;
+                        Info << "forceSum = " << forceSum << endl;
+
+                        scalar c = bladePointLift[i][j][k] / forceLiftSum;
+                        scalar rdet = 1.0/(-2.0*forceDragPosSum*forceDragNegSum);
+                        scalar a = rdet * (-forceDragNegSum*bladePointDrag[i][j][k] - forceDragNegSum*(forceDragPosSum-forceDragNegSum));
+                        scalar b = rdet * (-forceDragPosSum*bladePointDrag[i][j][k] + forceDragPosSum*(forceDragPosSum-forceDragNegSum));
+
+                        // Where a and b scalars come from:
+                        //  --> dragPos
+                        //  <-- dragNeg
+
+                        //  a*dragPos + b*dragNeg = desiredDrag
+                        //  a*dragPos - b*dragNeg = dragPos - dragNeg
+
+                        //  | dragPos  dragNeg| |a|  =  |desiredDrag      |
+                        //  | dragPos -dragNeg| |b|     |dragPos - dragNeg|
+
+                        //  |a|  =  1/(-2*dragPos*dragNeg) * |-dragNeg -dragNeg| |desiredDrag      |
+                        //  |b|  =                           |-dragPos  dragPos| |dragPos - dragNeg|
+
+                        //  a = 1/(-2*dragPos*dragNeg) * (-dragNeg*desiredDrag - dragNeg*(dragPos-dragNeg))
+                        //  b = 1/(-2*dragPos*dragNeg) * (-dragPos*desiredDrag + dragPos*(dragPos-dragNeg))
+
+
+                        // For each influence cell.
+                        forAll(bladeInfluenceCells[i], m)
+                        {
+                            vector disVector = (mesh_.C()[bladeInfluenceCells[i][m]] - bladePoints[i][j][k]);
+                            scalar dis = mag(disVector);
+                            if (dis <= bladeProjectionRadius[i])
+                            {
+                                // Compute the blade force projection at this point.
+                                scalar spreading = computeBladeProjectionFunction(disVector,i,j,k);
+
+                                // Get the local velocity in the fixed frame of reference.
+                                vector localVelocity = U_[bladeInfluenceCells[i][m]];
+
+                                // Add on the relative velocity due to blade rotation.
+                                localVelocity += rFromShaft[bladeInfluenceCells[i][m]] * rotorSpeed[i] * bladeAlignedVectors[i][j][1];
+                                Urel[bladeInfluenceCells[i][m]] = localVelocity;
+
+                                // Get the lift component of the bodyForce and make it normal to both
+                                // the local velocity vector and the blade radial vector.
+                                scalar c = bladePointChord[i][j][k];
+                                scalar w = bladeDs[i][k];
+                                scalar Uhat = bladePointVmag[i][j][k];
+                                scalar Cl = bladePointCl[i][j][k];
+                                scalar Cd = bladePointCd[i][j][k];
+                                vector ez = bladeAlignedVectors[i][j][2];
+                                
+                                // Equation 2 from Spalart.
+                                vector force = -((c*w)/2.0) * Uhat * ((localVelocity ^ (Cl*ez)) + (Cd * localVelocity)) * spreading;
+
+                                // Transform to the local lift, drag, span coordinate system.
+                                vector dragVector = bladeAlignedVectors[i][j][0]*bladeWindVectors[i][j][k].x() + bladeAlignedVectors[i][j][1]*bladeWindVectors[i][j][k].y();
+                                dragVector = dragVector/mag(dragVector);
+
+                                vector liftVector = dragVector^bladeAlignedVectors[i][j][2];
+                                liftVector = liftVector/mag(liftVector);
+
+                                vector forceP = transformVectorCartToLocal(force,liftVector,dragVector,ez);
+
+                                // Scale the lift and drag forces.
+                                forceP.x() *= c;
+                                if (forceP.y() >= 0.0)
+                                {
+                                    forceP.y() *= a;
+                                }
+                                elseif (forceP.y() < 0.0)
+                                {
+                                    forceP.y() *= b;
+                                }
+
+                                // Transform back to the Cartesian system.
+                                force = transformVectorLocalToCart(forceP,liftVector,dragVector,ez);
+
+                                forceLift = (force & liftVector) * mesh_.V()[bladeInfluenceCells[i][m]];
+                                forceDrag = (force & dragVector) * mesh_.V()[bladeInfluenceCells[i][m]];
+                                forceLiftSum += forceLift;
+                                forceDragPosSum += max(0.0,forceDrag);
+                                forceDragNegSum += min(0.0,forceDrag);
+                                forceSum += force * mesh_.V()[bladeInfluenceCells[i][m]];
+
+                                // Add the force to the bodyForce field.
+                                bodyForce[bladeInfluenceCells[i][m]] += force;
+
+                                // Compute global body-force-derived forces/moments for all force projection directions except
+                                // the local-velocity-aligned method that is corrected.  We will do this after correction.
+                                rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                                rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                                                      & bladeAlignedVectors[i][j][1];
+                            }
+                        }
+                    }
+
+
                 }  
             }
         }
