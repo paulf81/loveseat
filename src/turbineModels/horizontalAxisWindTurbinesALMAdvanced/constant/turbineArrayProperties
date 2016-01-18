@@ -34,6 +34,7 @@ turbine0
     bladePointDistType               "uniform";
     nacellePointDistType             "uniform";
     towerPointDistType               "uniform";
+    bladeSearchCellMethod            "disk";
     bladeActuatorPointInterpType     "linear";
 //  bladeActuatorPointInterpType     "cellCenter";
     nacelleActuatorPointInterpType   "linear";
@@ -43,9 +44,12 @@ turbine0
     bladeForceProjectionType         "uniformGaussian";
     nacelleForceProjectionType       "diskGaussian";
     towerForceProjectionType         "diskGaussian";
+    bladeForceProjectionDirection    "localVelocityAligned";
     bladeEpsilon                     (4.0 0.0 0.0);
     nacelleEpsilon                   (4.0 4.0 0.0);
     towerEpsilon                     (4.0 4.0 0.0);
+    nacelleSampleDistance             1.0;
+    towerSampleDistance               0.5;
     tipRootLossCorrType              "none";
 //  tipRootLossCorrType              "Glauert";
     rotationDir                      "cw";
@@ -70,6 +74,7 @@ turbine1
     bladePointDistType               "uniform";
     nacellePointDistType             "uniform";
     towerPointDistType               "uniform";
+    bladeSearchCellMethod            "disk";
     bladeActuatorPointInterpType     "linear";
 //  bladeActuatorPointInterpType     "cellCenter";
     nacelleActuatorPointInterpType   "linear";
@@ -79,9 +84,12 @@ turbine1
     bladeForceProjectionType         "uniformGaussian";
     nacelleForceProjectionType       "diskGaussian";
     towerForceProjectionType         "diskGaussian";
+    bladeForceProjectionDirection    "localVelocityAligned";
     bladeEpsilon                     (4.0 0.0 0.0);
     nacelleEpsilon                   (4.0 4.0 0.0);
     towerEpsilon                     (4.0 4.0 0.0);
+    nacelleSampleDistance             1.0;
+    towerSampleDistance               0.5;
     tipRootLossCorrType              "none";
 //  tipRootLossCorrType              "Glauert";
     rotationDir                      "cw";
