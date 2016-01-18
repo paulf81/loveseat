@@ -1989,13 +1989,6 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointWindVectors()
                 // Zero the wind vector and put in the correct velocity.
                 bladeWindVectors[i][j][k] = vector::zero;
                 bladeWindVectors[i][j][k] = bladeWindVectorsLocal[iterBlade];
-
-
-                vector v = vector::zero;
-                v.x() = 60.0;
-                bladeWindVectors[i][j][k] = v;
-
-
                 iterBlade++;
             }
         }
@@ -2723,17 +2716,23 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                         reduce(forceLiftSum,sumOp<scalar>());
                         reduce(forceDragPosSum,sumOp<scalar>());
                         reduce(forceDragNegSum,sumOp<scalar>());
-                        reduce(forceSum,sumOp<vector>());  
+                        reduce(forceSum,sumOp<vector>()); 
+                        forceDragPosSum = max(forceDragPosSum,1.0E-20);
+                        forceDragNegSum = min(forceDragNegSum,-1.0E-20); 
                         Info << "forceLiftSum = " << forceLiftSum << endl;
                         Info << "forceDragPosSum = " << forceDragPosSum << endl;
                         Info << "forceDragNegSum = " << forceDragNegSum << endl;
                         Info << "forceDragPosSum + forceDragNegSum = " << forceDragPosSum + forceDragNegSum << endl;
                         Info << "forceSum = " << forceSum << endl;
 
-                        scalar c = bladePointLift[i][j][k] / forceLiftSum;
+                        scalar d = bladePointLift[i][j][k] / forceLiftSum;
+                        Info << "d = " << d << endl;
                         scalar rdet = 1.0/(-2.0*forceDragPosSum*forceDragNegSum);
-                        scalar a = rdet * (-forceDragNegSum*bladePointDrag[i][j][k] - forceDragNegSum*(forceDragPosSum-forceDragNegSum));
-                        scalar b = rdet * (-forceDragPosSum*bladePointDrag[i][j][k] + forceDragPosSum*(forceDragPosSum-forceDragNegSum));
+                        Info << "rdet = " << rdet << endl;
+                        scalar a = rdet * (forceDragNegSum*bladePointDrag[i][j][k] - forceDragNegSum*(forceDragPosSum-forceDragNegSum));
+                        Info << "a = " << a << endl;
+                        scalar b = rdet * (forceDragPosSum*bladePointDrag[i][j][k] + forceDragPosSum*(forceDragPosSum-forceDragNegSum));
+                        Info << "b = " << b << endl;
 
                         // Where a and b scalars come from:
                         //  --> dragPos
@@ -2791,12 +2790,12 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                                 vector forceP = transformVectorCartToLocal(force,liftVector,dragVector,ez);
 
                                 // Scale the lift and drag forces.
-                                forceP.x() *= c;
+                                forceP.x() *= -d;
                                 if (forceP.y() >= 0.0)
                                 {
                                     forceP.y() *= a;
                                 }
-                                elseif (forceP.y() < 0.0)
+                                else if (forceP.y() < 0.0)
                                 {
                                     forceP.y() *= b;
                                 }
