@@ -1,0 +1,4 @@
+scanningLidar/scanningLidar.C
+scanningLidar/scanningLidarFunctionObject.C
+
+LIB = $(FOAM_USER_LIBBIN)/libuserutilityFunctionObjects
