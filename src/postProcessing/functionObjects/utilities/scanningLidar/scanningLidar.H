@@ -99,6 +99,8 @@ class scanningLidar
         //- Current simulation time.
         word time;
         scalar t;
+        scalar tStart;
+        scalar tElapsed;
 
         //- Random number generator.
         Random rndGen;
@@ -139,7 +141,7 @@ class scanningLidar
         List<List<vector> > samplePoints;
 
         //- Sampled winds.
-        List<List<vector> > sampledWindVectors;
+        List<vector> sampledWindVectors;
 
         //- Perturbation vector for breaking processor ties.
         List<List<vector> > perturbVectors;
@@ -154,6 +156,9 @@ class scanningLidar
         //  rotation axis.  Same with the elevation angle.
         scalar rotationCurrent;
         scalar elevationCurrent;
+
+        //- Output files.
+        OFstream* outFile_; 
 
 
     // Private Member Functions
@@ -206,7 +211,7 @@ public:
         virtual void findControlProcAndCell();
 
         //- Sample the winds.
-        virtual void sampleWinds(label i);
+        virtual void sampleWinds(label i, volVectorField& U, volTensorField& gradU);
 
         //- General rotation function.
         virtual vector rotateVector(vector v, vector rotationPoint, vector axis, scalar angle);

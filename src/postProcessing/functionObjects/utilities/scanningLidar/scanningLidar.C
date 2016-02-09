@@ -69,6 +69,8 @@ Foam::scanningLidar::scanningLidar
     dt(runTime_.deltaT().value()),
     time(runTime_.timeName()),
     t(runTime_.value()),
+    tStart(runTime_.value()),
+    tElapsed(0.0),
     rndGen(123456)
 {
     // Read the dictionary.
@@ -239,8 +241,28 @@ void Foam::scanningLidar::findControlProcAndCell()
 }
 
 
-void Foam::scanningLidar::sampleWinds(label i)
+void Foam::scanningLidar::sampleWinds(label i, volVectorField& U, volTensorField& gradU)
 {
+    label nSamplePoints = beamDistribution.size();
+    label iter = i * nSamplePoints;
+    forAll(samplePoints[i],j)
+    {
+        // If this processor's piece of the domain contains this sampling point, then do
+        // trilinear interpolation using U(x+dx) = U(x) + dU(x)/dx*(dx).
+        if(controlCellID[i][j] != -1)
+        {
+            vector dx = samplePoints[i][j] - mesh_.C()[controlCellID[i][j]];
+            vector dU = dx & gradU[controlCellID[i][j]];
+            sampledWindVectors[iter] = U[controlCellID[i][j]] + dU;
+        }
+        // Otherwise, if this sampling point is not handled by this processor, set the 
+        // velocity to zero.
+        else
+        {
+            sampledWindVectors[iter] = vector::zero;
+        }
+        iter++;
+    }
 }
 
 
@@ -320,12 +342,33 @@ void Foam::scanningLidar::execute()
 
         Info << type() << " output:" << endl;
 
+        // Get access to the field to be sampled, usually velocity.
         const volVectorField& U =
             mesh_.lookupObject<volVectorField>(UName_);
 
-        Info << t << tab << dt << endl;
+        // Take the gradient of the velocity field for use when doing
+        // trilinear interpolation to the lidar sample points.
+        volTensorField gradU = fvc::grad(U);
 
-        Info << endl;
+        // Call the lidar rotation.
+        rotateLidar();
+
+        // Figure out which beams need to be sampled, check for completion
+        // of the scan pattern, and if complete write to file and continue
+        // on sampling.
+        scalar tStart = tElapsed;
+        tElapsed += dt;
+        scalar tEnd = tElapsed;
+        if (tEnd > max(beamScanPatternTime))
+        {
+            forAll(beamScanPatternTime,k)
+            {
+                if
+            }
+        }
+        Info << "max(beamScanPatternTime) " << max(beamScanPatternTime) << endl;
+
+
     }
 }
 
