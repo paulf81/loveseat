@@ -75,10 +75,6 @@
         Info << "Corrected Pressure Gradient = "  << tab << gradP.value()   << " m/s^2" << endl;
         if (Pstream::master())
         {
-            OFstream gradPHistoryFile
-            (
-                postProcessingDir/"gradPHistory"/runTime.timeName()/"gradPHistory"
-            );
-            gradPHistoryFile << runTime.timeName() << " " << gradP.value() << " " << UWindSpeed_ << " " << UWindDir_ << " " << UWind.value() << " " << UWindStar.value() << endl;
+            gradPHistoryFile() << runTime.timeName() << " " << gradP.value() << " " << UWindSpeed_ << " " << UWindDir_ << " " << UWind.value() << " " << UWindStar.value() << endl;
         }
   }
