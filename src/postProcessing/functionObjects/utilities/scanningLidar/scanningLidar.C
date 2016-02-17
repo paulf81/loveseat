@@ -66,11 +66,12 @@ Foam::scanningLidar::scanningLidar
     active_(true),
     degRad((Foam::constant::mathematical::pi)/180.0),
     UName_("U"),
-    dt(runTime_.deltaT().value()),
+    dtSolver(runTime_.deltaT().value()),
     time(runTime_.timeName()),
     t(runTime_.value()),
-    tStart(runTime_.value()),
+    tCycle(runTime_.value()),
     tElapsed(0.0),
+    tCarryOver(0.0),
     rndGen(123456)
 {
     // Read the dictionary.
@@ -116,6 +117,7 @@ void Foam::scanningLidar::read(const dictionary& dict)
            beamScanPatternVector[i].z() = beamScanPattern[i][3];
            beamScanPatternVector[i] /= mag(beamScanPatternVector[i]);
         }
+        beamScanPatternI = 0;
 
         timeBetweenScans = dict.lookupOrDefault<scalar>("timeBetweenScans", 0.0);
 
@@ -338,7 +340,7 @@ void Foam::scanningLidar::execute()
         // Update the time information.
         time = runTime_.timeName();
         t = runTime_.value();
-        dt = runTime_.deltaT().value();
+        dtSolver = runTime_.deltaT().value();
 
         Info << type() << " output:" << endl;
 
@@ -356,19 +358,78 @@ void Foam::scanningLidar::execute()
         // Figure out which beams need to be sampled, check for completion
         // of the scan pattern, and if complete write to file and continue
         // on sampling.
-        scalar tStart = tElapsed;
-        tElapsed += dt;
-        scalar tEnd = tElapsed;
-        if (tEnd > max(beamScanPatternTime))
+      //scalar t = tElapsed;
+      //tElapsed += dt;
+      //scalar tEnd = tElapsed;
+      //if (tEnd > max(beamScanPatternTime))
+      //{
+      //    forAll(beamScanPatternTime,k)
+      //    {
+      //    }
+      //}
+        scalar tCarryOverSubtractor = 0.0;
+        tElapsed = tCarryOver;
+        Info << "dtSolver = " << dtSolver << tab << "tCarryOver = " << tCarryOver << endl;
+        do
         {
-            forAll(beamScanPatternTime,k)
+            if (tCarryOver < dtSolver)
             {
-                if
+                if (beamScanPatternI <= beamScanPatternTime.size()-1)
+                {
+                    scalar dtSampling = 0.0;
+                    if (beamScanPatternI == 0)
+                    {
+                        dtSampling = beamScanPatternTime[0];
+                    }
+                    else
+                    {
+                        dtSampling = beamScanPatternTime[beamScanPatternI] -  beamScanPatternTime[beamScanPatternI-1];
+                    }
+                    tElapsed += dtSampling; 
+
+                    if (tElapsed <= dtSolver)
+                    {
+                        Info << "sampling" << tab;
+                        Info << "t = " << t - dtSolver + tElapsed << tab;
+                        Info << "tElapsed = " << tElapsed << tab;
+                        Info << "Beam Number = " << beamScanPatternI << endl;
+ 
+                        // sample beam I.
+  
+                        beamScanPatternI += 1;
+                    }
+                    else
+                    {
+                        tCarryOverSubtractor = dtSampling;
+                    }
+                }
+
+                if ((beamScanPatternI > beamScanPatternTime.size()-1) && ((tElapsed - dtSolver) < -1.0E-12))
+                {
+                    // dump the data
+
+                    // reset the beam index.
+                    beamScanPatternI = 0;
+
+                    // check to see where the time between scans puts us.  Does it spill over
+                    // into the next time step or not?
+                    tElapsed += timeBetweenScans;
+
+                    Info << "Between scan " << tab << "tElapsed = " << tElapsed << "s" << endl;
+
+                }
             }
-        }
-        Info << "max(beamScanPatternTime) " << max(beamScanPatternTime) << endl;
+            else
+            {
+                tCarryOver -= dtSolver;
+            }
 
+        } 
+        while ((tElapsed - dtSolver) < -1.0E-12);
 
+        tCarryOver = tElapsed - dtSolver - tCarryOverSubtractor;
+
+        Info << endl << endl;
     }
 }
 
@@ -399,10 +460,13 @@ void Foam::scanningLidar::writeVariables()
     Info << "name_: " << name_ << endl;
     Info << "active_: " << active_ << endl;
     Info << "UName_: " << UName_ << endl;
-    Info << "dt: " << dt << endl;
+    Info << "dtSolver: " << dtSolver << endl;
     Info << "t: " << t << endl;
+    Info << "tElapsed: " << tElapsed << endl;
+    Info << "tCycle: " << tCycle << endl;
     Info << "beamScanPatternTime: " << beamScanPatternTime << endl;
     Info << "beamScanPatternVector: " << beamScanPatternVector << endl;
+    Info << "beamScanPatternI: " << beamScanPatternI << endl;
     Info << "timeBetweenScans: " << timeBetweenScans << endl;
     Info << "beamOrigin: " << beamOrigin << endl;
     Info << "beamMaxDistance: " << beamMaxDistance << endl;

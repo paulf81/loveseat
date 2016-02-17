@@ -93,14 +93,15 @@ class scanningLidar
         //- Name of velocity field (optional)
         word UName_;
 
-        //- Current time step size.
-        scalar dt;
+        //- Current solver time step size.
+        scalar dtSolver;
 
         //- Current simulation time.
         word time;
         scalar t;
-        scalar tStart;
+        scalar tCycle;
         scalar tElapsed;
+        scalar tCarryOver;
 
         //- Random number generator.
         Random rndGen;
@@ -110,6 +111,7 @@ class scanningLidar
         //  give the vector that the beam points along at that given time.
         List<scalar> beamScanPatternTime;
         List<vector> beamScanPatternVector;
+        label beamScanPatternI;
 
         //- Time between scans.
         scalar timeBetweenScans;
