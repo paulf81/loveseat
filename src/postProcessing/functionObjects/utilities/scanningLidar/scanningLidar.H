@@ -48,11 +48,6 @@ SourceFiles
 #ifndef scanningLidar_H
 #define scanningLidar_H
 
-//#include "volFields.H"
-//#include "surfaceFieldsFwd.H"
-//#include "pointFieldFwd.H"
-//#include "fvMatricesFwd.H"
-//#include "fvOptionList.H"
 #include "fvCFD.H"
 #include "Random.H"
 
@@ -93,12 +88,16 @@ class scanningLidar
         //- Name of velocity field (optional)
         word UName_;
 
+        //- Sampled vector field pointer.
+        const volVectorField& U_;
+
         //- Current solver time step size.
         scalar dtSolver;
 
         //- Current simulation time.
         word time;
-        scalar t;
+        scalar tSolver;
+        scalar tLidar;
         scalar tCycle;
         scalar tElapsed;
         scalar tCarryOver;
@@ -213,7 +212,7 @@ public:
         virtual void findControlProcAndCell();
 
         //- Sample the winds.
-        virtual void sampleWinds(label i, volVectorField& U, volTensorField& gradU);
+        virtual void sampleWinds(label i, volTensorField& gradU);
 
         //- General rotation function.
         virtual vector rotateVector(vector v, vector rotationPoint, vector axis, scalar angle);

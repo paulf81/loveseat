@@ -27,16 +27,6 @@ License
 #include "surfaceFields.H"
 #include "dictionary.H"
 #include "interpolateXY.H"
-//#include "fixedValueFvPatchFields.H"
-//#include "zeroGradientFvPatchFields.H"
-//#include "fvScalarMatrix.H"
-//#include "fvmDdt.H"
-//#include "fvmDiv.H"
-//#include "fvcDiv.H"
-//#include "fvmLaplacian.H"
-//#include "fvmSup.H"
-//#include "incompressible/turbulenceModel/turbulenceModel.H"
-//#include "compressible/turbulenceModel/turbulenceModel.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -66,9 +56,11 @@ Foam::scanningLidar::scanningLidar
     active_(true),
     degRad((Foam::constant::mathematical::pi)/180.0),
     UName_("U"),
+    U_(mesh_.lookupObject<volVectorField>(UName_)),
     dtSolver(runTime_.deltaT().value()),
     time(runTime_.timeName()),
-    t(runTime_.value()),
+    tSolver(runTime_.value()),
+    tLidar(runTime_.value()),
     tCycle(runTime_.value()),
     tElapsed(0.0),
     tCarryOver(0.0),
@@ -81,8 +73,8 @@ Foam::scanningLidar::scanningLidar
     createBeams();
 
     // Get the current beam angles.
-    rotationCurrent = interpolateXY(t,beamAngleTime,beamAngleRotation);
-    elevationCurrent = interpolateXY(t,beamAngleTime,beamAngleElevation);
+    rotationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleRotation);
+    elevationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleElevation);
 
     // Rotate the beams if necessary.
     rotateLidar();
@@ -167,6 +159,9 @@ void Foam::scanningLidar::createBeams()
         }
     }
 
+    // Create the sampled wind vector list.
+    sampledWindVectors = List<vector>(nBeams*nSamplePoints,vector::zero);    
+
     // Create the perturbation vectors that will be used to break ties
     // when deciding which processor a beam point lies upon.
     if (Pstream::myProcNo() == 0)
@@ -243,7 +238,7 @@ void Foam::scanningLidar::findControlProcAndCell()
 }
 
 
-void Foam::scanningLidar::sampleWinds(label i, volVectorField& U, volTensorField& gradU)
+void Foam::scanningLidar::sampleWinds(label i, volTensorField& gradU)
 {
     label nSamplePoints = beamDistribution.size();
     label iter = i * nSamplePoints;
@@ -255,7 +250,7 @@ void Foam::scanningLidar::sampleWinds(label i, volVectorField& U, volTensorField
         {
             vector dx = samplePoints[i][j] - mesh_.C()[controlCellID[i][j]];
             vector dU = dx & gradU[controlCellID[i][j]];
-            sampledWindVectors[iter] = U[controlCellID[i][j]] + dU;
+            sampledWindVectors[iter] = U_[controlCellID[i][j]] + dU;
         }
         // Otherwise, if this sampling point is not handled by this processor, set the 
         // velocity to zero.
@@ -265,6 +260,9 @@ void Foam::scanningLidar::sampleWinds(label i, volVectorField& U, volTensorField
         }
         iter++;
     }
+    // Note, that this does not do the parallel gather of the results of each processor's
+    // interpolation.  After all the beams are sampled, then the execute() function will
+    // do the parallel gather.
 }
 
 
@@ -304,8 +302,8 @@ void Foam::scanningLidar::rotateLidar()
     scalar elevationOld = elevationCurrent;
 
     // Get the current beam angles.
-    rotationCurrent = interpolateXY(t,beamAngleTime,beamAngleRotation);
-    elevationCurrent = interpolateXY(t,beamAngleTime,beamAngleElevation);
+    rotationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleRotation);
+    elevationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleElevation);
 
     // Find the change in beam angle.
     scalar deltaRotation = rotationCurrent - rotationOld;
@@ -314,6 +312,7 @@ void Foam::scanningLidar::rotateLidar()
     // If the change in angle is finite, then perform the rotation.
     if ((mag(deltaRotation) > 0.0) || (mag(deltaElevation) > 0.0))
     {
+        Info << "Rotating the lidar unit..." << endl;
         label nBeams = beamScanPatternTime.size();
         label nSamplePoints = beamDistribution.size();
         for(int i = 0; i < nBeams; i++)
@@ -339,41 +338,31 @@ void Foam::scanningLidar::execute()
     {
         // Update the time information.
         time = runTime_.timeName();
-        t = runTime_.value();
+        tSolver = runTime_.value();
         dtSolver = runTime_.deltaT().value();
 
-        Info << type() << " output:" << endl;
-
         // Get access to the field to be sampled, usually velocity.
-        const volVectorField& U =
-            mesh_.lookupObject<volVectorField>(UName_);
+      //const volVectorField& U =
+      //    mesh_.lookupObject<volVectorField>(UName_);
 
-        // Take the gradient of the velocity field for use when doing
+        // Take the gradient of the field for use when doing
         // trilinear interpolation to the lidar sample points.
-        volTensorField gradU = fvc::grad(U);
+        volTensorField gradU = fvc::grad(U_);
 
-        // Call the lidar rotation.
-        rotateLidar();
-
-        // Figure out which beams need to be sampled, check for completion
-        // of the scan pattern, and if complete write to file and continue
-        // on sampling.
-      //scalar t = tElapsed;
-      //tElapsed += dt;
-      //scalar tEnd = tElapsed;
-      //if (tEnd > max(beamScanPatternTime))
-      //{
-      //    forAll(beamScanPatternTime,k)
-      //    {
-      //    }
-      //}
+        // Set up the logic to do the beam sampling.  This part is a bit 
+        // messy and likely be streamlined.  The difficulty is that the 
+        // lidar samples at a certain rate and also has to stop to refocus
+        // when changing ranges, but the CFD solver has its own time step
+        // that could even be variable.  This part also handles any rotations
+        // of the entire lidar unit in case it has some sort of specified motion
+        // (i.e., moving with the nacelle or vibration).
         scalar tCarryOverSubtractor = 0.0;
         tElapsed = tCarryOver;
-        Info << "dtSolver = " << dtSolver << tab << "tCarryOver = " << tCarryOver << endl;
         do
         {
             if (tCarryOver < dtSolver)
             {
+                // this part is for sampling along beams.
                 if (beamScanPatternI <= beamScanPatternTime.size()-1)
                 {
                     scalar dtSampling = 0.0;
@@ -389,24 +378,42 @@ void Foam::scanningLidar::execute()
 
                     if (tElapsed <= dtSolver)
                     {
-                        Info << "sampling" << tab;
-                        Info << "t = " << t - dtSolver + tElapsed << tab;
-                        Info << "tElapsed = " << tElapsed << tab;
-                        Info << "Beam Number = " << beamScanPatternI << endl;
+                        // update the lidar time
+                        tLidar = tSolver - dtSolver + tElapsed;
+
+                        Info << "sampling beam number " << beamScanPatternI << tab;
+                        Info << "t = " << tLidar << tab;
+                        Info << "tElapsed = " << tElapsed << endl;
+
+                        // rotate the lidar.
+                        rotateLidar();
  
                         // sample beam I.
-  
+                        sampleWinds(beamScanPatternI,gradU);
+
+                        // advance to next beam.
                         beamScanPatternI += 1;
                     }
                     else
                     {
+                        // in case advancing to the next beam places us in the next CFD time
+                        // step, this variable should be set to a non-zero value so that we
+                        // end up in the correct place on the next time step.
                         tCarryOverSubtractor = dtSampling;
                     }
                 }
 
+                // this part is for waiting for the beam refocus.
                 if ((beamScanPatternI > beamScanPatternTime.size()-1) && ((tElapsed - dtSolver) < -1.0E-12))
                 {
+                    // parallel gather all the sampled data.
+                    Pstream::gather(sampledWindVectors,sumOp<List<vector> >());
+
+                    // update the lidar time
+                    tLidar = tSolver - dtSolver + tElapsed;
+  
                     // dump the data
+                    write();
 
                     // reset the beam index.
                     beamScanPatternI = 0;
@@ -415,15 +422,15 @@ void Foam::scanningLidar::execute()
                     // into the next time step or not?
                     tElapsed += timeBetweenScans;
 
-                    Info << "Between scan " << tab << "tElapsed = " << tElapsed << "s" << endl;
-
+                    Info << "Between scan " << tab;
+                    Info << "t = " << tLidar << tab;
+                    Info << "tElapsed = " << tElapsed << endl;
                 }
             }
             else
             {
                 tCarryOver -= dtSolver;
             }
-
         } 
         while ((tElapsed - dtSolver) < -1.0E-12);
 
@@ -451,7 +458,28 @@ void Foam::scanningLidar::timeSet()
 
 void Foam::scanningLidar::write()
 {
-    // Do nothing
+    if (Pstream::master())
+    {
+        // Create the name of the root directory to dump data.
+        fileName rootDir;
+
+        if (Pstream::parRun())
+        {
+            rootDir = runTime_.path()/"../postProcessing"/name_;
+        }
+        else
+        {
+            rootDir = runTime_.path()/"postProcessing"/name_;
+        }
+
+        word tLidarName = name(tLidar);
+        Info << tLidar << tab << tLidarName << endl;
+
+        if (!isDir(rootDir/tLidarName))
+        {
+            mkDir(rootDir/tLidarName);
+        }
+    }
 }
 
 
@@ -461,7 +489,8 @@ void Foam::scanningLidar::writeVariables()
     Info << "active_: " << active_ << endl;
     Info << "UName_: " << UName_ << endl;
     Info << "dtSolver: " << dtSolver << endl;
-    Info << "t: " << t << endl;
+    Info << "tSolver: " << tSolver << endl;
+    Info << "tLidar: " << tLidar << endl;
     Info << "tElapsed: " << tElapsed << endl;
     Info << "tCycle: " << tCycle << endl;
     Info << "beamScanPatternTime: " << beamScanPatternTime << endl;
