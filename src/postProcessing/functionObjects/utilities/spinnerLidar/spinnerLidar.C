@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "scanningLidar.H"
+#include "spinnerLidar.H"
 #include "surfaceFields.H"
 #include "dictionary.H"
 #include "interpolateXY.H"
@@ -32,7 +32,7 @@ License
 
 namespace Foam
 {
-defineTypeNameAndDebug(scanningLidar, 0);
+defineTypeNameAndDebug(spinnerLidar, 0);
 }
 
 
@@ -42,7 +42,7 @@ defineTypeNameAndDebug(scanningLidar, 0);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::scanningLidar::scanningLidar
+Foam::spinnerLidar::spinnerLidar
 (
     const word& name,
     const objectRegistry& obr,
@@ -86,13 +86,13 @@ Foam::scanningLidar::scanningLidar
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::scanningLidar::~scanningLidar()
+Foam::spinnerLidar::~spinnerLidar()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::scanningLidar::read(const dictionary& dict)
+void Foam::spinnerLidar::read(const dictionary& dict)
 {
     if (active_)
     {
@@ -145,7 +145,7 @@ void Foam::scanningLidar::read(const dictionary& dict)
 }
 
 
-void Foam::scanningLidar::createBeams()
+void Foam::spinnerLidar::createBeams()
 {
     label nBeams = beamScanPatternTime.size();
     label nSamplePoints = beamDistribution.size();
@@ -189,7 +189,7 @@ void Foam::scanningLidar::createBeams()
 }
 
 
-void Foam::scanningLidar::findControlProcAndCell()
+void Foam::spinnerLidar::findControlProcAndCell()
 {
     label nBeams = beamScanPatternTime.size();
     label nSamplePoints = beamDistribution.size();
@@ -239,7 +239,7 @@ void Foam::scanningLidar::findControlProcAndCell()
 }
 
 
-void Foam::scanningLidar::sampleWinds(label i, volTensorField& gradU)
+void Foam::spinnerLidar::sampleWinds(label i, volTensorField& gradU)
 {
     label nSamplePoints = beamDistribution.size();
     label iter = i * nSamplePoints;
@@ -267,7 +267,7 @@ void Foam::scanningLidar::sampleWinds(label i, volTensorField& gradU)
 }
 
 
-vector Foam::scanningLidar::rotateVector(vector v, vector rotationPoint, vector axis, scalar angle)
+vector Foam::spinnerLidar::rotateVector(vector v, vector rotationPoint, vector axis, scalar angle)
 {
     // Declare and define the rotation matrix.
     tensor RM;
@@ -296,7 +296,7 @@ vector Foam::scanningLidar::rotateVector(vector v, vector rotationPoint, vector 
 
 
 
-void Foam::scanningLidar::rotateLidar()
+void Foam::spinnerLidar::rotateLidar()
 {
     // Store the old beam angles.
     scalar rotationOld = rotationCurrent;
@@ -334,7 +334,7 @@ void Foam::scanningLidar::rotateLidar()
 }
 
 
-void Foam::scanningLidar::execute()
+void Foam::spinnerLidar::execute()
 {
     if (active_)
     {
@@ -439,7 +439,7 @@ void Foam::scanningLidar::execute()
 }
 
 
-void Foam::scanningLidar::end()
+void Foam::spinnerLidar::end()
 {
     if (active_)
     {
@@ -448,19 +448,19 @@ void Foam::scanningLidar::end()
 }
 
 
-void Foam::scanningLidar::timeSet()
+void Foam::spinnerLidar::timeSet()
 {
     // Do nothing
 }
 
 
-void Foam::scanningLidar::write()
+void Foam::spinnerLidar::write()
 {
     // Do nothing
 }
 
 
-void Foam::scanningLidar::writeBeamData()
+void Foam::spinnerLidar::writeBeamData()
 {
     if (Pstream::master())
     {
@@ -561,7 +561,7 @@ void Foam::scanningLidar::writeBeamData()
 }
 
 
-void Foam::scanningLidar::writeVariables()
+void Foam::spinnerLidar::writeVariables()
 {
     Info << "name_: " << name_ << endl;
     Info << "active_: " << active_ << endl;

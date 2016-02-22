@@ -22,25 +22,24 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::scanningLidar
+    Foam::spinnerLidar
 
 Group
     grpUtilitiesFunctionObjects
 
 Description
-    This function models the scan pattern for a generic scanning lidar.
-    The scan pattern and scan times are user inputs.  The code repeats the
-    scans and samples the velocity field and writes the data to file as
-    the solver runs.
+    This function models the scan pattern of DTU's spinner lidar.  It
+    samples the flow field and writes the information to file at a pre-
+    specified frequency.
 
 SourceFiles
-    scanningLidar.C
-    IOscanningLidar.H
+    spinnerLidar.C
+    IOspinnerLidar.H
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef scanningLidar_H
-#define scanningLidar_H
+#ifndef spinnerLidar_H
+#define spinnerLidar_H
 
 #include "fvCFD.H"
 #include "Random.H"
@@ -57,14 +56,14 @@ class dictionary;
 class mapPolyMesh;
 
 /*---------------------------------------------------------------------------*\
-                       Class scanningLidar Declaration
+                       Class spinnerLidar Declaration
 \*---------------------------------------------------------------------------*/
 
-class scanningLidar
+class spinnerLidar
 {
     // Private data
 
-        //- Name of this set of scanningLidar objects
+        //- Name of this set of spinnerLidar objects
         word name_;
 
         //- Reference to the mesh database
@@ -162,23 +161,23 @@ class scanningLidar
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        scanningLidar(const scanningLidar&);
+        spinnerLidar(const spinnerLidar&);
 
         //- Disallow default bitwise assignment
-        void operator=(const scanningLidar&);
+        void operator=(const spinnerLidar&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("scanningLidar");
+    TypeName("spinnerLidar");
 
 
     // Constructors
 
         //- Construct for given objectRegistry and dictionary.
         //  Allow the possibility to load fields from files
-        scanningLidar
+        spinnerLidar
         (
             const word& name,
             const objectRegistry&,
@@ -188,18 +187,18 @@ public:
 
 
     //- Destructor
-    virtual ~scanningLidar();
+    virtual ~spinnerLidar();
 
 
     // Member Functions
 
-        //- Return name of the set of scanningLidar
+        //- Return name of the set of spinnerLidar
         virtual const word& name() const
         {
             return name_;
         }
 
-        //- Read the scanningLidar data
+        //- Read the spinnerLidar data
         virtual void read(const dictionary&);
 
         //- Create the lidar sampling beams
