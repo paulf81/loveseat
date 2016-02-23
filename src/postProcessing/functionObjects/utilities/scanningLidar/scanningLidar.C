@@ -307,8 +307,8 @@ void Foam::scanningLidar::rotateLidar()
     elevationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleElevation);
 
     // Find the change in beam angle.
-    scalar deltaRotation = rotationCurrent - rotationOld;
-    scalar deltaElevation = elevationCurrent - elevationOld;
+    scalar deltaRotation = (rotationCurrent - rotationOld)*degRad;
+    scalar deltaElevation = (elevationCurrent - elevationOld)*degRad;
 
     // If the change in angle is finite, then perform the rotation.
     if ((mag(deltaRotation) > 0.0) || (mag(deltaElevation) > 0.0))

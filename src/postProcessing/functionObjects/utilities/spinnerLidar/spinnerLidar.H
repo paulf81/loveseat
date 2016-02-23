@@ -111,6 +111,22 @@ class spinnerLidar
         //- Time between scans.
         scalar timeBetweenScans;
 
+        //- DTU Spinner Lidar specific input parameters
+        scalar motorRPM;
+        scalar oneSecScanMotorRPM;
+        scalar gearRatioMotorToPrism1;
+        scalar gearRatioPrism1ToPrism2;
+        scalar prism1Angle;
+        scalar prism2Angle;
+        scalar sampleRate;
+        label subSamples;
+        scalar scanPeriod;
+        scalar samplePeriod;
+        scalar subSamplePeriod;
+        label nSamples;
+        label nSubSamples;
+        label nBeamPoints;
+
         //- Origin of lidar beam.
         vector beamOrigin;
 
@@ -133,6 +149,14 @@ class spinnerLidar
         //- Value to perturb lidar sampling locations by to break ties when 
         //  searching for control processor.
         scalar perturb;
+
+        //- Last position of the prisms and beam.  At start time, these are pointed horizontally
+        //  to the right as viewed from the lidar looking downstream.  For prism 1, this is
+        //  downsteam; for prism 2, this is the prism 1 angle; for the beam, this is the angle of the
+        //  the combined prisms.
+        vector lastPrism1Axis;
+        vector lastPrism2Axis;
+        vector lastBeamAxis;
 
         //- Sampling points.
         List<List<vector> > samplePoints;
@@ -202,7 +226,7 @@ public:
         virtual void read(const dictionary&);
 
         //- Create the lidar sampling beams
-        virtual void createBeams();
+        virtual void createScanPattern();
 
         //- Find the processor and cell that contains the sampling point.
         virtual void findControlProcAndCell();
