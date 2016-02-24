@@ -101,6 +101,9 @@ class spinnerLidar
         //- Output file pointer.
         autoPtr<OFstream> outputFile;
 
+        //- Local domain bounding box.
+        const pointField& meshPoints;
+
         //- A list that defines the scan pattern.  The first column is time
         //  from zero to the completion of the pattern.  The remaining columns
         //  give the vector that the beam points along at that given time.
@@ -119,13 +122,17 @@ class spinnerLidar
         scalar prism1Angle;
         scalar prism2Angle;
         scalar sampleRate;
-        label subSamples;
-        scalar scanPeriod;
         scalar samplePeriod;
-        scalar subSamplePeriod;
-        label nSamples;
-        label nSubSamples;
+        label samplesPerSpectrum;
+        label spectraPerAverageSample;
+        scalar averageSampleRate;
+        scalar averageSamplePeriod;
+        label virtualSamplesPerAverageSample;
+        scalar virtualSamplePeriod;
+        scalar scanPeriod;
         label nBeamPoints;
+        label nAverageSamples;
+        label nVirtualSamples;
 
         //- Origin of lidar beam.
         vector beamOrigin;
@@ -163,6 +170,10 @@ class spinnerLidar
 
         //- Sampled winds.
         List<vector> sampledWindVectors;
+
+        //- Prism rotation rates.
+        scalar rr1;
+        scalar rr2;
 
         //- Perturbation vector for breaking processor ties.
         List<List<vector> > perturbVectors;
