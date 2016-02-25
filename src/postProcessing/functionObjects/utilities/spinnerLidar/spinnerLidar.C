@@ -308,15 +308,14 @@ void Foam::spinnerLidar::findControlProcAndCell()
     {
         for(int j = 0; j < nBeamPoints; j++)
         {
+            scalar minDis = 1.0E30;
+            label cellID = -1;
+
             // Bounding box check.
-            if (
-               (samplePoints[i][j].x() >= minBb.x() && samplePoints[i][j].x() <= maxBb.x()) &&
-               (samplePoints[i][j].y() >= minBb.y() && samplePoints[i][j].y() <= maxBb.y()) &&
-               (samplePoints[i][j].z() >= minBb.z() && samplePoints[i][j].z() <= maxBb.z())
-               )
+            if ((samplePoints[i][j].x() >= minBb.x() && samplePoints[i][j].x() <= maxBb.x()) &&
+                (samplePoints[i][j].y() >= minBb.y() && samplePoints[i][j].y() <= maxBb.y()) &&
+                (samplePoints[i][j].z() >= minBb.z() && samplePoints[i][j].z() <= maxBb.z()))
             {
-                label cellID = 0;
-                scalar minDis = 1.0E6;
                 forAll(mesh_.C(),k)
                 {
                     scalar dis = mag(mesh_.C()[k] - (samplePoints[i][j] + perturbVectors[i][j]));
@@ -326,11 +325,11 @@ void Foam::spinnerLidar::findControlProcAndCell()
                         minDis = dis;
                     }
                 }
-                minDisLocal[iter] = minDis;
-                minDisGlobal[iter] = minDis;
-                controlCellID[i][j] = cellID;
-                iter++;
             }
+            minDisLocal[iter] = minDis;
+            minDisGlobal[iter] = minDis;
+            controlCellID[i][j] = cellID;
+            iter++
         }
     }
 
