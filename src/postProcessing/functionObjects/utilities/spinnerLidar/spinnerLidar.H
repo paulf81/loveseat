@@ -111,6 +111,16 @@ class spinnerLidar
         List<vector> beamScanPatternVector;
         label beamScanPatternI;
 
+        //- Does the scan pattern repeat.  Depending on the motor speed, sampling
+        //  rates, etc., the scan segments may or may not repeat.  If they do not
+        //  repeat, then for each time through the scan pattern, the interpolation
+        //  cell locations need to be relocated, which is time consuming.  If
+        //  scanRepeats is set to true, the scan segments are forced to repeat 
+        //  location (even if that means the beam has to backtrack slightly to
+        //  begin a new scan), and the relocating of interpolation cells is not
+        //  required.
+        bool scanRepeats;
+
         //- Time between scans.
         scalar timeBetweenScans;
 
@@ -152,6 +162,7 @@ class spinnerLidar
         //  Use the right-hand rule.
         vector beamRotationAxis;
         vector beamElevationAxis;
+        vector beamElevationAxisOriginal;
 
         //- Value to perturb lidar sampling locations by to break ties when 
         //  searching for control processor.
@@ -236,6 +247,9 @@ public:
         //- Read the spinnerLidar data
         virtual void read(const dictionary&);
 
+        //- Reset the beam position
+        virtual void resetAxes();
+
         //- Create the lidar sampling beams
         virtual void createScanPattern();
 
@@ -264,7 +278,7 @@ public:
         virtual void write();
 
         //- Custom write function only called after a full scan.
-        virtual void writeBeamData();
+        virtual void writeBeamDataFormatted();
 
         //- Write out variables for debugging
         virtual void writeVariables();

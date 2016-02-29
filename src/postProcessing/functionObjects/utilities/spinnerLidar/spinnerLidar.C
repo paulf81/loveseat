@@ -27,6 +27,7 @@ License
 #include "surfaceFields.H"
 #include "dictionary.H"
 #include "interpolateXY.H"
+#include "clockTime.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -73,16 +74,19 @@ Foam::spinnerLidar::spinnerLidar
 
     // Calculate the period for a full scan.
     scanPeriod = oneSecScanMotorRPM/motorRPM;
+    Info << "scanPeriod " << scanPeriod << endl;
 
     // Calculate the period to take one sample.  A series of samples
     // then make up one spectrum.  Then a series of spectra are used
     // to get an average sample.
     samplePeriod = 1.0/sampleRate;
+    Info << "samplePeriod " << samplePeriod << endl;
 
     // Calculate the rate at which average samples (based on a collection
     // of spectra) are gathered.
     averageSamplePeriod = samplePeriod * samplesPerSpectrum * spectraPerAverageSample;
     averageSampleRate = 1.0/averageSamplePeriod;
+    Info << "averageSamplePeriod " << averageSamplePeriod << endl;
 
     // Because the actual lidar's average sample is made up of multiple spectra
     // collected as the lidar beam sweeps along its path, and sampling
@@ -94,7 +98,10 @@ Foam::spinnerLidar::spinnerLidar
     virtualSamplePeriod = averageSamplePeriod / virtualSamplesPerAverageSample;
 
     // Number of samples and subsamples.
-    nAverageSamples = scanPeriod/averageSamplePeriod;
+    nAverageSamples = ceil(scanPeriod/averageSamplePeriod);
+    Info << "nAverageSamples " << nAverageSamples << tab << scanPeriod/averageSamplePeriod << endl;
+    scanPeriod = nAverageSamples * averageSamplePeriod;
+    Info << "scanPeriod " << scanPeriod << endl;
     nVirtualSamples = nAverageSamples * virtualSamplesPerAverageSample;
     
     // Number of points along a beam to sample.
@@ -135,23 +142,7 @@ Foam::spinnerLidar::spinnerLidar
     rr2 = gearRatioPrism1ToPrism2 * rr1;
 
     // Create the initial prism rotation axis vectors.
-    vector up = vector::zero;
-    up.z() = 1.0;
-    lastPrism1Axis = vector::zero;
-    lastPrism2Axis = vector::zero;
-    lastBeamAxis = vector::zero;
-    lastPrism1Axis.x() = 1.0;
-    lastPrism2Axis.x() = 1.0;
-    lastBeamAxis.x() = 1.0;
-    lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,up,(0.0)*degRad);
-    lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,up,-(prism1Angle)*degRad);
-    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,up,-(prism1Angle + prism2Angle)*degRad);
-    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,lastPrism2Axis,-rr2*(0.5*virtualSamplePeriod));
-    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,lastPrism1Axis,-rr1*(0.5*virtualSamplePeriod));
-    lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,lastPrism1Axis,-rr1*(0.5*virtualSamplePeriod));
-    lastBeamAxis /= mag(lastBeamAxis);
-    lastPrism1Axis /= mag(lastPrism1Axis);
-    lastPrism2Axis /= mag(lastPrism2Axis);
+    resetAxes();
 
     // Get the current lidar angles.
     rotationCurrent = 0.0;
@@ -164,7 +155,7 @@ Foam::spinnerLidar::spinnerLidar
     createScanPattern();
 
     // Write out variables for debugging.
-    writeVariables();
+  //writeVariables();
 }
 
 
@@ -180,11 +171,13 @@ void Foam::spinnerLidar::read(const dictionary& dict)
 {
     if (active_)
     {
-        Info<< type() << ":" << nl;
+        Info << type() << ": Reading dictionary..." << endl;
 
         UName_ = dict.lookupOrDefault<word>("UName", "U");
         
         beamScanPatternI = 0;
+
+        scanRepeats = dict.lookupOrDefault<bool>("scanRepeats", true);
 
         timeBetweenScans = dict.lookupOrDefault<scalar>("timeBetweenScans", 0.0);
 
@@ -225,16 +218,46 @@ void Foam::spinnerLidar::read(const dictionary& dict)
         beamElevationAxis = dict.lookup("beamElevationAxis");
         beamElevationAxis /= mag(beamElevationAxis);
 
+        beamElevationAxisOriginal = beamElevationAxis;
+
         perturb = dict.lookupOrDefault<scalar>("perturb", 1E-4);
     }
 }
 
 
+void Foam::spinnerLidar::resetAxes()
+{
+    // Reset the beam position and create the initial prism rotation axis vectors.
+    vector up = vector::zero;
+    up.z() = 1.0;
+    lastPrism1Axis = vector::zero;
+    lastPrism2Axis = vector::zero;
+    lastBeamAxis = vector::zero;
+    lastPrism1Axis.x() = 1.0;
+    lastPrism2Axis.x() = 1.0;
+    lastBeamAxis.x() = 1.0;
+    lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,up,(0.0)*degRad);
+    lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,up,-(prism1Angle)*degRad);
+    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,up,-(prism1Angle + prism2Angle)*degRad);
+    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,lastPrism2Axis,-rr2*(0.5*virtualSamplePeriod));
+    lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,lastPrism1Axis,-rr1*(0.5*virtualSamplePeriod));
+    lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,lastPrism1Axis,-rr1*(0.5*virtualSamplePeriod));
+    lastBeamAxis /= mag(lastBeamAxis);
+    lastPrism1Axis /= mag(lastPrism1Axis);
+    lastPrism2Axis /= mag(lastPrism2Axis);
+
+    beamElevationAxis = beamElevationAxisOriginal;
+}
+
+
 void Foam::spinnerLidar::createScanPattern()
 {
+    Info << type() << ": Computing scan pattern..." << endl;
+
     // Initialize the sample time and set the axes to whereever
     // they last were.
     beamScanPatternTime.clear();
+    beamScanPatternVector.clear();
     scalar sampleTime = 0.0;
     vector prism1Axis = lastPrism1Axis;
     vector prism2Axis = lastPrism2Axis;
@@ -290,11 +313,14 @@ void Foam::spinnerLidar::createScanPattern()
 
 void Foam::spinnerLidar::findControlProcAndCell()
 {
+    Info << type() << ": Searching for interpolation cells in ";
+
+    clockTime timer;
+    scalar elapsedTime = timer.timeIncrement();
+
     boundBox meshBb(meshPoints,false);
-    Pout << "boundingBox: " << meshBb << endl;
     vector minBb = meshBb.min();
     vector maxBb = meshBb.max();
- 
 
     label nBeams = beamScanPatternTime.size();
     label nBeamPoints = beamDistribution.size();
@@ -329,7 +355,7 @@ void Foam::spinnerLidar::findControlProcAndCell()
             minDisLocal[iter] = minDis;
             minDisGlobal[iter] = minDis;
             controlCellID[i][j] = cellID;
-            iter++
+            iter++;
         }
     }
 
@@ -348,6 +374,9 @@ void Foam::spinnerLidar::findControlProcAndCell()
             iter++;
         }
     }
+
+    elapsedTime = timer.timeIncrement();
+    Info << elapsedTime << "s..." << endl;
 }
 
 
@@ -425,14 +454,46 @@ void Foam::spinnerLidar::rotateLidar()
     // If the change in angle is finite, then perform the rotation.
     if ((mag(deltaRotation) > 0.0) || (mag(deltaElevation) > 0.0))
     {
-        Info << "Rotating the lidar unit..." << endl;
-        beamElevationAxis = rotateVector(beamElevationAxis,vector::zero,beamRotationAxis,deltaRotation);
-        lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamRotationAxis,deltaRotation);
-        lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamElevationAxis,deltaElevation);
-        lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamRotationAxis,deltaRotation);
-        lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamElevationAxis,deltaElevation);
-        lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamRotationAxis,deltaRotation);
-        lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamElevationAxis,deltaElevation);
+        if (scanRepeats)
+        {
+            // If the scan pattern repeats, reset the axes and rotate them, rotate the existing beams
+            // and recalculate interpolation cells because they are not recalculated in the execute
+            // function.
+            resetAxes();
+
+            beamElevationAxis = rotateVector(beamElevationAxis,vector::zero,beamRotationAxis,rotationCurrent*degRad);
+            lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamRotationAxis,rotationCurrent*degRad);
+            lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamElevationAxis,elevationCurrent*degRad);
+            lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamRotationAxis,rotationCurrent*degRad);
+            lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamElevationAxis,elevationCurrent*degRad);
+            lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamRotationAxis,rotationCurrent*degRad);
+            lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamElevationAxis,elevationCurrent*degRad);
+
+            // Rotate existing beams
+            forAll(samplePoints,i)
+            {
+                forAll(samplePoints[i],j)
+                {
+                    samplePoints[i][j] = rotateVector(samplePoints[i][j],beamOrigin,beamRotationAxis,deltaRotation);
+                    samplePoints[i][j] = rotateVector(samplePoints[i][j],beamOrigin,beamElevationAxis,deltaElevation);
+                }
+            }
+
+            // Locate the cells within which the beam points lie.
+            findControlProcAndCell();
+        }
+        else
+        {
+            // Otherwise, rotate the existing axes only because the beams will be recomputed in the 
+            // execute function.
+            beamElevationAxis = rotateVector(beamElevationAxis,vector::zero,beamRotationAxis,deltaRotation);
+            lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamRotationAxis,deltaRotation);
+            lastPrism1Axis = rotateVector(lastPrism1Axis,vector::zero,beamElevationAxis,deltaElevation);
+            lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamRotationAxis,deltaRotation);
+            lastPrism2Axis = rotateVector(lastPrism2Axis,vector::zero,beamElevationAxis,deltaElevation);
+            lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamRotationAxis,deltaRotation);
+            lastBeamAxis = rotateVector(lastBeamAxis,vector::zero,beamElevationAxis,deltaElevation);
+        }
     }
 }
 
@@ -482,9 +543,9 @@ void Foam::spinnerLidar::execute()
                         // update the lidar time
                         tLidar = tSolver - dtSolver + tElapsed;
 
-                        Info << "sampling beam number " << beamScanPatternI << tab;
-                        Info << "t = " << tLidar << tab;
-                        Info << "tElapsed = " << tElapsed << endl;
+                      //Info << "sampling beam number " << beamScanPatternI << tab;
+                      //Info << "t = " << tLidar << tab;
+                      //Info << "tElapsed = " << tElapsed << endl;
 
                         // sample beam I.
                         sampleWinds(beamScanPatternI,gradU);
@@ -511,7 +572,7 @@ void Foam::spinnerLidar::execute()
                     tLidar = tSolver - dtSolver + tElapsed;
   
                     // dump the data
-                    writeBeamData();
+                    writeBeamDataFormatted();
 
                     // reset the beam index.
                     beamScanPatternI = 0;
@@ -520,15 +581,18 @@ void Foam::spinnerLidar::execute()
                     rotateLidar();
 
                     // recompute the beams for next scan.
-                    createScanPattern();
+                    if (scanRepeats == false)
+                    {
+                        createScanPattern();
+                    }
 
                     // check to see where the time between scans puts us.  Does it spill over
                     // into the next time step or not?
                     tElapsed += timeBetweenScans;
 
-                    Info << "Between scan " << tab;
-                    Info << "t = " << tLidar << tab;
-                    Info << "tElapsed = " << tElapsed << endl;
+                  //Info << "Between scan " << tab;
+                  //Info << "t = " << tLidar << tab;
+                  //Info << "tElapsed = " << tElapsed << endl;
                 }
             }
             else
@@ -539,8 +603,6 @@ void Foam::spinnerLidar::execute()
         while ((tElapsed - dtSolver) < -1.0E-12);
 
         tCarryOver = tElapsed - dtSolver - tCarryOverSubtractor;
-
-        Info << endl << endl;
     }
 }
 
@@ -566,8 +628,15 @@ void Foam::spinnerLidar::write()
 }
 
 
-void Foam::spinnerLidar::writeBeamData()
+void Foam::spinnerLidar::writeBeamDataFormatted()
 {
+    Info << type() << ": Writing the sampled data in ";
+
+    clockTime timer;
+    scalar elapsedTime = timer.timeIncrement();
+
+//    scalar startTime = runTime_.elapsedClockTime();
+
     if (Pstream::master())
     {
         // Create the name of the root directory to dump data.
@@ -664,6 +733,9 @@ void Foam::spinnerLidar::writeBeamData()
             outputFile() << endl;
         }
     }
+
+    elapsedTime = timer.timeIncrement();
+    Info << elapsedTime << "s..." << endl;
 }
 
 
