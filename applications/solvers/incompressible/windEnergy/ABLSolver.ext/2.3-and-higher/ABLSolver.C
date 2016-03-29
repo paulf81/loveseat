@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     #include "CourantNo.H"
     #include "setInitialDeltaT.H"
     #include "findVerticalCellLevels.H"
-    #include "findWindHeight.H"
+  //#include "findWindHeight.H"
     #include "openCellStatisticsFiles.H"
     #include "computeDivergence.H"
     #include "createDivSchemeBlendingField.H"
