@@ -10,16 +10,102 @@
         )
     );
 
-    // PROPERTIES CONCERNING DRIVING THE WIND TO A SPECIFIED MEAN VELOCITY
-    // AT A SPECIFIED HEIGHT
+    // PROPERTIES CONCERNING THE SOURCE TERMS.
 
-       // Drive wind to specified speed a specified height using time
-       // varying driving pressure gradient?
-       bool driveWindOn(readBool(ABLProperties.lookup("driveWindOn")));
+       // Specify the type of source to use for momentum and temperature.  The
+       // possible types are "given" and "computed".  
+       // - The "given" type means that the source values are directly given
+       //   and the momentum and temperature fields will react accordingly.  
+       // - The "computed" type means that the mean velocity and temperature
+       //   are given and the source terms that maintain them are computed. 
+       word momentumSourceType(ABLProperties.lookup("momentumSourceType"));
+       word temperatureSourceType(ABLProperties.lookup("temperatureSourceType"));
 
-       // Desired wind is read in as a table of values.  Specify whether to
-       // linearly or cubicly interpolate between values of this table in time.
-       word windInterpType(ABLProperties.lookup("windInterpType"));
+       // The desired sources are given as a table of values versus height and
+       // time that need not match with the mesh heights or simulation time steps.
+       // Interpolation to the mesh heights and simulation times is done, so
+       // specify if you want linearly or spline interpolation.
+       word sourceInterpType(ABLProperties.lookup("sourceInterpType"));
+
+       // Read in the heights at which the sources are given.
+       List<scalar> sourceHeightsSpecified(ABLProperties.lookup("sourceHeights"));
+
+       // Read in the table of momentum source vs. time and height.
+       List<List<scalar> > sourceTableMomentumX(ABLProperties.lookup("sourceTableMomentumX"));
+       List<List<scalar> > sourceTableMomentumY(ABLProperties.lookup("sourceTableMomentumY"));
+       List<List<scalar> > sourceTableMomentumZ(ABLProperties.lookup("sourceTableMomentumZ"));
+
+       // Read in the table of temperature source vs. time and height.
+       List<List<scalar> > sourceTableTemperature(ABLProperties.lookup("sourceTableTemperature"));
+
+       // Check sizes of source tables.
+       bool sizeFlag = false;
+       label nSourceHeights = sourceHeightsSpecified.size();
+       label nSourceMomentumXTimes = sourceTableMomentumX.size();
+       label nSourceMomentumYTimes = sourceTableMomentumY.size();
+       label nSourceMomentumZTimes = sourceTableMomentumZ.size();
+       label nSourceTemperatureTimes = sourceTableTemperature.size();
+       forAll(sourceTableMomentumX,i)
+       {
+           if (sourceTableMomentumX[i].size()-1 != nSourceHeights)
+           {
+               sizeFlag = true;
+           }
+       }
+       forAll(sourceTableMomentumY,i)
+       {
+           if (sourceTableMomentumY[i].size()-1 != nSourceHeights)
+           {
+               sizeFlag = true;
+           }
+       }
+       forAll(sourceTableMomentumZ,i)
+       {
+           if (sourceTableMomentumZ[i].size()-1 != nSourceHeights)
+           {
+               sizeFlag = true;
+           }
+       }
+       forAll(sourceTableTemperature,i)
+       {
+           if (sourceTableTemperature[i].size()-1 != nSourceHeights)
+           {
+               sizeFlag = true;
+           }
+       }
+
+
+       // Break the source tables into interpolation tables.
+       List<scalar> sourceMomentumXTimesSpecified(nSourceMomentumXTimes,0.0);
+       List<scalar> sourceMomentumYTimesSpecified(nSourceMomentumYTimes,0.0);
+       List<scalar> sourceMomentumZTimesSpecified(nSourceMomentumZTimes,0.0);
+       List<scalar> sourceTemperatureTimesSpecified(nSourceTemperatureTimes,0.0);
+
+       List<List<scalar> > sourceMomentumXSpecified(nSourceMomentumXTimes,List<scalar>(nSourceHeights,0.0));
+       List<List<scalar> > sourceMomentumYSpecified(nSourceMomentumYTimes,List<scalar>(nSourceHeights,0.0));
+       List<List<scalar> > sourceMomentumZSpecified(nSourceMomentumZTimes,List<scalar>(nSourceHeights,0.0));
+       List<List<scalar> > sourceTemperatureSpecified(nSourceTemperatureTimes,List<scalar>(nSourceHeights,0.0));
+
+       for(int i = 0, i < nSourceMomentumXTimes, i++)
+       {
+           sourceTimesSpecified[i] = sourceTableMomentumX[i][0];
+           for(int j = 0, j < nH, j++)
+           {
+               sourceMomentumXSpecified[i][j] = sourceTableMomentumX[i][j+1];
+               sourceMomentumYSpecified[i][j] = sourceTableMomentumY[i][j+1];
+               sourceMomentumZSpecified[i][j] = sourceTableMomentumZ[i][j+1];
+               sourceTemperatureSpecified[i][j] = sourceTableTemperature[i][j+1];
+           }
+       }
+
+
+
+
+
+
+
+
+
 
        // Read in a table of wind speed and direction versus time.
        List<List<scalar> > desiredWindTable(ABLProperties.lookup("desiredWindTable"));
