@@ -1,14 +1,4 @@
 /*---------------------------------------------------------------------------*\
-This file was modified or created at the National Renewable Energy
-Laboratory (NREL) on March 29, 2016 in creating the SOWFA (Simulator for
-Offshore Wind Farm Applications) package of wind plant modeling tools that
-are based on the OpenFOAM software. Access to and use of SOWFA imposes
-obligations on the user, as set forth in the NWTC Design Codes DATA USE
-DISCLAIMER AGREEMENT that can be found at
-<http://wind.nrel.gov/designcodes/disclaimer.html>.
-\*---------------------------------------------------------------------------*/
-
-/*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
@@ -31,12 +21,12 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::interpolate2D
+InNamespace
+    Foam
 
 Description
-    This is a class to interpolate a 2D table of values given monotonic
-    increasing x and y values.
+    Interpolates function values from a surface to a given point on the 
+    surface using bilinear interpolation.
 
 SourceFiles
     interpolate2D.C
@@ -46,39 +36,47 @@ SourceFiles
 #ifndef interpolate2D_H
 #define interpolate2D_H
 
+#include "scalar.H"
+#include "primitiveFieldsFwd.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class Type>
+Field<Type> interpolate2D
+(
+    const scalarField& xi,
+    const scalarField& yi,
+    const scalarField& x,
+    const scalarField& y
+    const Field<Type>& f
+);
 
 
-/*---------------------------------------------------------------------------*\
-                           Class interpolateTable declaration
-\*---------------------------------------------------------------------------*/
-
-class interpolate2D
-{
-
-private:
-
-public:
-    // Constructors
-    interpolate2D
-    (
-    );
-
-    // Destructor
-    virtual ~interpolate2D()
-    {}
- 
-    // Member Functions
-    scalar evaluate();
-};
+template<class Type>
+Type interpolate2D
+(
+    const scalar xi,
+    const scalar yi,
+    const scalarField& x,
+    const scalarField& y,
+    const Field<Type>& f
+);
 
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+#   include "interpolate2D.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
