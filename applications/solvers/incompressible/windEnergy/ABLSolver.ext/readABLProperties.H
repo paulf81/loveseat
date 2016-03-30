@@ -28,7 +28,8 @@
        word sourceInterpType(ABLProperties.lookup("sourceInterpType"));
 
        // Read in the heights at which the sources are given.
-       List<scalar> sourceHeightsSpecified(ABLProperties.lookup("sourceHeights"));
+       List<scalar> sourceHeightsMomentumSpecified(ABLProperties.lookup("sourceHeightsMomentum"));
+       List<scalar> sourceHeightsTemperatureSpecified(ABLProperties.lookup("sourceHeightsTemperature"));
 
        // Read in the table of momentum source vs. time and height.
        List<List<scalar> > sourceTableMomentumX(ABLProperties.lookup("sourceTableMomentumX"));
@@ -39,48 +40,49 @@
        List<List<scalar> > sourceTableTemperature(ABLProperties.lookup("sourceTableTemperature"));
 
        // Check sizes of source tables.
-       label nSourceHeights = sourceHeightsSpecified.size();
+       label nSourceMomentumHeights = sourceHeightsMomentumSpecified.size();
+       label nSourceTemperatureHeights = sourceHeightsTemperatureSpecified.size();
        label nSourceMomentumXTimes = sourceTableMomentumX.size();
        label nSourceMomentumYTimes = sourceTableMomentumY.size();
        label nSourceMomentumZTimes = sourceTableMomentumZ.size();
        label nSourceTemperatureTimes = sourceTableTemperature.size();
        forAll(sourceTableMomentumX,i)
        {
-           if (sourceTableMomentumX[i].size()-1 != nSourceHeights)
+           if (sourceTableMomentumX[i].size()-1 != nSourceMomentumHeights)
            {
                FatalErrorIn
                (
-                   "Number of sourceTableMomentumX heights does not match sourceHeights"
+                   "Number of sourceTableMomentumX heights does not match sourceHeightsMomentum"
                )   << abort(FatalError);
            }
        }
        forAll(sourceTableMomentumY,i)
        {
-           if (sourceTableMomentumY[i].size()-1 != nSourceHeights)
+           if (sourceTableMomentumY[i].size()-1 != nSourceMomentumHeights)
            {
                FatalErrorIn
                (
-                   "Number of sourceTableMomentumY heights does not match sourceHeights"
+                   "Number of sourceTableMomentumY heights does not match sourceHeightsMomentum"
                )   << abort(FatalError);
            }
        }
        forAll(sourceTableMomentumZ,i)
        {
-           if (sourceTableMomentumZ[i].size()-1 != nSourceHeights)
+           if (sourceTableMomentumZ[i].size()-1 != nSourceMomentumHeights)
            {
                FatalErrorIn
                (
-                   "Number of sourceTableMomentumZ heights does not match sourceHeights"
+                   "Number of sourceTableMomentumZ heights does not match sourceHeightsMomentum"
                )   << abort(FatalError);
            }
        }
        forAll(sourceTableTemperature,i)
        {
-           if (sourceTableTemperature[i].size()-1 != nSourceHeights)
+           if (sourceTableTemperature[i].size()-1 != nSourceTemperatureHeights)
            {
                FatalErrorIn
                (
-                   "Number of sourceTableTemperature heights does not match sourceHeights"
+                   "Number of sourceTableTemperature heights does not match sourceHeightsTemperature"
                )   << abort(FatalError);
            }
        }
@@ -92,15 +94,15 @@
        List<scalar> sourceMomentumZTimesSpecified(nSourceMomentumZTimes,0.0);
        List<scalar> sourceTemperatureTimesSpecified(nSourceTemperatureTimes,0.0);
 
-       List<List<scalar> > sourceMomentumXSpecified(nSourceMomentumXTimes,List<scalar>(nSourceHeights,0.0));
-       List<List<scalar> > sourceMomentumYSpecified(nSourceMomentumYTimes,List<scalar>(nSourceHeights,0.0));
-       List<List<scalar> > sourceMomentumZSpecified(nSourceMomentumZTimes,List<scalar>(nSourceHeights,0.0));
-       List<List<scalar> > sourceTemperatureSpecified(nSourceTemperatureTimes,List<scalar>(nSourceHeights,0.0));
+       List<List<scalar> > sourceMomentumXSpecified(nSourceMomentumXTimes,List<scalar>(nSourceMomentumHeights,0.0));
+       List<List<scalar> > sourceMomentumYSpecified(nSourceMomentumYTimes,List<scalar>(nSourceMomentumHeights,0.0));
+       List<List<scalar> > sourceMomentumZSpecified(nSourceMomentumZTimes,List<scalar>(nSourceMomentumHeights,0.0));
+       List<List<scalar> > sourceTemperatureSpecified(nSourceTemperatureTimes,List<scalar>(nSourceTemperatureHeights,0.0));
 
        for(int i = 0; i < nSourceMomentumXTimes; i++)
        {
            sourceMomentumXTimesSpecified[i] = sourceTableMomentumX[i][0];
-           for(int j = 0; j < nSourceHeights; j++)
+           for(int j = 0; j < nSourceMomentumHeights; j++)
            {
                sourceMomentumXSpecified[i][j] = sourceTableMomentumX[i][j+1];
            }
@@ -109,7 +111,7 @@
        for(int i = 0; i < nSourceMomentumYTimes; i++)
        {
            sourceMomentumYTimesSpecified[i] = sourceTableMomentumY[i][0];
-           for(int j = 0; j < nSourceHeights; j++)
+           for(int j = 0; j < nSourceMomentumHeights; j++)
            {
                sourceMomentumYSpecified[i][j] = sourceTableMomentumY[i][j+1];
            }
@@ -118,7 +120,7 @@
        for(int i = 0; i < nSourceMomentumZTimes; i++)
        {
            sourceMomentumZTimesSpecified[i] = sourceTableMomentumZ[i][0];
-           for(int j = 0; j < nSourceHeights; j++)
+           for(int j = 0; j < nSourceMomentumHeights; j++)
            {
                sourceMomentumZSpecified[i][j] = sourceTableMomentumZ[i][j+1];
            }
@@ -127,16 +129,16 @@
        for(int i = 0; i < nSourceTemperatureTimes; i++)
        {
            sourceTemperatureTimesSpecified[i] = sourceTableTemperature[i][0];
-           for(int j = 0; j < nSourceHeights; j++)
+           for(int j = 0; j < nSourceTemperatureHeights; j++)
            {
                sourceTemperatureSpecified[i][j] = sourceTableTemperature[i][j+1];
            }
        }
 
 
-
-       // Relaxation factor on the pressure gradient control
-       scalar alpha(ABLProperties.lookupOrDefault<scalar>("alpha",1.0));
+       // Relaxation factor on the source term application.
+       scalar alphaMomentum(ABLProperties.lookupOrDefault<scalar>("alphaMomentum",1.0));
+       scalar alphaTemperature(ABLProperties.lookupOrDefault<scalar>("alphaTemperature",1.0));
 
 
 
@@ -184,12 +186,3 @@
 
        // Statistics gathering/writing frequency?
        int statisticsFreq(int(readScalar(ABLProperties.lookup("statisticsFrequency"))));
-
-
-
-
-    // Name of the bottom boundary
-    word lowerBoundaryName(ABLProperties.lookupOrDefault<word>("lowerBoundaryName","lower"));
-
-    // Name of the upper boundary
-    word upperBoundaryName(ABLProperties.lookupOrDefault<word>("upperBoundaryName","upper"));

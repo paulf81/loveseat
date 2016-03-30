@@ -55,6 +55,7 @@ Description
 #include "wallDist.H"
 #include "interpolateXY.H"
 #include "interpolateSplineXY.H"
+#include "interpolate2D.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -129,6 +130,9 @@ int main(int argc, char *argv[])
 
             // --- Update the driving pressure gradient
     //        #include "correctGradP.H"
+
+            // --- Update the source terms
+            #include "correctSourceTerms.H"
 
             // --- Update the turbulence fields
 //          if (pimple.turbCorr())

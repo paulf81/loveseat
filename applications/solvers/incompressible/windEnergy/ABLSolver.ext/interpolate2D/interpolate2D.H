@@ -47,24 +47,43 @@ namespace Foam
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<class Type>
-Field<Type> interpolate2D
+List<List<Type> > interpolate2D
 (
-    const scalarField& xi,
-    const scalarField& yi,
-    const scalarField& x,
-    const scalarField& y
-    const Field<Type>& f
+    const List<scalar>& xi,
+    const List<scalar>& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
 );
 
+template<class Type>
+List<Type> interpolate2D
+(
+    const scalar& xi,
+    const List<scalar>& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
+);
+
+template<class Type>
+List<Type> interpolate2D
+(
+    const List<scalar>& xi,
+    const scalar& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
+);
 
 template<class Type>
 Type interpolate2D
 (
     const scalar xi,
     const scalar yi,
-    const scalarField& x,
-    const scalarField& y,
-    const Field<Type>& f
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
 );
 
 

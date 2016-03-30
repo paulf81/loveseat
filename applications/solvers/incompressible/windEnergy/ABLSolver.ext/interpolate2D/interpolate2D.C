@@ -34,23 +34,75 @@ namespace Foam
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<class Type>
-Field<Type> interpolate2D
+List<List<Type> > interpolate2D
 (
-    const scalarField& xi,
-    const scalarField& yi,
-    const scalarField& x,
-    const scalarField& y,
-    const Field<Type>& f
+    const List<scalar>& xi,
+    const List<scalar>& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
 )
 {
-    Field<Type> yNew(xNew.size());
+    // Get size of interpolation point lists.
+    label nxi = xi.size();
+    label nyi = yi.size();
 
-    forAll(xNew, i)
+    // Interpolate element by element.
+    List<List<Type> > fi(nxi,List<Type>(nyi));
+    forAll(xi, i)
     {
-        yNew[i] = interpolate2D(xNew[i], xOld, yOld);
+        forAll(yi, j)
+        {
+            fi[i][j] = interpolate2D(xi[i],yi[j],x,y,f);
+        }
     }
+    return fi;
+}
 
-    return yNew;
+
+template<class Type>
+List<Type> interpolate2D
+(
+    const scalar& xi,
+    const List<scalar>& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
+)
+{
+    // Get size of interpolation point lists.
+    label nyi = yi.size();
+
+    // Interpolate element by element.
+    List<Type> fi(nyi);
+    forAll(yi, j)
+    {
+        fi[j] = interpolate2D(xi,yi[j],x,y,f);
+    }
+    return fi;
+}
+
+
+template<class Type>
+List<Type> interpolate2D
+(
+    const List<scalar>& xi,
+    const scalar& yi,
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
+)
+{
+    // Get size of interpolation point lists.
+    label nxi = xi.size();
+
+    // Interpolate element by element.
+    List<Type> fi(nxi);
+    forAll(xi, i)
+    {
+        fi[i] = interpolate2D(xi[i],yi,x,y,f);
+    }
+    return fi;
 }
 
 
@@ -59,63 +111,112 @@ Type interpolate2D
 (
     const scalar xi,
     const scalar yi,
-    const scalarField& x,
-    const scalarField& y,
-    const Field<Type>& f
+    const List<scalar>& x,
+    const List<scalar>& y,
+    const List<List<Type> >& f
 )
 {
-    label n = xOld.size();
+    // Get interpolation data size.
+    label nx = x.size();
+    label ny = y.size();
+    label nxf = f.size();
+    label nyf = f[0].size();
 
-    label lo = 0;
-    for (lo=0; lo<n && xOld[lo]>x; ++lo)
-    {}
 
-    label low = lo;
-    if (low < n)
+    // Check to make sure data sizes all match up.  Does the size of x
+    // match the x-index size of f, and same with y.  Give error message
+    // and exit if not.
+    if ((nx != nxf) || (ny != nyf))
     {
-        for (label i=low; i<n; ++i)
+        FatalErrorIn
+        (
+            "interpolate2d"
+        ) << "Sizes of input x and y vectors do not match size of f array:" << endl <<
+             "x size: " << nx << endl <<
+             "y size: " << ny << endl <<
+             "f(x,y) size: " << nxf << ", " << nyf <<
+             abort(FatalError);
+    }
+
+
+    // Find bounding indices in x.
+    label xLow = 0;
+    while ((xLow < nx) && (x[xLow] < xi))
+    {
+        xLow++;
+    }
+    xLow--;
+    xLow = max(xLow,0);
+
+    label xHigh = nx - 1;
+    while ((xHigh >= 0) && (x[xHigh] >= xi))
+    {
+        xHigh--;
+    }
+    xHigh++;
+    xHigh = min(xHigh,nx - 1);
+
+
+    // Find bounding indices in y.
+    label yLow = 0;
+    while ((yLow < ny) && (y[yLow] < yi))
+    {
+        yLow++;
+    }
+    yLow--;
+    yLow = max(yLow,0);
+
+    label yHigh = ny - 1;
+    while ((yHigh >= 0) && (y[yHigh] >= yi))
+    {
+        yHigh--;
+    }
+    yHigh++;
+    yHigh = min(yHigh,ny - 1);
+
+
+    // If, the data point lies outside the x or y given data ranges
+    // set up the high and low indices so that linear extrapolation
+    // will be done.
+    if (xHigh == xLow)
+    {
+        if (xHigh == 0)
         {
-            if (xOld[i] > xOld[lo] && xOld[i] <= x)
-            {
-                lo = i;
-            }
+            xHigh++;
+        }
+        else if (xHigh == nx - 1)
+        {
+            xLow--;
+        }
+    }
+   
+    if (yHigh == yLow)
+    {
+        if (yHigh == 0)
+        {
+            yHigh++;
+        }
+        else if (yHigh == ny - 1)
+        {
+            yLow--;
         }
     }
 
-    label hi = 0;
-    for (hi=0; hi<n && xOld[hi]<x; ++hi)
-    {}
+    // First, interpolate in x.
+    Type m1 = (f[xHigh][yLow]  - f[xLow][yLow])  / (x[xHigh] - x[xLow]);
 
-    label high = hi;
-    if (high < n)
-    {
-        for (label i=high; i<n; ++i)
-        {
-            if (xOld[i] < xOld[hi] && xOld[i] >= x)
-            {
-                hi = i;
-            }
-        }
-    }
+    Type m2 = (f[xHigh][yHigh] - f[xLow][yHigh]) / (x[xHigh] - x[xLow]);
 
+    Type f1 = f[xLow][yLow]  + (m1 * (xi - x[xLow]));
+    Type f2 = f[xLow][yHigh] + (m2 * (xi - x[xLow]));
 
-    if (lo<n && hi<n && lo != hi)
-    {
-        return yOld[lo]
-            + ((x - xOld[lo])/(xOld[hi] - xOld[lo]))*(yOld[hi] - yOld[lo]);
-    }
-    else if (lo == hi)
-    {
-        return yOld[lo];
-    }
-    else if (lo == n)
-    {
-        return yOld[hi];
-    }
-    else
-    {
-        return yOld[lo];
-    }
+    
+    // Then, interpolate in y.
+    Type n = (f2 - f1) / (y[yHigh] - y[yLow]);
+
+    Type fi = f1 + (n * (yi - y[yLow]));
+
+    return fi;
 }
 
 
