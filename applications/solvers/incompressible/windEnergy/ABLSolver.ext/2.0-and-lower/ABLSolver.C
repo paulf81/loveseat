@@ -128,14 +128,14 @@ int main(int argc, char *argv[])
                 #include "TEqn.H"
             }
 
-            // --- Compute the velocity flux divergence
-            #include "computeDivergence.H"
-
             // --- Update the driving pressure gradient
           //#include "correctGradP.H"
 
             // --- Update the source terms
             #include "correctSourceTerms.H"
+
+            // --- Compute the velocity flux divergence
+            #include "computeDivergence.H"
 
             // --- Update the turbulence fields
 //          if (pimple.turbCorr())

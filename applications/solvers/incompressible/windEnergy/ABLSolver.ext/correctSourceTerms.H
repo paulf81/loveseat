@@ -152,6 +152,7 @@
 
            Info << "UmeanDesired = " << UmeanDesired << endl;
            Info << "UmeanActual = " << Umean << endl;
+           Info << "rAUmean = " << rAUmean << endl;
 
 
            // Compute the correction to the source term.
@@ -167,7 +168,6 @@
                ds *= alphaMomentum;
 
                // add the correction on to the source field.
-             //forAll(hLevelsCellList[level],i)
                for (label i = 0; i < numCellPerLevel[level]; i++)
                {
                    dsVol[hLevelsCellList[level][i]] = ds;
