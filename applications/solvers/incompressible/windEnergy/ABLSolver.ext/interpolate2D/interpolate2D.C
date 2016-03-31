@@ -202,19 +202,48 @@ Type interpolate2D
         }
     }
 
-    // First, interpolate in x.
-    Type m1 = (f[xHigh][yLow]  - f[xLow][yLow])  / (x[xHigh] - x[xLow]);
 
-    Type m2 = (f[xHigh][yHigh] - f[xLow][yHigh]) / (x[xHigh] - x[xLow]);
+    Type m1;
+    Type m2;
+    Type f1;
+    Type f2;
+    Type fi;
 
-    Type f1 = f[xLow][yLow]  + (m1 * (xi - x[xLow]));
-    Type f2 = f[xLow][yHigh] + (m2 * (xi - x[xLow]));
+    if (ny > 1)
+    {
+        // First, interpolate in x.
+        if (nx > 1)
+        {
+            m1 = (f[xHigh][yLow]  - f[xLow][yLow])  / (x[xHigh] - x[xLow]);
+            m2 = (f[xHigh][yHigh] - f[xLow][yHigh]) / (x[xHigh] - x[xLow]);
 
-    
-    // Then, interpolate in y.
-    Type n = (f2 - f1) / (y[yHigh] - y[yLow]);
+            f1 = f[xLow][yLow]  + (m1 * (xi - x[xLow]));
+            f2 = f[xLow][yHigh] + (m2 * (xi - x[xLow]));
+        }
+        else
+        {
+            f1 = f[xLow][yLow];
+            f2 = f[xLow][yHigh];
+        }
 
-    Type fi = f1 + (n * (yi - y[yLow]));
+        // Then, interpolate in y.
+        Type n = (f2 - f1) / (y[yHigh] - y[yLow]);
+
+        fi = f1 + (n * (yi - y[yLow]));
+    }
+    else
+    {
+        // Interpolate in x only.
+        if (nx > 1)
+        {
+            m1 = (f[xHigh][yLow] - f[xLow][yLow]) / (x[xHigh] - x[xLow]);
+            fi = f[xLow][yLow] + (m1 * (xi - x[xLow]));
+        }
+        else
+        {
+            fi = f[xLow][yLow];
+        }
+    }
 
     return fi;
 }
