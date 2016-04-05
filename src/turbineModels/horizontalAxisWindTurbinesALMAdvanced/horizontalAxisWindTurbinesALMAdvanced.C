@@ -1989,6 +1989,13 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointWindVectors()
                 // Zero the wind vector and put in the correct velocity.
                 bladeWindVectors[i][j][k] = vector::zero;
                 bladeWindVectors[i][j][k] = bladeWindVectorsLocal[iterBlade];
+
+                // ******* OVERRIDE FOR TESTING 2D CASE
+                //vector v = vector::zero;
+                //v.x() = 60.0;
+                //bladeWindVectors[i][j][k] = v;
+                // ************************************
+
                 iterBlade++;
             }
         }

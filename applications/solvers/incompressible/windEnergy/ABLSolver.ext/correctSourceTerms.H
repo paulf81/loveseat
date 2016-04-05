@@ -127,7 +127,6 @@
 
            forAll(hLevelsCellList,level)
            {
-             //forAll(hLevelsCellList[level],i)
                for (label i = 0; i < numCellPerLevel[level]; i++)
                {
                    Umean[level] += U[hLevelsCellList[level][i]] * mesh.V()[hLevelsCellList[level][i]];
@@ -152,7 +151,6 @@
 
            Info << "UmeanDesired = " << UmeanDesired << endl;
            Info << "UmeanActual = " << Umean << endl;
-           Info << "rAUmean = " << rAUmean << endl;
 
 
            // Compute the correction to the source term.
@@ -174,9 +172,39 @@
                    SourceU[hLevelsCellList[level][i]] += ds;
                }
            }
+           dsVol.correctBoundaryConditions();
+           SourceU.correctBoundaryConditions();
+          // if (Pstream::myProcNo() == 0)
+          // {
+          //    Pout << dsVol << endl;
+          // }
+           
 
            // Explicitly correct velocity and flux.
            U += rAU * dsVol;
+           U.correctBoundaryConditions();
+           
+
+//    surfaceScalarField dsVolFlux = rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
+//    dsVolFlux.correctBoundaryConditions();
+//    scalar aa;
+//    forAll(dsVolFlux.boundaryField(), patchi)
+//    {
+//        scalar sumPhiBoundary = 0.0;
+//        const fvsPatchScalarField& phip = dsVolFlux.boundaryField()[patchi];
+//        forAll(phip,i)
+//        {
+//           sumPhiBoundary += phip[i];
+//        }
+//        aa += sumPhiBoundary;
+//    }
+
+  //  Pout << "Boundary dsVol Flux on Processor " << Pstream::myProcNo() << " = " << aa << endl;
+
+          // if (Pstream::myProcNo() == 0)
+          // {
+          //    Pout << "interp = " << rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
+          // }
            phi += rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
        }
    }
