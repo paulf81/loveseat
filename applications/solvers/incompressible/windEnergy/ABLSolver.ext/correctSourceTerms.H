@@ -37,28 +37,43 @@
            {
                SourceU[i] = s;
            }
+
+
+           // Write the source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceUXHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << sourceUX << endl;
+                       sourceUYHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << sourceUY << endl;
+                       sourceUZHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << sourceUZ << endl;
+                   }
+               }
+           }
        }
        //  Otherwise, set the source as a function of height and time.
        else
        {
           // Interpolate the source values in time and height.
-           List<scalar> sourceUXColumn = interpolate2D(t,
-                                                       hLevelsValues,
-                                                       sourceMomentumXTimesSpecified,
-                                                       sourceHeightsMomentumSpecified,
-                                                       sourceMomentumXSpecified);
+           sourceUXColumn = interpolate2D(t,
+                                          hLevelsValues,
+                                          sourceMomentumXTimesSpecified,
+                                          sourceHeightsMomentumSpecified,
+                                          sourceMomentumXSpecified);
  
-           List<scalar> sourceUYColumn = interpolate2D(t,
-                                                       hLevelsValues,
-                                                       sourceMomentumYTimesSpecified,
-                                                       sourceHeightsMomentumSpecified,
-                                                       sourceMomentumYSpecified);
+           sourceUYColumn = interpolate2D(t,
+                                          hLevelsValues,
+                                          sourceMomentumYTimesSpecified,
+                                          sourceHeightsMomentumSpecified,
+                                          sourceMomentumYSpecified);
 
-           List<scalar> sourceUZColumn = interpolate2D(t, 
-                                                       hLevelsValues,
-                                                       sourceMomentumZTimesSpecified,
-                                                       sourceHeightsMomentumSpecified,
-                                                       sourceMomentumZSpecified);
+           sourceUZColumn = interpolate2D(t, 
+                                          hLevelsValues,
+                                          sourceMomentumZTimesSpecified,
+                                          sourceHeightsMomentumSpecified,
+                                          sourceMomentumZSpecified);
 
            // Now go by cell levels and apply the source term.
            forAll(hLevelsCellList,level)
@@ -73,6 +88,32 @@
                    SourceU[hLevelsCellList[level][i]] = s;
                }
            }                               
+
+
+           // Write the column of source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceUXHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+                       sourceUYHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+                       sourceUZHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+
+                       forAll(hLevelsCellList,level)
+                       {
+                          sourceUXHistoryFile() << " " << sourceUXColumn[level];
+                          sourceUYHistoryFile() << " " << sourceUYColumn[level];
+                          sourceUZHistoryFile() << " " << sourceUZColumn[level];
+                       }
+
+                       sourceUXHistoryFile() << endl;
+                       sourceUYHistoryFile() << endl;
+                       sourceUZHistoryFile() << endl;
+                   }
+               }
+           }
        }
    }
    
@@ -165,6 +206,11 @@
                // apply relaxation.
                ds *= alphaMomentum;
 
+               // add the correction to the source column vector.
+               sourceUXColumn[level] += ds.x();
+               sourceUYColumn[level] += ds.y();
+               sourceUZColumn[level] += ds.z();
+
                // add the correction on to the source field.
                for (label i = 0; i < numCellPerLevel[level]; i++)
                {
@@ -174,38 +220,36 @@
            }
            dsVol.correctBoundaryConditions();
            SourceU.correctBoundaryConditions();
-          // if (Pstream::myProcNo() == 0)
-          // {
-          //    Pout << dsVol << endl;
-          // }
-           
 
            // Explicitly correct velocity and flux.
            U += rAU * dsVol;
            U.correctBoundaryConditions();
-           
-
-//    surfaceScalarField dsVolFlux = rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
-//    dsVolFlux.correctBoundaryConditions();
-//    scalar aa;
-//    forAll(dsVolFlux.boundaryField(), patchi)
-//    {
-//        scalar sumPhiBoundary = 0.0;
-//        const fvsPatchScalarField& phip = dsVolFlux.boundaryField()[patchi];
-//        forAll(phip,i)
-//        {
-//           sumPhiBoundary += phip[i];
-//        }
-//        aa += sumPhiBoundary;
-//    }
-
-  //  Pout << "Boundary dsVol Flux on Processor " << Pstream::myProcNo() << " = " << aa << endl;
-
-          // if (Pstream::myProcNo() == 0)
-          // {
-          //    Pout << "interp = " << rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
-          // }
            phi += rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
+
+           // Write the column of source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceUXHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+                       sourceUYHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+                       sourceUZHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+
+                       forAll(hLevelsCellList,level)
+                       {
+                          sourceUXHistoryFile() << " " << sourceUXColumn[level];
+                          sourceUYHistoryFile() << " " << sourceUYColumn[level];
+                          sourceUZHistoryFile() << " " << sourceUZColumn[level];
+                       }
+
+                       sourceUXHistoryFile() << endl;
+                       sourceUYHistoryFile() << endl;
+                       sourceUZHistoryFile() << endl;
+                   }
+               }
+           }
        }
    }
 
@@ -228,16 +272,28 @@
            {           
                SourceT[i] = sourceT;
            }
+
+           // Write the source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceTHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << sourceT << endl;
+                   }
+               }
+           }
        }
        // Otherwise, set the source as a function of height and time.
        else
        {
-          // Interpolate the source values in time and height.
-           List<scalar> sourceTColumn = interpolate2D(t,
-                                                      hLevelsValues,
-                                                      sourceTemperatureTimesSpecified,
-                                                      sourceHeightsTemperatureSpecified,
-                                                      sourceTemperatureSpecified);
+           // Interpolate the source values in time and height.
+           sourceTColumn = interpolate2D(t,
+                                         hLevelsValues,
+                                         sourceTemperatureTimesSpecified,
+                                         sourceHeightsTemperatureSpecified,
+                                         sourceTemperatureSpecified);
 
            // Now go by cell levels and apply the source term.
            forAll(hLevelsCellList,level)
@@ -247,6 +303,24 @@
                    SourceT[hLevelsCellList[level][i]] = sourceTColumn[level];
                }
            }                               
+
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceTHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+
+                       forAll(hLevelsCellList,level)
+                       {
+                          sourceTHistoryFile() << " " << sourceTColumn[level];
+                       }
+
+                       sourceTHistoryFile() << endl;
+                   }
+               }
+           }
        }
    }
 

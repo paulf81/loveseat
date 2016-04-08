@@ -33,38 +33,97 @@
     );
 
 
+    List<scalar> sourceUXColumn(hLevelsTotal,0.0);
+    List<scalar> sourceUYColumn(hLevelsTotal,0.0);
+    List<scalar> sourceUZColumn(hLevelsTotal,0.0);
+    List<scalar> sourceTColumn(hLevelsTotal,0.0);
+
+
+
+    // Create the momentum source term time history directory
+    if (Pstream::master() && !isDir(postProcessingDir/"SourceHistory"))
+    {
+        mkDir(postProcessingDir/"SourceHistory");
+    }
+    if (Pstream::master() && !isDir(postProcessingDir/"SourceHistory"/runTime.timeName()))
+    {
+        mkDir(postProcessingDir/"SourceHistory"/runTime.timeName());
+    }
+
+
 
     // Create the momentum source term time history files.
-    if (Pstream::master() && !isDir(postProcessingDir/"SourceUHistory"))
-    {
-        mkDir(postProcessingDir/"SourceUHistory");
-    }
-    if (Pstream::master() && !isDir(postProcessingDir/"SourceUHistory"/runTime.timeName()))
-    {
-        mkDir(postProcessingDir/"SourceUHistory"/runTime.timeName());
-    }
-
-    autoPtr<OFstream> sourceUHistoryFile(NULL);
+    autoPtr<OFstream> sourceUXHistoryFile(NULL);
     if (Pstream::master())
     {
-        sourceUHistoryFile.reset(new OFstream(postProcessingDir/"sourceUHistory"/runTime.timeName()/"sourceUHistory"));
-        sourceUHistoryFile() << "Time (s)" << " " << "source term (m/s^2)" << endl;
+        sourceUXHistoryFile.reset(new OFstream(postProcessingDir/"SourceHistory"/runTime.timeName()/"SourceUXHistory"));
+
+        if (nSourceMomentumHeights > 1)
+        {
+            sourceUXHistoryFile() << "Heights (m) ";
+            forAll(hLevelsValues,i)
+            {
+                sourceUXHistoryFile() << hLevelsValues[i] << " ";
+            }
+            sourceUXHistoryFile() << endl;
+        }
+
+        sourceUXHistoryFile() << "Time (s)" << " " << "dt (s)" << " " << "source term (m/s^2)" << endl;
     }
+
+    autoPtr<OFstream> sourceUYHistoryFile(NULL);
+    if (Pstream::master())
+    {
+        sourceUYHistoryFile.reset(new OFstream(postProcessingDir/"SourceHistory"/runTime.timeName()/"SourceUYHistory"));
+
+        if (nSourceMomentumHeights > 1)
+        {
+            sourceUYHistoryFile() << "Heights (m) ";
+            forAll(hLevelsValues,i)
+            {
+                sourceUYHistoryFile() << hLevelsValues[i] << " ";
+            }
+            sourceUYHistoryFile() << endl;
+        }
+
+        sourceUYHistoryFile() << "Time (s)" << " " << "dt (s)" << " " << "source term (m/s^2)" << endl;
+    }
+
+    autoPtr<OFstream> sourceUZHistoryFile(NULL);
+    if (Pstream::master())
+    {
+        sourceUZHistoryFile.reset(new OFstream(postProcessingDir/"SourceHistory"/runTime.timeName()/"SourceUZHistory"));
+
+        if (nSourceMomentumHeights > 1)
+        {
+            sourceUZHistoryFile() << "Heights (m) ";
+            forAll(hLevelsValues,i)
+            {
+                sourceUZHistoryFile() << hLevelsValues[i] << " ";
+            }
+            sourceUZHistoryFile() << endl;
+        }
+
+        sourceUZHistoryFile() << "Time (s)" << " " << "dt (s)" << " " << "source term (m/s^2)" << endl;
+    }
+
 
 
     // Create the potential temperature source term time history files.
-    if (Pstream::master() && !isDir(postProcessingDir/"SourceTHistory"))
-    {
-        mkDir(postProcessingDir/"SourceTHistory");
-    }
-    if (Pstream::master() && !isDir(postProcessingDir/"SourceTHistory"/runTime.timeName()))
-    {
-        mkDir(postProcessingDir/"SourceTHistory"/runTime.timeName());
-    }
-
     autoPtr<OFstream> sourceTHistoryFile(NULL);
     if (Pstream::master())
     {
-        sourceTHistoryFile.reset(new OFstream(postProcessingDir/"sourceTHistory"/runTime.timeName()/"sourceTHistory"));
-        sourceTHistoryFile() << "Time (s)" << " " << "source term (K/s)" << endl;
+        sourceTHistoryFile.reset(new OFstream(postProcessingDir/"SourceHistory"/runTime.timeName()/"SourceTHistory"));
+
+        if (nSourceMomentumHeights > 1)
+        {
+            sourceTHistoryFile() << "Heights (m) ";
+            forAll(hLevelsValues,i)
+            {
+                sourceTHistoryFile() << hLevelsValues[i] << " ";
+            }
+            sourceTHistoryFile() << endl;
+        }
+
+        sourceTHistoryFile() << "Time (s)" << " " << "dt (s)" << " " << "source term (K/s)" << endl;
     }

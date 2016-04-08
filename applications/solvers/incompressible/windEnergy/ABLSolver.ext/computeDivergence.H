@@ -27,8 +27,8 @@
         globalSumAreaBoundary += sumAreaBoundary;
     }
 
-//  Pout << "Boundary Flux on Processor " << Pstream::myProcNo() << " = " << globalSumPhiBoundary << endl;
     reduce(globalSumPhiBoundary, sumOp<scalar>());
+    reduce(globalSumAreaBoundary, sumOp<scalar>());
     Info << "Total Boundary Flux: " << globalSumPhiBoundary << endl;
     Info << "Total Boundary Area: " << globalSumAreaBoundary << endl;
 }
