@@ -97,7 +97,6 @@
 	}
 	hLevelsValues[hLabelJ] = hLevelsValues[hLevelsI];
 	hLevelsValues[hLevelsI] = hValue;
-	//Pout << "  level " << hLevelsI+1 << " = " << hLevelsValues[hLevelsI] << " m" << endl;
     }
 
 
@@ -153,7 +152,6 @@
         }
     }
 
-    //Pout << "Total volume per level: " << totVolPerLevel << endl;
 
 
 
@@ -161,6 +159,4 @@
     {
         label numCellPerLevelGlobal = numCellPerLevel[i];
         reduce(numCellPerLevelGlobal,sumOp<label>());
-        Info << numCellPerLevelGlobal << tab << totVolPerLevel[i] << endl;
     }
-    //Info << "Number of cells per level: " << numCellPerLevel <<  endl;
