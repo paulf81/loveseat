@@ -47,16 +47,24 @@ Description
 #include "Random.H"
 #include "wallDist.H"
 
-#include "timeSelector.H" // EWQ
+#include "argList.H"        // EWQ
+#include "timeSelector.H"   // EWQ
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
 timeSelector::addOptions(false, true); // EWQ: no -constant option, exclude 0 from time range
+argList::addBoolOption
+(
+    "backwardScheme",
+    "also shift *_0 fields for backward differencing scheme"
+);
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createMesh.H"
+
+const bool backward = args.optionFound("backwardScheme");
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -96,6 +104,20 @@ volScalarField T
         runTime.timeName(),
         mesh,
         IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh
+);
+
+if( backward ) Info << "Reading field T_0" << endl;
+volScalarField T_0
+(
+    IOobject
+    (
+        "T_0",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
         IOobject::NO_WRITE
     ),
     mesh
@@ -163,6 +185,11 @@ if (updateInternalFields)
     Info << "Updating internal T field..." << endl;
     Info << "  shift by " << deltaT << endl;
     T += deltaT;
+    if( backward ) 
+    {
+        Info<< "  shifting T_0 for backward ddt scheme" << endl;
+        T_0 += deltaT;
+    }
 
     // Modified pressure.
     /*
@@ -186,6 +213,7 @@ if (updateBoundaryFields)
     Info << "Updating boundaries..." << endl;
     //U.correctBoundaryConditions();
     T.correctBoundaryConditions();
+    if( backward ) T_0.correctBoundaryConditions();
     //p_rgh.correctBoundaryConditions();
 }
 
@@ -199,6 +227,11 @@ if (updateBoundaryFields)
 
 Info<< "Writing field T" << endl;
 T.write(); 
+if ( backward )
+{
+    Info<< "Writing field T_0" << endl;
+    T_0.write(); 
+}
 
 //Info<< "Writing field p_rgh" << endl;
 //p_rgh.write();
