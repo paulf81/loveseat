@@ -74,8 +74,8 @@ Foam::scanningLidar::scanningLidar
     createBeams();
 
     // Get the current beam angles.
-    rotationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleRotation);
-    elevationCurrent = interpolateXY(tLidar,beamAngleTime,beamAngleElevation);
+    rotationCurrent = 0.0;
+    elevationCurrent = 0.0;
 
     // Rotate the beams if necessary.
     rotateLidar();
