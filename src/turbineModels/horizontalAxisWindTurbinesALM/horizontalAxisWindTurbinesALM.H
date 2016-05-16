@@ -288,6 +288,12 @@ private:
             //- Gear-box ratio.
             DynamicList<scalar> GBRatio;
 
+            //- Gear-box efficiency.
+            DynamicList<scalar> GBEfficiency;
+
+            //- Generator efficiency.
+            DynamicList<scalar> GenEfficiency;
+
             //- Rated rotor speed (rpm).
             DynamicList<scalar> RatedRotSpeed;
 
@@ -549,6 +555,9 @@ private:
 
             //- Power/density on turbine rotor.
             DynamicList<scalar> powerRotor;
+
+            //- Power/density of generator.
+            DynamicList<scalar> powerGenerator;
              
 
 
@@ -575,16 +584,16 @@ private:
             //- List of output files for coefficient of drag.
             OFstream* CdFile_;
 
-            //- List of output files for lift/density.
+            //- List of output files for lift.
             OFstream* liftFile_;
 
-            //- List of output files for drag/density.
+            //- List of output files for drag.
             OFstream* dragFile_;
 
-            //- List of output files for axial force/density.
+            //- List of output files for axial force.
             OFstream* axialForceFile_;
 
-            //- List of output files for tangential/density.
+            //- List of output files for tangential.
             OFstream* tangentialForceFile_;
 
             //- List of output files for actuator point locations.
@@ -592,17 +601,20 @@ private:
             OFstream* yFile_;
             OFstream* zFile_;
 
-            //- List of output files for total aerodynamic torque/density.
+            //- List of output files for total aerodynamic torque.
             OFstream* torqueRotorFile_;
 
-            //- List of output files for generator torque/density.
+            //- List of output files for generator torque.
             OFstream* torqueGenFile_;
 
-            //- List of output files for total thrust/density.
+            //- List of output files for total thrust.
             OFstream* thrustFile_;
 
-            //- List of output files for total power/density.
+            //- List of output files for rotor power.
             OFstream* powerRotorFile_;
+
+            //- List of output files for generator power.
+            OFstream* powerGeneratorFile_;
 
             //- List of output files for rotation rate.
             OFstream* rotSpeedFile_;
