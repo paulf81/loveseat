@@ -2272,10 +2272,10 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
                 {
                     scalar g = 1.0;
 
-                    scalar ftip  = (TipRad[m] - bladePointRadius[i][j][k])/(bladePointRadius[i][j][k] * sin(windAng*degRad));
+                    scalar ftip  = (TipRad[m] - bladePointRadius[i][j][k])/(bladePointRadius[i][j][k] * sin(mag(windAng)*degRad));
                     scalar Ftip  = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * ftip));
 
-                    scalar froot = (bladePointRadius[i][j][k] - HubRad[i])/(bladePointRadius[i][j][k] * sin(windAng*degRad));
+                    scalar froot = (bladePointRadius[i][j][k] - HubRad[i])/(bladePointRadius[i][j][k] * sin(mag(windAng)*degRad));
                     scalar Froot = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * froot));
 
                     F = Ftip * Froot;
