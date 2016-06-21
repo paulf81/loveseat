@@ -398,7 +398,7 @@
            SourceT.correctBoundaryConditions();
 
            // Explicitly correct velocity and flux.
-           T += dt * dsVol;
+           T += runTime.deltaT() * dsVol;
            T.correctBoundaryConditions();
 
            // Write the column of source information.
