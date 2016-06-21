@@ -1,6 +1,7 @@
 {
-   // Get the current time.
+   // Get the current time and time step size.
    scalar t = runTime.value();
+   scalar dt = runTime.deltaT().value();
 
    // This part is if the momentum source terms are applied directly as given
    if (momentumSourceType == "given")
@@ -327,6 +328,97 @@
    // This part is if the temperature source terms have to be computed.
    else if (temperatureSourceType == "computed")
    {
-  
+       // This is if the temperature is only specified at one height.  In that case,
+       // a source term will be computed and applied uniformly in all three
+       // dimensions.
+       if (nSourceMomentumHeights == 1)
+       {
+       }
+       // Otherwise, set the source as a function of height and time.
+       else
+       {
+           // Create a volScalarField for the source term change.
+           volScalarField dsVol("dsVol", SourceT);
+
+
+           // Interpolate the desired velocity values in time and height.
+           List<scalar> desiredTColumn = interpolate2D(t,
+                                                       hLevelsValues,
+                                                       sourceTemperatureTimesSpecified,
+                                                       sourceHeightsTemperatureSpecified,
+                                                       sourceTemperatureSpecified);
+
+            
+           // Compute the planar-averaged actual temperature at each cell level.
+           List<scalar> Tmean(hLevelsTotal,0.0);
+           List<scalar> TmeanDesired(hLevelsTotal,0.0);
+   
+
+           forAll(hLevelsCellList,level)
+           {
+               for (label i = 0; i < numCellPerLevel[level]; i++)
+               {
+                   Tmean[level] += T[hLevelsCellList[level][i]] * mesh.V()[hLevelsCellList[level][i]];
+               }
+           }
+
+           reduce(Tmean,sumOp<List<scalar> >());
+
+           forAll(hLevelsCellList,level)
+           {
+               Tmean[level] /= totVolPerLevel[level];
+
+               TmeanDesired[level] = desiredTColumn[level];
+           }
+
+           Info << "TmeanDesired = " << TmeanDesired << endl;
+           Info << "TmeanActual = " << Tmean << endl;
+
+        
+           // Compute the correction to the source term.
+           forAll(hLevelsCellList,level)
+           {
+               // this is the correction a this level.
+               scalar ds = (TmeanDesired[level] - Tmean[level]) / dt;
+
+               // apply relaxation.
+               ds *= alphaTemperature;
+
+               // add the correction to the source column vector.
+               sourceTColumn[level] += ds;
+
+               // add the correction on to the source field.
+               for (label i = 0; i < numCellPerLevel[level]; i++)
+               {
+                   dsVol[hLevelsCellList[level][i]] = ds;
+                   SourceT[hLevelsCellList[level][i]] += ds;
+               }
+           }
+           dsVol.correctBoundaryConditions();
+           SourceT.correctBoundaryConditions();
+
+           // Explicitly correct velocity and flux.
+           T += dt * dsVol;
+           T.correctBoundaryConditions();
+
+           // Write the column of source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceTHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value();
+
+                       forAll(hLevelsCellList,level)
+                       {
+                          sourceTHistoryFile() << " " << sourceTColumn[level];
+                       }
+
+                       sourceTHistoryFile() << endl;
+                   }
+               }
+           }
+       }
    }
 }
