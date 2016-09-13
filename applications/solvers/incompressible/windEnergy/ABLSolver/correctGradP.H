@@ -38,18 +38,23 @@
         vector UWind_(vector::zero);
         scalar UWindSpeed_(0.0);
         scalar UWindDir_(0.0);
-        if (windInterpType == "linear")
+
+        if (windForcingType == "givenWindVector")
         {
-            UWind_      = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindVector);
-            UWindSpeed_ = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindSpeed);
-            UWindDir_   = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindDirectionDeg);
+            if (forcingInterpType == "linear")
+            {
+                UWind_      = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindVector);
+                UWindSpeed_ = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindSpeed);
+                UWindDir_   = interpolateXY(runTime.time().value(),desiredWindTime,desiredWindDirectionDeg);
+            }
+            else if (forcingInterpType == "cubic")
+            {
+                UWind_      = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindVector);
+                UWindSpeed_ = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindSpeed);
+                UWindDir_   = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindDirectionDeg);
+            }
         }
-        else if (windInterpType == "cubic")
-        {
-            UWind_      = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindVector);
-            UWindSpeed_ = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindSpeed);
-            UWindDir_   = interpolateSplineXY(runTime.time().value(),desiredWindTime,desiredWindDirectionDeg);
-        }
+
         dimensionedVector UWind
         (
             "UWind",
@@ -57,16 +62,44 @@
             UWind_
         );
 
-        if (driveWindOn)
+        // Use the look-up table of desired driving pressure gradient to get the current value.
+        vector gradPInterp(vector::zero);
+        if (windForcingType == "givenPressureGradient")
         {
-            // Correct the driving pressure gradient, velocity field, and flux field.
-            dimensionedVector pDelta = alpha*(UWind - UWindStarParallel)/rAU.weightedAverage(mesh.V());
-
-            U += rAU*pDelta;
-            phi += rAUf*(pDelta & mesh.Sf());
-
-            gradP -=  ((gradP & nUp) * nUp) + pDelta;
+            if (forcingInterpType == "linear")
+            {
+                gradPInterp = interpolateXY(runTime.time().value(),desiredGradPTime,desiredGradPVector);
+            }
+            else if (forcingInterpType == "cubic")
+            {
+                gradPInterp = interpolateSplineXY(runTime.time().value(),desiredGradPTime,desiredGradPVector);
+            }
         }
+        
+        dimensionedVector gradP_
+        (
+            "gradP_",
+            dimensionSet(0, 1, -2, 0, 0, 0, 0),
+            gradPInterp
+        );
+        gradP = gradP_;
+
+
+        // Correct the driving pressure gradient and wind 
+        if (windForcingType == "givenWindVector")
+        {
+ 	     dimensionedVector pDelta = alpha*(UWind - UWindStarParallel)/rAU.weightedAverage(mesh.V());
+
+ 	     U += rAU*pDelta;
+	     phi += rAUf*(pDelta & mesh.Sf());
+
+	     gradP -=  ((gradP & nUp) * nUp) + pDelta;
+        }
+        else if (windForcingType == "givenPressureGradient")
+        {
+             gradP = gradP_;
+        }
+
 
         // Write driving pressure gradient time history file.
         Info << "Desired Mean Wind Speed - Direction = " << tab << UWindSpeed_ << " m/s - " << UWindDir_ << " degrees" << endl;

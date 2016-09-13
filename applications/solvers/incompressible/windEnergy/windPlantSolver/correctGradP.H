@@ -69,7 +69,6 @@
             dimensionSet(0, 1, -2, 0, 0, 0, 0),
             gradPInterp
         );
-        gradP = gradP_;
 
 
        
@@ -85,6 +84,7 @@
         }
         else if (windForcingType == "givenPressureGradient")
         {
+             gradP = gradP_;
         }
 
 	Info << "Uncorrected UWind = "  << UWindStar.value() << tab
