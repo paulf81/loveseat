@@ -248,6 +248,8 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
 
         tipRootLossCorrType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("tipRootLossCorrType")));
 
+        velocityDragCorrType.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("velocityDragCorrType")));
+
         rotationDir.append(word(turbineArrayProperties.subDict(turbineName[i]).lookup("rotationDir")));
 
         rotorSpeed.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("RotSpeed"))));
@@ -360,6 +362,8 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         ShftTilt.append(scalar(readScalar(turbineProperties.lookup("ShftTilt"))));
         PreCone.append(turbineProperties.lookup("PreCone"));
         GBRatio.append(scalar(readScalar(turbineProperties.lookup("GBRatio"))));
+        GBEfficiency.append(scalar(readScalar(turbineProperties.lookup("GBEfficiency"))));
+        GenEfficiency.append(scalar(readScalar(turbineProperties.lookup("GenEfficiency"))));
         RatedRotSpeed.append(scalar(readScalar(turbineProperties.lookup("RatedRotSpeed"))));
         GenIner.append(scalar(readScalar(turbineProperties.lookup("GenIner"))));
         HubIner.append(scalar(readScalar(turbineProperties.lookup("HubIner"))));
@@ -966,6 +970,9 @@ horizontalAxisWindTurbinesALMAdvanced::horizontalAxisWindTurbinesALMAdvanced
         // Define the size of the rotor power lists and set to zero.
         rotorPower.append(0.0);
 
+        // Define the size of the generator power lists and set to zero.
+        generatorPower.append(0.0);
+
         // Define the size of the cell-containing-actuator-point-sampling ID list and set to -1.
         bladeMinDisCellID.append(List<List<label> >(NumBl[j], List<label>(numBladePoints[i],-1)));
         nacelleMinDisCellID.append(-1);
@@ -1472,8 +1479,15 @@ void horizontalAxisWindTurbinesALMAdvanced::computeRotSpeed()
         // based on the summation of aerodynamic and generator torque on the rotor.
         else
         {
-            rotorSpeed[i] += (dt/DriveTrainIner[j])*(rotorTorque[i]*fluidDensity[i] - GBRatio[j]*generatorTorque[i]);
+            rotorSpeed[i] += (dt/DriveTrainIner[j])*(GBEfficiency[j]*rotorTorque[i]*fluidDensity[i] - GBRatio[j]*generatorTorque[i]);
         }
+        Info << "rotor sped = " << rotorSpeed[0] << endl;
+        Info << "drive train inertia = " << DriveTrainIner[j] << endl;
+        Info << "gear box efficiency = " << GBEfficiency[j] << endl;
+        Info << "generator torque = " << generatorTorque[0] << endl;
+        Info << "rotor torque = " << rotorTorque[0] << endl;
+        Info << "fluid density = " << fluidDensity[0] << endl;
+        Info << "gear box ratio = " << GBRatio[j] << endl;
 
 
         // Limit the rotor speed to be positive and such that the generator does not turn
@@ -2182,7 +2196,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeAlignedVectors()
             bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][1]^bladeAlignedVectors[i][j][2];
             bladeAlignedVectors[i][j][0] = bladeAlignedVectors[i][j][0]/mag(bladeAlignedVectors[i][j][0]);
 
-            Info << "bladeAlignedVector = " <<  bladeAlignedVectors << endl;
+            //Info << "bladeAlignedVector = " <<  bladeAlignedVectors << endl;
         }
     }
 }
@@ -2237,7 +2251,6 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
         vector horizontalVector = -(axialVector ^ verticalVector);
         horizontalVector = horizontalVector / mag(horizontalVector);
 
-
         // Proceed blade by blade.
         forAll(bladeWindVectors[i], j)
         {
@@ -2255,9 +2268,45 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
                 // Angle of attack is local angle of wind with respect to rotor plane tangent minus local twist.
                 bladePointAlpha[i][j][k] = windAng - bladePointTwist[i][j][k] - bladePitch[i];
 
+                //Info << j << tab << k << tab << bladePointAlpha[i][j][k] << endl;
+
                 // Use airfoil look-up tables to get coefficient of bladePointLift and drag.
                 bladePointCl[i][j][k] = interpolate(bladePointAlpha[i][j][k], airfoilAlpha[bladePointAirfoil[i][j][k]], airfoilCl[bladePointAirfoil[i][j][k]]);
                 bladePointCd[i][j][k] = interpolate(bladePointAlpha[i][j][k], airfoilAlpha[bladePointAirfoil[i][j][k]], airfoilCd[bladePointAirfoil[i][j][k]]);
+
+                // Correct the streamwise velocity to account for drag using the Martinez correction.
+                if (velocityDragCorrType[i] == "Martinez")
+                {
+                    scalar cd = bladePointCd[i][j][k];
+                    scalar c = bladePointChord[i][j][k];
+                    scalar t = bladePointThickness[i][j][k];
+                    scalar ud = bladePointUserDef[i][j][k];
+
+                    scalar epsThickness = bladeEpsilon[i][0];
+
+                    if (bladeForceProjectionType[i] == "chordThicknessGaussian")
+                    {
+                        epsThickness = bladeEpsilon[i][1] * t * c;
+                    }
+                    else if (bladeForceProjectionType[i] == "uniformGaussian")
+                    {
+                        epsThickness = bladeEpsilon[i][0];
+                    }
+                    else if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
+                    {
+                        epsThickness = max(min((bladeEpsilon[i][0] * c), bladeEpsilon[i][1]), bladeEpsilon[i][2]);
+                    }
+                    else if (bladeForceProjectionType[i] == "variableUniformGaussianUserDef")
+                    {
+                        epsThickness = max(min((bladeEpsilon[i][0] * ud), bladeEpsilon[i][1]), bladeEpsilon[i][2]);
+                    }
+
+                    scalar corr = 1.0 / (1.0 - ((1.0/(4.0*Foam::sqrt(Foam::constant::mathematical::pi)))*cd*c/epsThickness));
+
+                    //Info << "j = " << j << tab << "k = " << k << tab << "corr = " << corr << endl;
+
+                    bladePointVmag[i][j][k] *= corr;
+                }
                 
                 // Apply tip/root-loss correction factor.
                 // Tip/root-loss correction factor of Glauert.
@@ -2300,7 +2349,7 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
 
                 // Add up bladePointLift and drag to get the resultant force/density applied to this blade element.
                 bladePointForce[i][j][k] = liftVector + dragVector;
-                Info << "bladePointForce = " <<  bladePointForce[i][j][k] << endl;
+                //Info << "bladePointForce = " <<  bladePointForce[i][j][k] << endl;
 
                 // Find the component of the blade element force/density in the different directions.
                 // Axial is horizontal but aligned with the shaft.
@@ -2321,6 +2370,9 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladePointForce()
 
         // Compute rotor power based on aerodynamic torque and rotation speed.
         rotorPower[i] = rotorTorque[i] * rotorSpeed[i];
+
+        // Compute the generator electrical power.
+        generatorPower[i] = generatorTorque[i] * (rotorSpeed[i] * GBRatio[m]) * GenEfficiency[m];
     }
 }
 
@@ -2555,10 +2607,10 @@ scalar horizontalAxisWindTurbinesALMAdvanced::computeBladeProjectionFunction(vec
         vector dir0 = bladeAlignedVectors[i][j][1];
         vector dir1 = bladeAlignedVectors[i][j][0];
         vector dir2 = bladeAlignedVectors[i][j][2];
-      //dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-      //dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
-        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
-        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
+        dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+        dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i])*degRad);
+      //dir0 = rotateVector(dir0, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
+      //dir1 = rotateVector(dir1, vector::zero, dir2, -(bladePointTwist[i][j][k] + bladePitch[i] + bladePointAlpha[i][j][k])*degRad);
         spreading = generalizedGaussian3D(epsilon, disVector, dir0, dir1, dir2);
     }
     else if (bladeForceProjectionType[i] == "generalizedGaussian2D")
@@ -2710,8 +2762,12 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
                             // the local-velocity-aligned method that is corrected.  We will do this after correction.
                             if (bladeForceProjectionDirection[i] != "localVelocityAlignedCorrected")
                             {
-                                rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-                                rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                              //rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                              //rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                              //                      & bladeAlignedVectors[i][j][1];
+
+                                rotorAxialForceBodySum += (-bladePointForce[i][j][k] * spreading * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                                rotorTorqueBodySum += (bladePointForce[i][j][k] * spreading * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
                                                       & bladeAlignedVectors[i][j][1];
                             }
                         }
@@ -2822,8 +2878,11 @@ void horizontalAxisWindTurbinesALMAdvanced::computeBladeBodyForce()
 
                                 // Compute global body-force-derived forces/moments for all force projection directions except
                                 // the local-velocity-aligned method that is corrected.  We will do this after correction.
-                                rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
-                                rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                              //rotorAxialForceBodySum += (-bodyForce[bladeInfluenceCells[i][m]] * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                              //rotorTorqueBodySum += (bodyForce[bladeInfluenceCells[i][m]] * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
+                              //                      & bladeAlignedVectors[i][j][1];
+                                rotorAxialForceBodySum += (-force * mesh_.V()[bladeInfluenceCells[i][m]]) & axialVector;
+                                rotorTorqueBodySum += (force * bladePointRadius[i][j][k] * cos(PreCone[n][j]) * mesh_.V()[bladeInfluenceCells[i][m]]) 
                                                       & bladeAlignedVectors[i][j][1];
                             }
                         }
@@ -3859,6 +3918,9 @@ void horizontalAxisWindTurbinesALMAdvanced::openOutputFiles()
         rotorPowerFile_ = new OFstream(rootDir/time/"rotorPower");
        *rotorPowerFile_ << "#Turbine    Time(s)    dt(s)    rotor power (W)" << endl;
 
+        generatorPowerFile_ = new OFstream(rootDir/time/"generatorPower");
+       *generatorPowerFile_ << "#Turbine    Time(s)    dt(s)    generator power (W)" << endl;
+
         rotorSpeedFile_ = new OFstream(rootDir/time/"rotorSpeed");
        *rotorSpeedFile_ << "#Turbine    Time(s)    dt(s)    rotor rotation rate(rpm)" << endl;
 
@@ -3950,6 +4012,7 @@ void horizontalAxisWindTurbinesALMAdvanced::printOutputFiles()
             *rotorHorizontalForceFile_ << i << " " << time << " " << dt << " ";
             *rotorVerticalForceFile_ << i << " " << time << " " << dt << " ";
             *rotorPowerFile_ << i << " " << time << " " << dt << " ";
+            *generatorPowerFile_ << i << " " << time << " " << dt << " ";
             *rotorSpeedFile_ << i << " " << time << " " << dt << " ";
             *rotorSpeedFFile_ << i << " " << time << " " << dt << " ";
             *rotorAzimuthFile_ << i << " " << time << " " << dt << " ";
@@ -3970,6 +4033,7 @@ void horizontalAxisWindTurbinesALMAdvanced::printOutputFiles()
             *rotorHorizontalForceFile_ << rotorHorizontalForce[i]*fluidDensity[i] << endl;
             *rotorVerticalForceFile_ << rotorVerticalForce[i]*fluidDensity[i] << endl;
             *rotorPowerFile_ << rotorPower[i]*fluidDensity[i] << endl;
+            *generatorPowerFile_ << generatorPower[i]*fluidDensity[i] << endl;
             *rotorSpeedFile_ << rotorSpeed[i]/rpmRadSec << endl;
             *rotorSpeedFFile_ << rotorSpeedF[i]/rpmRadSec << endl;
             *rotorAzimuthFile_ << rotorAzimuth[i]/degRad << endl;
@@ -4109,6 +4173,7 @@ void horizontalAxisWindTurbinesALMAdvanced::printOutputFiles()
         *rotorHorizontalForceFile_ << endl;
         *rotorVerticalForceFile_ << endl;
         *rotorPowerFile_ << endl;
+        *generatorPowerFile_ << endl;
         *rotorSpeedFile_ << endl;
         *rotorSpeedFFile_ << endl;
         *rotorAzimuthFile_ << endl;
@@ -4211,6 +4276,8 @@ void horizontalAxisWindTurbinesALMAdvanced::printDebug()
     Info << "ShftTilt = " << ShftTilt << endl;
     Info << "PreCone = " << PreCone << endl;
     Info << "GBRatio = " << GBRatio << endl;
+    Info << "GBEfficiency = " << GBEfficiency << endl;
+    Info << "GenEfficiency = " << GenEfficiency << endl;
     Info << "RatedRotSpeed = " << RatedRotSpeed << endl;
     Info << "HubIner = " << HubIner << endl;
     Info << "GenIner = " << GenIner << endl;

@@ -13,59 +13,111 @@
     // PROPERTIES CONCERNING DRIVING THE WIND TO A SPECIFIED MEAN VELOCITY
     // AT A SPECIFIED HEIGHT
 
-       // Drive wind to specified speed a specified height using time
-       // varying driving pressure gradient?
-       bool driveWindOn(readBool(ABLProperties.lookup("driveWindOn")));
+       // Specify how to force the wind
+       // -givenWindVector:       with this option, you give the time history of the horizontally-
+       //                         averaged wind vector at the height "hWind", and the corresponding 
+       //                         driving pressure gradient is computed.
+       // -givenPressureGradient: with this option, you give the time history of the driving
+       //                         pressure gradient vector.
+       word windForcingType(ABLProperties.lookup("windForcingType"));
 
-       // Desired horizontally-averaged wind speed at a height
-       dimensionedScalar UWindSpeed(ABLProperties.lookup("UWindSpeed"));
+       // Desired forcing is read in as a table of values.  Specify whether to
+       // linearly or cubicly interpolate between values of this table in time.
+       word forcingInterpType(ABLProperties.lookup("forcingInterpType"));
 
-       // Desired horizontally-averaged wind direction at a height (degrees)
-       scalar UWindDir(readScalar(ABLProperties.lookup("UWindDir")));
 
-       // Height at which horizontally-averaged wind vector is specified
+       // If using windForcingType = "givenWindVector", this is the height at which thehorizontally-averaged wind vector is specified
        dimensionedScalar hWind(ABLProperties.lookup("hWind"));
        dimensionedScalar hWindWidth(ABLProperties.lookup("hWindWidth"));
 
+
+       // Read in a table of wind speed and direction versus time for windForcingType = "givenWindVector".
+       List<List<scalar> > desiredWindTable(ABLProperties.lookup("desiredWindTable"));
+       scalarField desiredWindTime(desiredWindTable.size(),0.0);
+       scalarField desiredWindSpeed(desiredWindTable.size(),0.0);
+       scalarField desiredWindDirectionDeg(desiredWindTable.size(),0.0);
+       scalarField desiredWindDirection(desiredWindTable.size(),0.0);
+       vectorField desiredWindVector(desiredWindTable.size(),vector::zero);
+       forAll(desiredWindTime,i)
+       {
+           desiredWindTime[i] = desiredWindTable[i][0];
+           desiredWindSpeed[i] = desiredWindTable[i][1];
+           desiredWindDirectionDeg[i] = desiredWindTable[i][2];
+       }
+
+
+       // Read in a table of pressure gradient vector versus time for windForcingType = "givenPressureGradient".
+       List<List<scalar> > desiredGradPTable(ABLProperties.lookup("desiredPressureGradientTable"));
+       scalarField desiredGradPTime(desiredWindTable.size(),0.0);
+       vectorField desiredGradPVector(desiredWindTable.size(),vector::zero);
+       forAll(desiredWindTime,i)
+       {
+           desiredGradPTime[i] = desiredGradPTable[i][0];
+           desiredGradPVector[i].x() = desiredGradPTable[i][1];
+           desiredGradPVector[i].y() = desiredGradPTable[i][2];
+           desiredGradPVector[i].z() = desiredGradPTable[i][3];
+       }
+
+
+
        // Convert the cardinal wind direction (like on a compass) to the normal
        // convention of 0 radians on the + x axis with positive degrees in the
-       // counter-clockwise direction
-       Info << "     Specified wind at " << hWind.value() << " m is from " << UWindDir << " degrees at " << UWindSpeed.value() << " m/s" << endl;
-       if (UWindDir > 180.0)
+       // counter-clockwise direction.  Also, calculate the wind vector.
+       forAll(desiredWindTime,i)
        {
-           UWindDir = UWindDir - 180.0;
-       }
-       else
-       {
-           UWindDir = UWindDir + 180.0;
-       }
-       UWindDir = 90.0 - UWindDir;
-       if (UWindDir < 0.0)
-       {
-           UWindDir = UWindDir + 360.0;
-       }
-       UWindDir = UWindDir * ((Foam::constant::mathematical::pi)/180.0);
+           if (desiredWindDirectionDeg[i] > 180.0)
+           {
+               desiredWindDirection[i] = desiredWindDirectionDeg[i] - 180.0;
+           }
+           else
+           {
+               desiredWindDirection[i] = desiredWindDirectionDeg[i] + 180.0;
+           }
+           desiredWindDirection[i] = 90.0 - desiredWindDirection[i];
+           if (desiredWindDirection[i] < 0.0)
+           {
+               desiredWindDirection[i] = desiredWindDirection[i] + 360.0;
+           }
+           desiredWindDirection[i] = desiredWindDirection[i] * ((Foam::constant::mathematical::pi)/180.0);
 
-       // Calculate the wind vector
-       vector UWindSpeedToVector;
-       UWindSpeedToVector.x() = Foam::cos(UWindDir);
-       UWindSpeedToVector.y() = Foam::sin(UWindDir);
-       UWindSpeedToVector.z() = 0.0;
-       dimensionedVector UWind = UWindSpeed * UWindSpeedToVector;
-       Info << "     This is a wind vector of " << UWind.value() << " m/s, where +x is east and +y is north" << endl;
-       Info << "                               N" << endl;
-       Info << "                               0" << endl;
-       Info << "                               |" << endl << endl;
-       Info << "                    W 270 --       --  90 E" << endl << endl;
-       Info << "                               |" << endl;
-       Info << "                              180" << endl;
-       Info << "                               S"  << endl;
+           vector windSpeedToVector;
+           windSpeedToVector.x() = Foam::cos(desiredWindDirection[i]);
+           windSpeedToVector.y() = Foam::sin(desiredWindDirection[i]);
+           windSpeedToVector.z() = 0.0;
+           desiredWindVector[i] = desiredWindSpeed[i] * windSpeedToVector;
+       }
 
 
        // Relaxation factor on the pressure gradient control
        scalar alpha(ABLProperties.lookupOrDefault<scalar>("alpha",1.0));
 
 
+       // Write out the desired wind table to the log file.
+       if (windForcingType == "givenWindVector")
+       {
+           Info << "     Specifying the wind vector:" << endl;
+           Info << "     Specified wind at " << hWind.value() << " m:" << endl;
+           forAll(desiredWindTime,i)
+           {
+               Info << "              Time " << desiredWindTime[i] << "," << tab << "wind from " << desiredWindDirectionDeg[i] << " degrees at " << desiredWindSpeed[i] << " m/s," << tab << "vector of " << desiredWindVector[i] << " m/s" << endl;
+           }
+       }
+       else if (windForcingType == "givenPressureGradient")
+       {
+           Info << "     Specifying the driving pressure gradient:" << endl;
+       }
+
+
+       // Write out the compass for user reference.
+       Info << endl;
+       Info << "     +x is east and +y is north" << endl;
+       Info << "                   N" << endl;
+       Info << "                   0" << endl;
+       Info << "                   |" << endl << endl;
+       Info << "        W 270 --       --  90 E" << endl << endl;
+       Info << "                   |" << endl;
+       Info << "                  180" << endl;
+       Info << "                   S"  << endl;
 
 
     // PROPERTIES CONCERNING CORIOLIS FORCES

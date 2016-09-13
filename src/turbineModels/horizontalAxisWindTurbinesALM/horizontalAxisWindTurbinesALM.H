@@ -499,12 +499,12 @@ private:
             DynamicList<List<List<vector> > > bladeForce;
 
             //- Three vectors for each blade of each turbine that define the local
-            //  blade-aligned coordinate system.  Vector 0 is along the blade pointed
+            //  blade-aligned coordinate system.  Vector 2 is along the blade pointed
             //  from root to tip, vector 1 is in the tangential direction (direction
-            //  of blade rotation) where positive points in the direction opposite 
-            //  rotation if the rotor turns clockwise as viewed from upstream, and 
-            //  points orthogonal to vector 0 and 1 and points toward downstream (but 
-            //  vector 2 is not perfectly aligned with downstream due to rotor coning  
+            //  of blade rotation) where positive points in the direction opposite
+            //  rotation if the rotor turns clockwise as viewed from upstream, and 0
+            //  points orthogonal to vector 1 and 2 and points toward downstream (but
+            //  vector 0 is not perfectly aligned with downstream due to rotor coning
             //  and nacelle tilt).
             DynamicList<List<List<vector> > > bladeAlignedVectors;
 

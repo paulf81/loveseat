@@ -810,6 +810,13 @@ void horizontalAxisWindTurbinesALM::computeRotSpeed()
         {
             rotSpeed[i] += (dt/DriveTrainIner[j])*(GBEfficiency[j]*torqueRotor[i]*fluidDensity[i] - GBRatio[j]*torqueGen[i]);
         }
+        Info << "rotor sped = " << rotSpeed[0] << endl;
+        Info << "drive train inertia = " << DriveTrainIner[j] << endl;
+        Info << "gear box efficiency = " << GBEfficiency[j] << endl;
+        Info << "generator torque = " << torqueGen[0] << endl;
+        Info << "rotor torque = " << torqueRotor[0] << endl;
+        Info << "fluid density = " << fluidDensity[0] << endl;
+        Info << "gear box ratio = " << GBRatio[j] << endl;
 
 
         // Limit the rotor speed to be positive and such that the generator does not turn

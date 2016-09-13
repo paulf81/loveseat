@@ -269,6 +269,11 @@ private:
             //- List of tip/root loss correction type for each turbine.  "none" applies
             //  no correction.  "Glauert" applies the Glauert tip loss correction.
             DynamicList<word> tipRootLossCorrType;
+
+            //- List of correction type for the effect of drag on sampled velocity.  "none"
+            //  applies no corretion.  "Martinez" applies the correction of Tony Martinez
+            //  and Charles Meneveau.
+            DynamicList<word> velocityDragCorrType;
         
             //- Rotor rotation direction as viewed from upwind.  Options are
             //  "cw" for clockwise and "ccw" for counter-clockwise.
@@ -372,6 +377,12 @@ private:
 
             //- Gear-box ratio.
             DynamicList<scalar> GBRatio;
+
+            //- Gear-box efficiency.
+            DynamicList<scalar> GBEfficiency;
+
+            //- Generator efficiency.
+            DynamicList<scalar> GenEfficiency;
 
             //- Rated rotor speed (rpm).
             DynamicList<scalar> RatedRotSpeed;
@@ -655,12 +666,12 @@ private:
             DynamicList<List<vector> > towerPointForce;
 
             //- Three vectors for each blade of each turbine that define the local
-            //  blade-aligned coordinate system.  Vector 0 is along the blade pointed
+            //  blade-aligned coordinate system.  Vector 2 is along the blade pointed
             //  from root to tip, vector 1 is in the tangential direction (direction
             //  of blade rotation) where positive points in the direction opposite 
-            //  rotation if the rotor turns clockwise as viewed from upstream, and 
-            //  points orthogonal to vector 0 and 1 and points toward downstream (but 
-            //  vector 2 is not perfectly aligned with downstream due to rotor coning  
+            //  rotation if the rotor turns clockwise as viewed from upstream, and 0
+            //  points orthogonal to vector 1 and 2 and points toward downstream (but 
+            //  vector 0 is not perfectly aligned with downstream due to rotor coning  
             //  and nacelle tilt).
             DynamicList<List<List<vector> > > bladeAlignedVectors;
 
@@ -748,8 +759,9 @@ private:
             DynamicList<scalar> rotorVerticalForce;
             DynamicList<scalar> nacelleVerticalForce;
 
-            //- Power on turbine rotor.
+            //- Power of turbine rotor and generator.
             DynamicList<scalar> rotorPower;
+            DynamicList<scalar> generatorPower;
              
 
 
@@ -820,6 +832,7 @@ private:
             OFstream* rotorHorizontalForceFile_;
             OFstream* rotorVerticalForceFile_;
             OFstream* rotorPowerFile_;
+            OFstream* generatorPowerFile_;
             OFstream* rotorSpeedFile_;
             OFstream* rotorSpeedFFile_;
             OFstream* rotorAzimuthFile_;
