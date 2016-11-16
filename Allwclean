@@ -31,12 +31,22 @@ rmdepall
 wclean
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/ABLSolver.ext
+rmdepall
+wclean
+cd ../../../../../
+
 cd applications/solvers/incompressible/windEnergy/ABLTerrainSolver
 rmdepall
 wclean
 cd ../../../../../
 
 cd applications/solvers/incompressible/windEnergy/windPlantSolver
+rmdepall
+wclean
+cd ../../../../../
+
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.ext
 rmdepall
 wclean
 cd ../../../../../

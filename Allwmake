@@ -85,6 +85,17 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/ABLSolver.ext
+rm pEqn.H
+rm ABLSolver.C
+rm Make/options
+ln -s $dir/pEqn.H ./
+ln -s $dir/ABLSolver.C ./
+ln -s ../$dir/options ./Make
+rm -rf $dirrm1 $dirrm2
+wmake
+cd ../../../../../
+
 cd applications/solvers/incompressible/windEnergy/ABLTerrainSolver
 rm pEqn.H
 rm ABLTerrainSolver.C
@@ -107,7 +118,7 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
-cd applications/solvers/incompressible/windEnergy/windPlantSolver.ADM
+applications/solvers/incompressible/windEnergy/windPlantSolver.ext
 rm pEqn.H
 rm windPlantSolver.C
 rm Make/options
@@ -118,6 +129,16 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.ADM
+rm pEqn.H
+rm windPlantSolver.C
+rm Make/options
+ln -s $dir/pEqn.H ./
+ln -s $dir/windPlantSolver.C ./
+ln -s ../$dir/options ./Make
+rm -rf $dirrm1 $dirrm2
+wmake
+cd ../../../../../
 
 cd applications/solvers/incompressible/windEnergy/windPlantSolver.ALMAdvanced
 rm pEqn.H
