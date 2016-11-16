@@ -118,7 +118,7 @@ rm -rf $dirrm1 $dirrm2
 wmake
 cd ../../../../../
 
-applications/solvers/incompressible/windEnergy/windPlantSolver.ext
+cd applications/solvers/incompressible/windEnergy/windPlantSolver.ext
 rm pEqn.H
 rm windPlantSolver.C
 rm Make/options
