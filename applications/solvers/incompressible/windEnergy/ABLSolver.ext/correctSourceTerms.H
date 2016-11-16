@@ -126,7 +126,118 @@
        // dimensions, the same as in the original ABLSolver.
        if (nSourceMomentumHeights == 1)
        {
+
+           // Get 1/A at cell centers and faces from the U equation matrix.
+           volScalarField rAU("rAU", 1.0/UEqn.A());
+           surfaceScalarField rAUf("(1|A(U))", fvc::interpolate(rAU));
+
+           // Create a volVectorField for the source term change.
+           volVectorField dsVol("dsVol", SourceU);
+
+           // Calculate the average wind velocity at the closest level to specified.
+           vector UMean1 = vector::zero;
+           for (label i = 0; i < numCellPerLevel[hLevelsWind1I]; i++)
+           {
+               label cellI = hLevelsCellList[hLevelsWind1I][i];
+               UMean1 += U[cellI] * mesh.V()[cellI];
+           }
+           reduce(UMean1,sumOp<vector>());
+           UMean1 = UMean1/totVolPerLevel[hLevelsWind1I];
+
+           // Calculate the average wind velocity at the next closest level to specified.
+           vector UMean2 = vector::zero;
+           for (label i = 0; i < numCellPerLevel[hLevelsWind2I]; i++)
+           {
+               label cellI = hLevelsCellList[hLevelsWind2I][i];
+               UMean2 += U[cellI] * mesh.V()[cellI];
+           }
+           reduce(UMean2,sumOp<vector>());
+           UMean2 = UMean2/totVolPerLevel[hLevelsWind2I];
+
+           // Linearly interpolate to get the average wind velocity at the desired height.
+           vector Umean = UMean1 + (((UMean2 - UMean1)/(hLevelsWind2 - hLevelsWind1)) * (sourceHeightsMomentumSpecified[0] - hLevelsWind1));
+
+
+           // Interpolate the desired velocity values in time.
+           scalar desiredUX = interpolate2D(t,
+                                            sourceHeightsMomentumSpecified[0],
+                                            sourceMomentumXTimesSpecified,
+                                            sourceHeightsMomentumSpecified,
+                                            sourceMomentumXSpecified);
+
+           scalar desiredUY = interpolate2D(t,
+                                            sourceHeightsMomentumSpecified[0],
+                                            sourceMomentumYTimesSpecified,
+                                            sourceHeightsMomentumSpecified,
+                                            sourceMomentumYSpecified);
+
+           scalar desiredUZ = interpolate2D(t,
+                                            sourceHeightsMomentumSpecified[0],
+                                            sourceMomentumZTimesSpecified,
+                                            sourceHeightsMomentumSpecified,
+                                            sourceMomentumZSpecified);
+
+           vector UmeanDesired(vector::zero);
+           if (velocityInputType == "component")
+           {
+              UmeanDesired.x() = desiredUX;
+              UmeanDesired.y() = desiredUY;
+              UmeanDesired.z() = desiredUZ;
+           }
+           else if (velocityInputType == "speedAndDirection")
+           {
+              UmeanDesired = windRoseToCartesian(desiredUX,desiredUY);
+              UmeanDesired.z() = desiredUZ;
+           }
+
+           Info << "<U> at " << sourceHeightsMomentumSpecified[0] << ": " << Umean << " m/s" << endl;
+           Info << "<U>_desired: " << UmeanDesired << " m/s" << endl;
+           scalar uxError = Umean.x() - UmeanDesired.x();
+           scalar uyError = Umean.y() - UmeanDesired.y();
+           scalar uzError = Umean.z() - UmeanDesired.z();
+           Info << "<U>_error: (" << uxError << " " << uyError << " " << uzError << ") m/s" << endl;
+
+           // Compute the correction to the source term.
+           scalar rAUmean = (rAU.weightedAverage(mesh.V())).value();
+           vector ds = (UmeanDesired - Umean) / rAUmean;
+
+           // Subtract off any vertical part.
+           ds -= (ds & nUp) * nUp;
+
+           // Apply relaxation.
+           ds *= alphaMomentum;
+
+           // Update the source term.
+           forAll(SourceU,i)
+           {
+               dsVol[i] = ds;
+               SourceU[i] += ds;
+           }
+
+           dsVol.correctBoundaryConditions();
+           SourceU.correctBoundaryConditions();
+
+           // Explicitly correct velocity and flux.
+           U += rAU * dsVol;
+           U.correctBoundaryConditions();
+           phi += rAUf * (fvc::interpolate(dsVol) & mesh.Sf());
+
+           // Write the source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceUXHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << SourceU[0].x() << endl;
+                       sourceUYHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << SourceU[0].y() << endl;
+                       sourceUZHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << SourceU[0].z() << endl;
+                   }
+               }
+           }
        }
+
+
        // Otherwise, set the source as a function of height and time.
        else
        {
@@ -191,14 +302,14 @@
                UmeanDesired[level] = v;
            }
 
-           Info << "UmeanDesired = " << UmeanDesired << endl;
-           Info << "UmeanActual = " << Umean << endl;
+           //Info << "UmeanDesired = " << UmeanDesired << endl;
+           //Info << "UmeanActual = " << Umean << endl;
 
 
            // Compute the correction to the source term.
            forAll(hLevelsCellList,level)
            {
-               // this is the correction a this level.
+               // this is the correction at this level.
                vector ds = (UmeanDesired[level] - Umean[level]) / rAUmean[level];
 
                // subtract off any vertical part.
@@ -331,9 +442,79 @@
        // This is if the temperature is only specified at one height.  In that case,
        // a source term will be computed and applied uniformly in all three
        // dimensions.
-       if (nSourceMomentumHeights == 1)
+       if (nSourceTemperatureHeights == 1)
        {
+           // Create a volScalarField for the source term change.
+           volScalarField dsVol("dsVol", SourceT);
+
+           // Calculate the average temperature at the closest level to specified.
+           scalar TMean1 = 0.0;
+           for (label i = 0; i < numCellPerLevel[hLevelsWind1I]; i++)
+           {
+               label cellI = hLevelsCellList[hLevelsWind1I][i];
+               TMean1 += T[cellI] * mesh.V()[cellI];
+           }
+           reduce(TMean1,sumOp<scalar>());
+           TMean1 = TMean1/totVolPerLevel[hLevelsWind1I];
+
+           // Calculate the average temperature at the next closest level to specified.
+           scalar TMean2 = 0.0;
+           for (label i = 0; i < numCellPerLevel[hLevelsWind2I]; i++)
+           {
+               label cellI = hLevelsCellList[hLevelsWind2I][i];
+               TMean2 += T[cellI] * mesh.V()[cellI];
+           }
+           reduce(TMean2,sumOp<scalar>());
+           TMean2 = TMean2/totVolPerLevel[hLevelsWind2I];
+
+           // Linearly interpolate to get the average wind velocity at the desired height.
+           scalar Tmean = TMean1 + (((TMean2 - TMean1)/(hLevelsTemp2 - hLevelsTemp1)) * (sourceHeightsTemperatureSpecified[0] - hLevelsTemp1));
+
+           // Interpolate the desired temperature in time.
+           scalar TmeanDesired = interpolate2D(t,
+                                               sourceHeightsTemperatureSpecified[0],
+                                               sourceTemperatureTimesSpecified,
+                                               sourceHeightsTemperatureSpecified,
+                                               sourceTemperatureSpecified);
+
+           Info << "<T> at " << sourceHeightsTemperatureSpecified[0] << ": " << Tmean << " K" << endl;
+           Info << "<T>_desired: " << TmeanDesired << " K" << endl;
+           Info << "<T>_error: " << Tmean - TmeanDesired << " K" << endl;
+       
+           // Compute the correction to the source term.
+           scalar ds = (TmeanDesired - Tmean) / dt;
+
+           // Apply the relaxation.
+           ds *= alphaTemperature;
+
+           // Update the source term.
+           forAll(SourceT,i)
+           {
+               dsVol[i] = ds;
+               SourceT[i] += ds;
+           }
+  
+           dsVol.correctBoundaryConditions();
+           SourceT.correctBoundaryConditions();
+
+           // Explicitly correct the temperature.
+           T += runTime.deltaT() * dsVol;
+           T.correctBoundaryConditions();
+
+           // Write the source information.
+           if (Pstream::master())
+           {
+               if (statisticsOn)
+               {
+                   if (runTime.timeIndex() % statisticsFreq == 0)
+                   {
+                       sourceTHistoryFile() << runTime.timeName() << " " << runTime.deltaT().value() << " " << SourceT[0] << endl;
+                   }
+               }
+           }
        }
+
+
        // Otherwise, set the source as a function of height and time.
        else
        {
@@ -371,8 +552,8 @@
                TmeanDesired[level] = desiredTColumn[level];
            }
 
-           Info << "TmeanDesired = " << TmeanDesired << endl;
-           Info << "TmeanActual = " << Tmean << endl;
+           //Info << "TmeanDesired = " << TmeanDesired << endl;
+           //Info << "TmeanActual = " << Tmean << endl;
 
         
            // Compute the correction to the source term.

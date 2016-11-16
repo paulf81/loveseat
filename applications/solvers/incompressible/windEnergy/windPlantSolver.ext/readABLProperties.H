@@ -12,21 +12,6 @@
 
     // PROPERTIES CONCERNING THE SOURCE TERMS.
 
-       // Specify the type of source to use for momentum and temperature.  The
-       // possible types are "given" and "computed".  
-       // - The "given" type means that the source values are directly given
-       //   and the momentum and temperature fields will react accordingly.  
-       // - The "computed" type means that the mean velocity and temperature
-       //   are given and the source terms that maintain them are computed. 
-       word momentumSourceType(ABLProperties.lookup("momentumSourceType"));
-       word temperatureSourceType(ABLProperties.lookup("temperatureSourceType"));
-
-       // If giving the velocity and computing the sources, specify how the velocity
-       // is given.  "component" means you enter the x, y, anc z components.
-       // "speedAndDirection" means that you enter the horizontal wind speed, horizontal
-       // direction, and vertical component.
-       word velocityInputType(ABLProperties.lookup("velocityInputType"));
-
        // Read in the heights at which the sources are given.
        List<scalar> sourceHeightsMomentumSpecified(ABLProperties.lookup("sourceHeightsMomentum"));
        List<scalar> sourceHeightsTemperatureSpecified(ABLProperties.lookup("sourceHeightsTemperature"));
@@ -137,37 +122,14 @@
        }
 
 
-       // If the desired mean wind or temperature is given at only one height, then revert to
-       // the old way of specifying the source term.  Find the two grid levels that bracket
-       // the given level and interpolate in between them to compute the source term.  So,
-       // here, find those two levels.
-       label hLevelsWind1I = 0;
-       label hLevelsWind2I = 0;
-       scalar hLevelsWind1 = 0;
-       scalar hLevelsWind2 = 0;
-       if ((momentumSourceType == "computed") && (nSourceMomentumHeights == 1))
-       {
-           #include "findWindHeight.H"
-       }
-
-       label hLevelsTemp1I = 0;
-       label hLevelsTemp2I = 0;
-       scalar hLevelsTemp1 = 0;
-       scalar hLevelsTemp2 = 0;
-       if ((temperatureSourceType == "computed") && (nSourceTemperatureHeights == 1))
-       {
-           #include "findTemperatureHeight.H"
-       }
-
-
-       // Relaxation factor on the source term application.
-       scalar alphaMomentum(ABLProperties.lookupOrDefault<scalar>("alphaMomentum",1.0));
-       scalar alphaTemperature(ABLProperties.lookupOrDefault<scalar>("alphaTemperature",1.0));
-
-
 
 
     // PROPERTIES CONCERNING CORIOLIS FORCES
+
+       // Up index
+       label upIndex = 2;
+       vector nUp(vector::zero);
+       nUp.z() = 1.0;
 
        // Planetary rotation period (hours)
        scalar planetaryRotationPeriod(readScalar(ABLProperties.lookup("planetaryRotationPeriod")));
@@ -197,11 +159,7 @@
 
 
 
+   // PROPERTIES CONCERNING GATHERING STATISTICS
 
-    // PROPERTIES CONCERNING GATHERING STATISTICS
-
-       // Gather/write statistics?
-       bool statisticsOn(ABLProperties.lookupOrDefault<bool>("statisticsOn", false));
-
-       // Statistics gathering/writing frequency?
-       int statisticsFreq(int(readScalar(ABLProperties.lookup("statisticsFrequency"))));
+       scalar avgStartTime(ABLProperties.lookupOrDefault<scalar>("avgStartTime", 0));
+       scalar corrStartTime(ABLProperties.lookupOrDefault<scalar>("corrStartTime", 0));

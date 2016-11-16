@@ -1,5 +1,11 @@
     // On each processor, do a search through all cells and make a list of 
     // all distinct cell heights
+
+    // Up index
+    label upIndex = 2;
+    vector nUp(vector::zero);
+    nUp.z() = 1.0;
+
     scalar hLevelsTol = 1.0E-8;
     HashSet<scalar> hLevelsValuesP;
     label hLevelsTotal = 0;

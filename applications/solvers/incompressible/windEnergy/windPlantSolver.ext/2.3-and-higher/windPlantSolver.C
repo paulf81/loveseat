@@ -53,10 +53,10 @@ Description
 #include "IFstream.H"
 #include "OFstream.H"
 #include "wallDist.H"
-#include "interpolateXY.H"
 #include "interpolateSplineXY.H"
+#include "interpolateXY.H"
 #include "interpolate2D.H"
-#include "windRoseToCartesian.H"
+#include "horizontalAxisWindTurbinesALM.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -66,21 +66,23 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-    #include "createPostProcessingDir.H"
-    #include "findVerticalCellLevels.H"
     #include "readGravitationalAcceleration.H"
     #include "createFields.H"
-    #include "createAverageFields.H"
-    #include "createSGSTurbulenceFields.H"
+    #include "createDivSchemeBlendingField.H"
+  //#include "createGradP.H"
     #include "createSourceTerms.H"
     #include "readTimeControls.H"
     #include "CourantNo.H"
     #include "setInitialDeltaT.H"
+  //#include "findVerticalCellLevels.H"
+  //#include "findVerticalFaceLevels.H"
   //#include "findWindHeight.H"
-    #include "openCellStatisticsFiles.H"
+  //#include "openCellStatisticsFiles.H"
+  //#include "openFaceStatisticsFiles.H"
+  //#include "openABLStatisticsFiles.H"
+    #include "createAverageFields.H"
+    #include "createVorticityQFields.H"
     #include "computeDivergence.H"
-    #include "createDivSchemeBlendingField.H"
-    //#include "openABLStatisticsFiles.H"
 
     pimpleControl pimple(mesh);
 
@@ -93,9 +95,12 @@ int main(int argc, char *argv[])
     // field.
     U.correctBoundaryConditions();
     phi = linearInterpolate(U) & mesh.Sf();
-    #include "turbulenceCorrect.H"
     T.correctBoundaryConditions();
   //p_rgh.correctBoundaryConditions();
+    turbulence->correct();
+    Rwall.correctBoundaryConditions();
+    qwall.correctBoundaryConditions();
+
 
     while (runTime.loop())
     {
@@ -110,48 +115,51 @@ int main(int argc, char *argv[])
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
-            Info << "   Predictor..." << endl;
             #include "UEqn.H"
-            #include "turbulenceCorrect.H"
             #include "TEqn.H"
 
             // --- Pressure corrector loop
-            int corr = 0;
             while (pimple.correct())
             {
-                Info << "   Corrector Step " << corr << "..." << endl;
                 #include "pEqn.H"
-                #include "turbulenceCorrect.H"
                 #include "TEqn.H"
-                corr++;
             }
-
-            // --- Update the driving pressure gradient
-          //#include "correctGradP.H"
-
-            // --- Update the source terms
-            #include "correctSourceTerms.H"
 
             // --- Compute the velocity flux divergence
             #include "computeDivergence.H"
 
+//          // --- Update the driving pressure gradient
+//          #include "correctGradP.H"
+
+            // --- Update the source terms
+            #include "correctSourceTerms.H"
+
             // --- Update the turbulence fields
-//          if (pimple.turbCorr())
-//          {
-//              turbulence->correct();
-//          }
+            if (pimple.turbCorr())
+            {
+                turbulence->correct();
+            }
+
+            // --- Update the turbine array
+            turbines.update();
+
+            // --- Update the boundary momentum and
+            //     temperature flux conditions
+            Rwall.correctBoundaryConditions();
+            qwall.correctBoundaryConditions();
         }   
 
-        if (runTime.outputTime())
-        {
-            #include "averageFields.H"
-        }
 
-        #include "statisticsCell.H"
+        #include "computeAverageFields.H"
+        #include "computeVorticityQ.H"
+//      if (runTime.outputTime())
+//      {
+//          #include "averageFields.H"
+//      }
+
+//      #include "statisticsCell.H"
 //      #include "statisticsFace.H"
 //      #include "statisticsABL.H"
-
-        #include "computeSGSTurbulenceFields.H"
 
         runTime.write();
 //      #include "writeGradP.H"
