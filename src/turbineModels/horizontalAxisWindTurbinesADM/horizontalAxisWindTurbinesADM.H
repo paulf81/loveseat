@@ -538,6 +538,16 @@ private:
 	    DynamicList<scalar> deltaAzimuth;
 
 
+        //- Loveseat Set the number of elements per turbine in the superInfo array
+        // Note must be below superInfoBufferSize
+        int superInfoLength;
+
+        //Loveseat: Define a list for passing info between controllers and super controller
+        //List<scalar> superInfo(1000,scalar::zero);
+        DynamicList<scalar> superInfoFromSC;  // Array of data from the SC
+        DynamicList<scalar> superInfoToSC;    // Aray of data to the SC
+
+
 
         //- Information critical to turbine performance that can be written to file
         //  every time step.
@@ -648,6 +658,8 @@ private:
             //- List of output files for nacelle yaw angle.
             OFstream* nacYawFile_;
 
+            //- Loveseat, List contents of superInfo
+            OFstream* superInfoFile_;
             
 
       
@@ -672,6 +684,12 @@ private:
 
 	//- Calculate the nacelle yaw position.
 	void controlNacYaw();
+
+        //- Loveseat: Define the super controller
+        void superController();
+
+        // Loveseat: Call the simple controller implementation
+        void callSCSimple();
 
         //- Calculate the blade pitch.
         void controlBladePitch();
