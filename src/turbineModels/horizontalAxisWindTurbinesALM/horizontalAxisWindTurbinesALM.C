@@ -35,6 +35,7 @@ License
 
 #include "horizontalAxisWindTurbinesALM.H"
 #include "interpolateXY.H"
+#include "SCSimple.C" //loveseat inclusion
 
 namespace Foam
 {
@@ -139,6 +140,14 @@ horizontalAxisWindTurbinesALM::horizontalAxisWindTurbinesALM
     }
 
     numTurbines = turbineName.size();
+
+    //Loveseat: set the per-turbine array length of superInfo
+    superInfoLength = 2;
+    for (int si = 0; si < numTurbines * superInfoLength; si++)
+    {
+    	superInfoFromSC.append(0.0);
+    	superInfoToSC.append(0.0);
+    }
 
     outputControl = turbineArrayProperties.subDict("globalProperties").lookupOrDefault<word>("outputControl","timeStep");
     outputInterval = turbineArrayProperties.subDict("globalProperties").lookupOrDefault<scalar>("outputInterval",1);
@@ -293,7 +302,7 @@ horizontalAxisWindTurbinesALM::horizontalAxisWindTurbinesALM
         {
             // Read nothing.
         }
-        else if (BladePitchControllerType[i] == "PID")
+        else if (BladePitchControllerType[i] == "PID" || BladePitchControllerType[i] == "PIDSC" ) //loveseat include PIDSC in init routine
         {
             PitchK.append(readScalar(turbineProperties.subDict("BladePitchControllerParams").lookup("PitchK")));
             PitchMin.append(readScalar(turbineProperties.subDict("BladePitchControllerParams").lookup("PitchMin")));
@@ -883,6 +892,7 @@ void horizontalAxisWindTurbinesALM::controlGenTorque()
             #include "controllers/genTorqueControllers/speedTorqueTable.H"
         }
 
+
         // Limit the change in generator torque.
         if (GenTorqueRateLimiter[j])
         {
@@ -897,6 +907,10 @@ void horizontalAxisWindTurbinesALM::controlGenTorque()
 
 void horizontalAxisWindTurbinesALM::controlNacYaw()
 {
+
+	//loveseat, need a local yaw error variable
+	float yawError, yawErrorAbs;
+
     // Proceed turbine by turbine.
     forAll(deltaNacYaw, i)
     {
@@ -920,6 +934,14 @@ void horizontalAxisWindTurbinesALM::controlNacYaw()
         else if (NacYawControllerType[j] == "timeYawTable")
         {
         }
+         //loveSeat, set a case for yawSC
+        // simple function assumes the first entry per turbine in 
+        // superInfoFromSC is a yaw reference to seek
+        else if (NacYawControllerType[j] == "yawSC")
+        {
+        	#include "controllers/yawControllers/yawSC.H"
+        }
+
 
 
         
@@ -931,6 +953,67 @@ void horizontalAxisWindTurbinesALM::controlNacYaw()
     }
 }
         
+
+//Loveseat: define the super controller
+//  The super controller code facilitates the exchangess 
+void horizontalAxisWindTurbinesALM::superController()
+{
+	Info << "Entering SuperController" << endl;
+
+	//As a first step spool up the "To" data from each of the turbines
+	List<scalar> superInfoLocal(superInfoLength*numTurbines,0.0);
+	//superInfoLocal = List<scalar> (superInfoLength*numTurbines,0.0);
+
+    for(int si = 0; si < superInfoLength *numTurbines; si++)
+    {
+    	superInfoLocal[si] = superInfoToSC[si];
+    }
+
+    //Gather and scatter across procs
+	Pstream::gather(superInfoLocal,sumOp<List<scalar> >());
+    Pstream::scatter(superInfoLocal);
+
+
+    // Send back out
+    for(int si = 0; si < superInfoLength *numTurbines; si++)
+    {
+    	superInfoToSC[si] = superInfoLocal[si];
+    }
+
+    //Call the desired super controller
+    callSCSimple();
+}
+
+//Loveseat: define  the call to the simple controller
+//  The super controller code facilitates the exchangess 
+void horizontalAxisWindTurbinesALM::callSCSimple()
+{
+	const int MAX_ARRAY = 1000;
+	float inputArray[MAX_ARRAY];
+	float outputArray[MAX_ARRAY];
+
+	SCSimpleALM(inputArray, outputArray, runTime_.value(), numTurbines );
+
+
+	// Fix the units from compass deg to standard rad and place into the 
+	// from SC dynamiclist, do this for each turbine
+	for(int i = 0; i < numTurbines; i++)
+	{
+		// First collect the yaw target and correct
+		superInfoFromSC[i*numTurbines] = outputArray[i*numTurbines];
+		superInfoFromSC[i*numTurbines] = compassToStandard(superInfoFromSC[i*numTurbines]);
+		superInfoFromSC[i*numTurbines] = superInfoFromSC[i*numTurbines] * degRad;
+
+		// Next collect the minimum pitch angle
+		superInfoFromSC[i*numTurbines+1] = outputArray[i*numTurbines+1];
+		superInfoFromSC[i*numTurbines+1] = superInfoFromSC[i*numTurbines+1] * degRad;
+
+
+	}
+
+
+
+}
 
 void horizontalAxisWindTurbinesALM::controlBladePitch()
 {
@@ -957,6 +1040,12 @@ void horizontalAxisWindTurbinesALM::controlBladePitch()
         else if (BladePitchControllerType[j] == "PID")
         {
             #include "controllers/bladePitchControllers/PID.H"
+        }
+        //loveseat: allow a pidSC controller where the minimum pitch is chosen by super controller
+        else if (BladePitchControllerType[j] == "PIDSC")
+        {
+        	//Info << "PIDSC Turbine " << i << endl;
+            #include "controllers/bladePitchControllers/PIDSC.H"
         }
 
         // Apply pitch rate limiter.
@@ -1537,6 +1626,7 @@ void horizontalAxisWindTurbinesALM::update()
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
+        superController(); //Loveseat
     }
     else if(bladeUpdateType[0] == "newPosition")
     {
@@ -1548,6 +1638,7 @@ void horizontalAxisWindTurbinesALM::update()
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
+        superController(); //Loveseat
 
         // Find out which processor controls which actuator point,
         // and with that information sample the wind at the actuator
@@ -1663,6 +1754,10 @@ void horizontalAxisWindTurbinesALM::openOutputFiles()
         nacYawFile_ = new OFstream(rootDir/time/"nacYaw");
         *nacYawFile_ << "#Turbine    Time(s)    dt(s)    nacelle yaw angle (degrees)" << endl;
 
+                 // Loveseat: Create a superInfo file.
+        superInfoFile_ = new OFstream(rootDir/time/"superInfo");
+        *superInfoFile_ << "#Turbine    Sector    Time(s)    dt(s)    superInfo(fromThento)" << endl;
+
         // Create an angle of attack file.
         alphaFile_ = new OFstream(rootDir/time/"alpha");
         *alphaFile_ << "#Turbine    Blade    Time(s)    dt(s)    angle-of-attack(degrees)" << endl;
@@ -1740,6 +1835,7 @@ void horizontalAxisWindTurbinesALM::printOutputFiles()
             *azimuthFile_ << i << " " << time << " " << dt << " ";
             *pitchFile_ << i << " " << time << " " << dt << " ";
             *nacYawFile_ << i << " " << time << " " << dt << " ";
+            *superInfoFile_ << i << " " << time << " " << dt << " "; //loveSeat
 
             // Write out information for each turbine.
             *torqueRotorFile_ << torqueRotor[i]*fluidDensity[i] << endl;
@@ -1752,6 +1848,16 @@ void horizontalAxisWindTurbinesALM::printOutputFiles()
             *azimuthFile_ << azimuth[i]/degRad << endl;
             *pitchFile_ << pitch[i] << endl;
             *nacYawFile_ << standardToCompass(nacYaw[i]/degRad) << endl;
+                        // Loveseat, print out superInfo for this turbine
+            for(int si = 0; si < superInfoLength; si++)
+            {
+            	*superInfoFile_ << superInfoFromSC[i * superInfoLength + si] << " ";
+            }
+            for(int si = 0; si < superInfoLength; si++)
+            {
+            	*superInfoFile_ << superInfoToSC[i * superInfoLength + si] << " ";
+            }
+            *superInfoFile_ << endl; //loveSeat
 
             // Proceed blade by blade.
             forAll(bladePoints[i], j)
@@ -1816,6 +1922,7 @@ void horizontalAxisWindTurbinesALM::printOutputFiles()
         *azimuthFile_ << endl;
         *pitchFile_ << endl;
         *nacYawFile_ << endl;
+        *superInfoFile_ << endl; //loveSeat
 
         *alphaFile_ << endl;
         *VmagFile_ << endl;

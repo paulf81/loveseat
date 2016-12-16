@@ -13,12 +13,11 @@
 // numTurbines, number of turbines
 
 
-
 #include <stdio.h>
 #include <stdlib.h> // for malloc
 
 // The main function of the super controller
-void SCSimpleADM(float * inputArray, float * outputArray, float simTime,  int numTurbines)
+void SCSimpleALM(float * inputArray, float * outputArray, float simTime,  int numTurbines)
 {
 
 	//Define variables for handling SC_Struct

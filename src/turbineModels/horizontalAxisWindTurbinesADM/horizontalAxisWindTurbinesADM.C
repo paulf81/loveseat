@@ -35,7 +35,7 @@ License
 
 #include "horizontalAxisWindTurbinesADM.H"
 #include "interpolateXY.H"
-#include "SCSimple.C"
+#include "SCSimple.C" //loveseat inclusion
 
 namespace Foam
 {
@@ -1039,7 +1039,7 @@ void horizontalAxisWindTurbinesADM::callSCSimple()
 	float inputArray[MAX_ARRAY];
 	float outputArray[MAX_ARRAY];
 
-	SCSimple(inputArray, outputArray, runTime_.value(), numTurbines );
+	SCSimpleADM(inputArray, outputArray, runTime_.value(), numTurbines );
 
 
 	// Fix the units from compass deg to standard rad and place into the 
