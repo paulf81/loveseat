@@ -252,6 +252,8 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         ShftTilt.append(scalar(readScalar(turbineProperties.lookup("ShftTilt"))));
         PreCone.append(vector(turbineProperties.lookup("PreCone")));
         GBRatio.append(scalar(readScalar(turbineProperties.lookup("GBRatio"))));
+        GBEfficiency.append(scalar(readScalar(turbineProperties.lookup("GBEfficiency"))));
+        GenEfficiency.append(scalar(readScalar(turbineProperties.lookup("GenEfficiency"))));
         RatedRotSpeed.append(scalar(readScalar(turbineProperties.lookup("RatedRotSpeed"))));
         GenIner.append(scalar(readScalar(turbineProperties.lookup("GenIner"))));
         HubIner.append(scalar(readScalar(turbineProperties.lookup("HubIner"))));
@@ -874,7 +876,7 @@ void horizontalAxisWindTurbinesADM::computeRotSpeed()
         // based on the summation of aerodynamic and generator torque on the rotor.
         else
         {
-            rotSpeed[i] += (dt/DriveTrainIner[j])*(torqueRotor[i]*fluidDensity[i] - GBRatio[j]*torqueGen[i]);
+            rotSpeed[i] += (dt/DriveTrainIner[j])*(GBEfficiency[j]*torqueRotor[i]*fluidDensity[i] - GBRatio[j]*torqueGen[i]);
         }
 
 
@@ -1429,6 +1431,9 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         // Compute rotor power based on aerodynamic torque and rotation speed.
         powerRotor[i] = torqueRotor[i] * rotSpeed[i];
 
+        // Compute the generator electrical power.
+        powerGenerator[i] = torqueGen[i] * (rotSpeed[i] * GBRatio[m]) * GenEfficiency[m];
+
     }
 }
 
@@ -1822,6 +1827,10 @@ void horizontalAxisWindTurbinesADM::openOutputFiles()
         powerRotorFile_ = new OFstream(rootDir/time/"powerRotor");
         *powerRotorFile_ << "#Turbine    Time(s)    dt(s)    rotor power (W)" << endl;
 
+        // Create an electrical power file.
+        powerGeneratorFile_ = new OFstream(rootDir/time/"powerGenerator");
+        *powerGeneratorFile_ << "#Turbine    Time(s)    dt(s)    generator power (W)" << endl;
+
         // Create a rotation rate file.
         rotSpeedFile_ = new OFstream(rootDir/time/"rotSpeed");
         *rotSpeedFile_ << "#Turbine    Time(s)    dt(s)    rotor rotation rate(rpm)" << endl;
@@ -1905,6 +1914,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *torqueGenFile_ << i << " " << time << " " << dt << " ";
             *thrustFile_ << i << " " << time << " " << dt << " ";
             *powerRotorFile_ << i << " " << time << " " << dt << " ";
+            *powerGeneratorFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFFile_ << i << " " << time << " " << dt << " ";
             *azimuthFile_ << i << " " << time << " " << dt << " ";
@@ -1918,6 +1928,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *torqueGenFile_ << torqueGen[i] << endl;
             *thrustFile_ << thrust[i]*fluidDensity[i] << endl;
             *powerRotorFile_ << powerRotor[i]*fluidDensity[i] << endl;
+            *powerGeneratorFile_ << powerGenerator[i]*fluidDensity[i] << endl;
             *rotSpeedFile_ << rotSpeed[i]/rpmRadSec << endl;
             *rotSpeedFFile_ << rotSpeedF[i]/rpmRadSec << endl;
             *azimuthFile_ << azimuth[i]/degRad << endl;
@@ -1984,6 +1995,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
         *torqueGenFile_ << endl;
         *thrustFile_ << endl;
         *powerRotorFile_ << endl;
+        *powerGeneratorFile_ << endl;
         *rotSpeedFile_ << endl;
         *rotSpeedFFile_ << endl;
         *azimuthFile_ << endl;

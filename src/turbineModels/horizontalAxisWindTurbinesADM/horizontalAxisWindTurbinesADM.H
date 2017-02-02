@@ -298,6 +298,12 @@ private:
             //- Gear-box ratio.
             DynamicList<scalar> GBRatio;
 
+            //- Gear-box efficiency.
+            DynamicList<scalar> GBEfficiency;
+
+            //- Generator efficiency.
+            DynamicList<scalar> GenEfficiency;
+            
             //- Rated rotor speed (rpm).
             DynamicList<scalar> RatedRotSpeed;
 
@@ -593,6 +599,9 @@ private:
 
             //- Power/density on turbine rotor.
             DynamicList<scalar> powerRotor;
+
+            //- Power/density of generator.
+            DynamicList<scalar> powerGenerator;
              
 
 
@@ -642,6 +651,9 @@ private:
 
             //- List of output files for total power/density.
             OFstream* powerRotorFile_;
+
+            //- List of output files for generator power.
+            OFstream* powerGeneratorFile_;
 
             //- List of output files for rotation rate.
             OFstream* rotSpeedFile_;
