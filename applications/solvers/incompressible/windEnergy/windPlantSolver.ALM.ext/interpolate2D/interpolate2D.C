@@ -173,7 +173,7 @@ Type interpolate2D
        wy = (yI - y[j]) / dy;
     }
 
-    scalar a0 = 1.0 - wx + wy + (wx * wy);
+    scalar a0 = 1.0 - wx - wy + (wx * wy);
     scalar a1 = wy - (wx * wy);
     scalar a2 = wx - (wx * wy);
     scalar a3 = wx * wy;
