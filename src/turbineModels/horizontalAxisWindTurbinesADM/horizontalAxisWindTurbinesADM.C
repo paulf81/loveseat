@@ -644,6 +644,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         thrust.append(0.0);
         torqueRotor.append(0.0);
         powerRotor.append(0.0);
+        powerGenerator.append(0.0);
         for(int m = 0; m < nRadial[i]; m++)
         {
             sectorIndices[i][m].append(List<label>(nAzimuth[i][m],0));
