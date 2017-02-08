@@ -1383,13 +1383,14 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
                     scalar g = 1.0;
 
                     scalar ftip  = (TipRad[m] - bladeRadius[i][j])/(bladeRadius[i][j] * sin(mag(windAng)*degRad));
-                    scalar Ftip  = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * ftip));
+                    scalar Ftip  = (2.0/(Foam::constant::mathematical::pi)) * acos(min(1.0, exp(-g * (NumBl[m] / 2.0) * ftip)));
 
                     scalar froot = (bladeRadius[i][j] - HubRad[m])/(bladeRadius[i][j] * sin(mag(windAng)*degRad));
-                    scalar Froot = (2.0/(Foam::constant::mathematical::pi)) * acos(exp(-g * (NumBl[m] / 2.0) * froot));
+                    scalar Froot = (2.0/(Foam::constant::mathematical::pi)) * acos(min(1.0, exp(-g * (NumBl[m] / 2.0) * froot)));
 
                     F = Ftip * Froot;
                 }
+
 
                 // Using Cl, Cd, wind velocity, chord, and actuator element width, calculate the
                 // lift and drag per density.
