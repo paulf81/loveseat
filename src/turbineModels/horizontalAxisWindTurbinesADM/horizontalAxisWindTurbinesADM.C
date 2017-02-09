@@ -906,8 +906,10 @@ void horizontalAxisWindTurbinesADM::filterRotSpeed()
         // Compute the filtering coefficient based on the corner frequency and time step.
         scalar alpha = exp(-dt * SpeedFilterCornerFrequency[j]);
 
+        // Loveseat, comment out because time step so large
         // Apply a simple recursive, single-pole, low-pass filter.
-        rotSpeedF[i] = (1.0 - alpha)*rotSpeed[i] + alpha*rotSpeedF[i];
+        rotSpeedF[i] = (1.0 - alpha)*rotSpeed[i] + alpha*rotSpeedF[i];  // never mind do it
+        //rotSpeedF[i] = rotSpeed[i];
     }
 }
 
