@@ -1,7 +1,7 @@
 //For each turbine, yaw 1 deg/s in direction of error, if error is less than this increment do nothing
 
 //Compute the yaw error
-yawError = superInfoFromSC[i * numTurbines] - nacYaw[i];
+yawError = superInfoFromSC[i * superInfoLength] - nacYaw[i];
 
 
 //Wrap the yaw to be +/- 180

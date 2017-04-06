@@ -269,6 +269,7 @@ horizontalAxisWindTurbinesALM::horizontalAxisWindTurbinesALM
         else if (GenTorqueControllerType[i] == "fiveRegion")
         {
             CutInGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("CutInGenSpeed")));
+            RatedGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("RatedGenSpeed")));
             Region2StartGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("Region2StartGenSpeed")));
             Region2EndGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("Region2EndGenSpeed")));
             CutInGenTorque.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("CutInGenTorque")));
@@ -808,7 +809,7 @@ void horizontalAxisWindTurbinesALM::computeRotSpeed()
 
         // If the generator torque and blade pitch controllers are both set to "none", then
         // the rotor speed will remain fixed at its initial speed.
-        if ((GenTorqueControllerType[j] == "none") && (BladePitchControllerType[j] == "none"))
+        if ((GenTorqueControllerType[j] == "none") || (BladePitchControllerType[j] == "none"))
         {
             // Do nothing.
         }
@@ -1000,13 +1001,13 @@ void horizontalAxisWindTurbinesALM::callSCSimple()
 	for(int i = 0; i < numTurbines; i++)
 	{
 		// First collect the yaw target and correct
-		superInfoFromSC[i*numTurbines] = outputArray[i*numTurbines];
-		superInfoFromSC[i*numTurbines] = compassToStandard(superInfoFromSC[i*numTurbines]);
-		superInfoFromSC[i*numTurbines] = superInfoFromSC[i*numTurbines] * degRad;
+		superInfoFromSC[i*superInfoLength] = outputArray[i*superInfoLength];
+		superInfoFromSC[i*superInfoLength] = compassToStandard(superInfoFromSC[i*superInfoLength]);
+		superInfoFromSC[i*superInfoLength] = superInfoFromSC[i*superInfoLength] * degRad;
 
 		// Next collect the minimum pitch angle
-		superInfoFromSC[i*numTurbines+1] = outputArray[i*numTurbines+1];
-		superInfoFromSC[i*numTurbines+1] = superInfoFromSC[i*numTurbines+1] * degRad;
+		superInfoFromSC[i*superInfoLength+1] = outputArray[i*superInfoLength+1];
+		superInfoFromSC[i*superInfoLength+1] = superInfoFromSC[i*superInfoLength+1] * degRad;
 
 
 	}
@@ -1843,7 +1844,7 @@ void horizontalAxisWindTurbinesALM::printOutputFiles()
             *torqueGenFile_ << torqueGen[i] << endl;
             *thrustFile_ << thrust[i]*fluidDensity[i] << endl;
             *powerRotorFile_ << powerRotor[i]*fluidDensity[i] << endl;
-            *powerGeneratorFile_ << powerGenerator[i]*fluidDensity[i] << endl;
+            *powerGeneratorFile_ << powerGenerator[i] << endl;
             *rotSpeedFile_ << rotSpeed[i]/rpmRadSec << endl;
             *rotSpeedFFile_ << rotSpeedF[i]/rpmRadSec << endl;
             *azimuthFile_ << azimuth[i]/degRad << endl;

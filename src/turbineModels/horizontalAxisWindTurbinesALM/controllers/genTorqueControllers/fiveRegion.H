@@ -2,7 +2,7 @@
             // NREL 5 MW Reference turbine model.      
 
 
-            scalar RatedGenSpeed = (RatedRotSpeed[j]/rpmRadSec)*GBRatio[j];
+            //scalar RatedGenSpeed = (RatedRotSpeed[j]/rpmRadSec)*GBRatio[j];
 
 
             // Region 1.
@@ -27,18 +27,18 @@
                 torqueGenCommanded = KGen[j] * genSpeedF * genSpeedF;
             }
             // Region 2-1/2.
-            else if ((genSpeedF >= Region2EndGenSpeed[j]) && (genSpeedF < RatedGenSpeed))
+            else if ((genSpeedF >= Region2EndGenSpeed[j]) && (genSpeedF < RatedGenSpeed[j]))
             {
                //Info << "Region 2-1/2" << endl;
                 scalar dGenSpeed = genSpeedF - Region2EndGenSpeed[j];
                 scalar Region2EndGenTorque = KGen[j] * Region2EndGenSpeed[j] * Region2EndGenSpeed[j];
-                scalar torqueSlope = (RatedGenTorque[j] - Region2EndGenTorque) / ( RatedGenSpeed - Region2EndGenSpeed[j] );
+                scalar torqueSlope = (RatedGenTorque[j] - Region2EndGenTorque) / ( RatedGenSpeed[j] - Region2EndGenSpeed[j] );
                 torqueGenCommanded = Region2EndGenTorque + torqueSlope*dGenSpeed;
             }
             // Region 3.
-            else if (genSpeedF >= RatedGenSpeed)
+            else if (genSpeedF >= RatedGenSpeed[j])
             {
               //Info << "Region 3" << endl;
                 torqueGenCommanded = RatedGenTorque[j];
-              //torqueGenCommanded = (RatedGenTorque[j] * RatedGenSpeed) / genSpeedF;
+              //torqueGenCommanded = (RatedGenTorque[j] * RatedGenSpeed[j]) / genSpeedF;
             }

@@ -303,6 +303,12 @@ private:
 
             //- Generator efficiency.
             DynamicList<scalar> GenEfficiency;
+
+            //- Gear-box efficiency. (per turbine) //varyeff
+            DynamicList<scalar> GBEfficiencyPerTurbine;
+
+            //- Generator efficiency. (per turbine) //varyeff
+            DynamicList<scalar> GenEfficiencyPerTurbine;
             
             //- Rated rotor speed (rpm).
             DynamicList<scalar> RatedRotSpeed;
@@ -361,6 +367,9 @@ private:
 
                 //- Cut-in generator speed (rpm).
                 DynamicList<scalar> CutInGenSpeed;
+
+                //- Cut-in generator speed (rpm).
+                DynamicList<scalar> RatedGenSpeed;
 
                 //- Generator speed at start of region 2 (rpm).
                 DynamicList<scalar> Region2StartGenSpeed;

@@ -1,7 +1,12 @@
 //For each turbine, yaw 1 deg/s in direction of error, if error is less than this increment do nothing
 
+//Info << "(yaw) numTurbines = " << numTurbines << endl;
+//Info << "(yaw) i = " << i << endl;
+//Info << "(yaw) superInfoFromSC = " << superInfoFromSC << endl;
+//Info << "(yaw) nacYaw = " << nacYaw << endl;
+
 //Compute the yaw error
-yawError = superInfoFromSC[i * numTurbines] - nacYaw[i];
+yawError = superInfoFromSC[i * superInfoLength] - nacYaw[i];
 
 
 //Wrap the yaw to be +/- 180
@@ -25,3 +30,4 @@ else if  (yawError < 0)
 else
 	deltaNacYaw[i] = Foam::constant::mathematical::pi / 180.0 * runTime_.deltaT().value();  // Yaw positive
 
+//Info << "(deltaNacYaw) i = " << deltaNacYaw << endl;

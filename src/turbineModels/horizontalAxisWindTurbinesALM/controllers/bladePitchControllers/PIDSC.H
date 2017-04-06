@@ -19,7 +19,7 @@
                 scalar derivSpeedError = (speedError[i] - speedErrorLast) / dt;
 
                 // Saturate the integrated speed error based on pitch saturation.
-                intSpeedError[i] = min(max(intSpeedError[i], PitchMin[j]/(GK*PitchControlKI[j])), PitchMax[j]/(GK*PitchControlKI[j]));
+                intSpeedError[i] = min(max(intSpeedError[i], superInfoFromSC[i*superInfoLength+1]/(GK*PitchControlKI[j])), PitchMax[j]/(GK*PitchControlKI[j]));
 
                 // Compute the pitch components from the proportional, integral,
                 // and derivative parts and sum them.
@@ -30,7 +30,7 @@
 
                 // Saturate the pitch based on the pitch limits of the pitch
                 // actuator.
-                pitchCommanded = min(max(pitchCommanded, superInfoFromSC[i*numTurbines+1]), PitchMax[j]);
+                pitchCommanded = min(max(pitchCommanded, superInfoFromSC[i*superInfoLength+1]), PitchMax[j]);
             }
             // If first call to controller, initialize some values.
             else

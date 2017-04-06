@@ -352,6 +352,9 @@ private:
                 //- Cut-in generator speed (rpm).
                 DynamicList<scalar> CutInGenSpeed;
 
+                //- Cut-in generator speed (rpm).
+                DynamicList<scalar> RatedGenSpeed;
+
                 //- Generator speed at start of region 2 (rpm).
                 DynamicList<scalar> Region2StartGenSpeed;
 

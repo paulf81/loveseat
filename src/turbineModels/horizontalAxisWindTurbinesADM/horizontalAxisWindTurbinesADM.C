@@ -183,6 +183,8 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         pitch.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("Pitch"))));
         nacYaw.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("NacYaw"))));
         fluidDensity.append(scalar(readScalar(turbineArrayProperties.subDict(turbineName[i]).lookup("fluidDensity")))); 
+        GBEfficiencyPerTurbine.append(0.0);  //varyeff
+        GenEfficiencyPerTurbine.append(0.0);  //varyeff
     }
 
 
@@ -277,6 +279,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         else if (GenTorqueControllerType[i] == "fiveRegion")
         {
             CutInGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("CutInGenSpeed")));
+            RatedGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("RatedGenSpeed")));
             Region2StartGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("Region2StartGenSpeed")));
             Region2EndGenSpeed.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("Region2EndGenSpeed")));
             CutInGenTorque.append(readScalar(turbineProperties.subDict("GenTorqueControllerParams").lookup("CutInGenTorque")));
@@ -362,6 +365,15 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         twist.clear();
         id.clear();
     }
+
+    //varyeff
+    //assign all efficiencies for all turbines to the initial values assigned
+    forAll(turbineName,i)
+    {
+        GBEfficiencyPerTurbine[i] = GBEfficiency[0];
+        GenEfficiencyPerTurbine[i] = GenEfficiency[0];
+    }
+
 
 
     // Catalog the various distinct types of airfoils used in the various
@@ -868,7 +880,7 @@ void horizontalAxisWindTurbinesADM::computeRotSpeed()
 
         // If the generator torque and blade pitch controllers are both set to "none", then
         // the rotor speed will remain fixed at its initial speed.
-        if ((GenTorqueControllerType[j] == "none") && (BladePitchControllerType[j] == "none"))
+        if ((GenTorqueControllerType[j] == "none") ||  (BladePitchControllerType[j] == "none"))
         {
             // Do nothing.
         }
@@ -877,7 +889,7 @@ void horizontalAxisWindTurbinesADM::computeRotSpeed()
         // based on the summation of aerodynamic and generator torque on the rotor.
         else
         {
-            rotSpeed[i] += (dt/DriveTrainIner[j])*(GBEfficiency[j]*torqueRotor[i]*fluidDensity[i] - GBRatio[j]*torqueGen[i]);
+            rotSpeed[i] += (dt/DriveTrainIner[j])*(GBEfficiencyPerTurbine[i]*torqueRotor[i]*fluidDensity[i] - GBRatio[j]*torqueGen[i]); //varyeff, set to per turbien eff, note index change!
         }
 
 
@@ -1012,25 +1024,35 @@ void horizontalAxisWindTurbinesADM::superController()
 {
 	Info << "Entering SuperController" << endl;
 
+    //Info << "(sc) superInfoLength = " << superInfoLength << endl;
+
 	//As a first step spool up the "To" data from each of the turbines
 	List<scalar> superInfoLocal(superInfoLength*numTurbines,0.0);
 	//superInfoLocal = List<scalar> (superInfoLength*numTurbines,0.0);
+
+    //Info << "(sc) superInfoLocal = " << superInfoLocal << endl;
 
     for(int si = 0; si < superInfoLength *numTurbines; si++)
     {
     	superInfoLocal[si] = superInfoToSC[si];
     }
 
+    //Info << "(sc2) superInfoLocal = " << superInfoLocal << endl;
+
     //Gather and scatter across procs
 	Pstream::gather(superInfoLocal,sumOp<List<scalar> >());
     Pstream::scatter(superInfoLocal);
 
+    //Info << "(sc3) superInfoLocal = " << superInfoLocal << endl;
 
     // Send back out
     for(int si = 0; si < superInfoLength *numTurbines; si++)
     {
     	superInfoToSC[si] = superInfoLocal[si];
     }
+
+    //Info << "(sc4) superInfoLocal = " << superInfoLocal << endl;
+    //Info << "(sc4) superInfoToSC = " << superInfoToSC << endl;
 
     //Call the desired super controller
     callSCSimple();
@@ -1052,13 +1074,13 @@ void horizontalAxisWindTurbinesADM::callSCSimple()
 	for(int i = 0; i < numTurbines; i++)
 	{
 		// First collect the yaw target and correct
-		superInfoFromSC[i*numTurbines] = outputArray[i*numTurbines];
-		superInfoFromSC[i*numTurbines] = compassToStandard(superInfoFromSC[i*numTurbines]);
-		superInfoFromSC[i*numTurbines] = superInfoFromSC[i*numTurbines] * degRad;
+		superInfoFromSC[i*superInfoLength] = outputArray[i*superInfoLength];
+		superInfoFromSC[i*superInfoLength] = compassToStandard(superInfoFromSC[i*superInfoLength]);
+		superInfoFromSC[i*superInfoLength] = superInfoFromSC[i*superInfoLength] * degRad;
 
 		// Next collect the minimum pitch angle
-		superInfoFromSC[i*numTurbines+1] = outputArray[i*numTurbines+1];
-		superInfoFromSC[i*numTurbines+1] = superInfoFromSC[i*numTurbines+1] * degRad;
+		superInfoFromSC[i*superInfoLength+1] = outputArray[i*superInfoLength+1];
+		superInfoFromSC[i*superInfoLength+1] = superInfoFromSC[i*superInfoLength+1] * degRad;
 
 
 	}
@@ -1272,6 +1294,9 @@ void horizontalAxisWindTurbinesADM::computeWindVectors()
 
 void horizontalAxisWindTurbinesADM::computeBladeForce()
 {
+    //varyeff, operating point is normalized per turbine power used to determine efficiency
+    float powOpPoint;
+
     // Take the x,y,z wind vectors and project them into the blade coordinate system.
     // Proceed turbine by turbine.
     forAll(windVectors, i)
@@ -1436,7 +1461,33 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         powerRotor[i] = torqueRotor[i] * rotSpeed[i];
 
         // Compute the generator electrical power.
-        powerGenerator[i] = torqueGen[i] * (rotSpeed[i] * GBRatio[m]) * GenEfficiency[m];
+        powerGenerator[i] = torqueGen[i] * (rotSpeed[i] * GBRatio[m]) * GenEfficiencyPerTurbine[i];  //vary eff, now based on varying efficiency NOTE I!!
+
+        //varyeff
+        // Paul (GAMESA ONLY, LOVESEAT etc.,) 
+        // Update efficiencies based on power
+        
+        powOpPoint = (powerGenerator[i])/2000000.0;  //get opoint for this turbine (normalized power)
+
+        Info << "*****Turbine = " << i << tab << "powOp = " << powOpPoint << endl;
+        Info << "*****Power = " << powerGenerator[i] <<endl;
+
+
+        // Update gearbox  efficiency //varyeff
+        if (powOpPoint<0.16915)
+            GBEfficiencyPerTurbine[i] = 198.47193832*powOpPoint*powOpPoint*powOpPoint -79.77164146*powOpPoint*powOpPoint + 10.41442018*powOpPoint + 0.47483157;  
+        else
+            GBEfficiencyPerTurbine[i] = -0.24820627*powOpPoint*powOpPoint*powOpPoint +0.28750697*powOpPoint*powOpPoint + 0.02204702*powOpPoint + 0.90278056; 
+        
+        Info << "*****GB = " << GBEfficiencyPerTurbine[i]  << endl;
+
+        // Update generator efficiency //varyeff
+        if (powOpPoint<0.16915)
+            GenEfficiencyPerTurbine[i] = -17.37304227*powOpPoint*powOpPoint*powOpPoint  -6.64159415*powOpPoint*powOpPoint + 3.58242499*powOpPoint +  0.61539645;  
+        else
+            GenEfficiencyPerTurbine[i] = 0.06051991*powOpPoint*powOpPoint*powOpPoint -0.12426195*powOpPoint*powOpPoint + 0.08857418*powOpPoint + 0.93556377; 
+
+        Info << "*****Gen = " << GenEfficiencyPerTurbine[i]  << endl;
 
     }
 }
@@ -1725,6 +1776,7 @@ void horizontalAxisWindTurbinesADM::update()
         rotateBlades();
         yawNacelle();
         superController(); //Loveseat
+        //printDebug();
     }
     else if(bladeUpdateType[0] == "newPosition")
     {
@@ -1743,6 +1795,8 @@ void horizontalAxisWindTurbinesADM::update()
         // points.
       //findControlProcNo();
         computeWindVectors();
+
+        //printDebug();
     }
 
     // Compute the blade forces.
@@ -1932,7 +1986,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *torqueGenFile_ << torqueGen[i] << endl;
             *thrustFile_ << thrust[i]*fluidDensity[i] << endl;
             *powerRotorFile_ << powerRotor[i]*fluidDensity[i] << endl;
-            *powerGeneratorFile_ << powerGenerator[i]*fluidDensity[i] << endl;
+            *powerGeneratorFile_ << powerGenerator[i]<< endl;
             *rotSpeedFile_ << rotSpeed[i]/rpmRadSec << endl;
             *rotSpeedFFile_ << rotSpeedF[i]/rpmRadSec << endl;
             *azimuthFile_ << azimuth[i]/degRad << endl;
