@@ -637,10 +637,12 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
 
         sectorIndices.append(List<List<label> >(nRadial[i]));
         bladePoints.append(List<List<vector> >(nRadial[i]));
+        annoPoints.append(vector::zero); //Gamesa
         bladePointsPerturbVector.append(List<List<vector> >(nRadial[i]));
         elementAzimuth.append(List<List<scalar> >(nRadial[i]));
         bladeForce.append(List<List<vector> >(nRadial[i]));
         bladeAlignedVectors.append(List<List<List<vector > > >(nRadial[i]));
+        windVectorsAnno.append(vector::zero);
         windVectors.append(List<List<vector> >(nRadial[i]));
         alpha.append(List<List<scalar> >(nRadial[i]));
         Vmag.append(List<List<scalar> >(nRadial[i]));
@@ -651,6 +653,7 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
         axialForce.append(List<List<scalar> >(nRadial[i]));
         tangentialForce.append(List<List<scalar> >(nRadial[i]));
         minDisCellID.append(List<List<label> >(nRadial[i]));
+        minDisCellIDAnno.append(0); //Gamesa
         deltaNacYaw.append(0.0);
         deltaAzimuth.append(0.0);
         thrust.append(0.0);
@@ -745,6 +748,10 @@ horizontalAxisWindTurbinesADM::horizontalAxisWindTurbinesADM
             dist = dist + 0.5*dr[i][m];
         }
 
+        //Gamesa initialize anno
+        annoPoints[i] = rotorApex[i] ;
+        annoPoints[i].x()-= 50;
+        findControlProcNoAnno();
 
 
 
@@ -1134,6 +1141,48 @@ void horizontalAxisWindTurbinesADM::controlBladePitch()
     }
 }
 
+//Gamesa
+void horizontalAxisWindTurbinesADM::findControlProcNoAnno()
+{
+    List<scalar> minDisLocal(numTurbines, 1.0E30);
+    List<scalar> minDisGlobal(numTurbines, 1.0E30);
+
+    forAll(annoPoints, i)
+    {
+        vector perturbVec = vector::zero;
+        perturbVec.x() =  1.0E-5;
+        perturbVec.y() = -1.0E-5;
+        perturbVec.z() =  1.5E-5;
+        label cellID = 0;
+        scalar minDis = 1E30;// mag(mesh_.C()[cellID] - (annoPoints[i] + perturbVec));
+        forAll(U_.mesh().cells(),cellI)
+        {
+            scalar dis = mag(mesh_.C()[cellI] - (annoPoints[i] + perturbVec));
+            if (dis <= minDis)
+            {
+                cellID = cellI;
+            }
+            minDis = mag(mesh_.C()[cellID] - (annoPoints[i] + perturbVec));
+        }
+        minDisLocal[i] = minDis;
+        minDisGlobal[i] = minDis;
+        minDisCellIDAnno[i] = cellID;
+    }
+
+    Pstream::gather(minDisGlobal,minOp<List<scalar> >());
+    Pstream::scatter(minDisGlobal);
+    Info << "-------------------------------minDisGlobal---------------------------------" << endl;
+    Info << minDisGlobal << endl;
+
+    forAll(annoPoints, i)
+    {
+        if(minDisGlobal[i] != minDisLocal[i])
+        {
+            minDisCellIDAnno[i] = -1;
+        }
+    }
+}
+
 
 void horizontalAxisWindTurbinesADM::findControlProcNo()
 {
@@ -1216,12 +1265,35 @@ void horizontalAxisWindTurbinesADM::findControlProcNo()
 
 void horizontalAxisWindTurbinesADM::computeWindVectors()
 {
-    // Create a list of wind velocity in x, y, z coordinates for each blade point.
-    List<vector> windVectorsLocal(totDiskPointsArray,vector::zero);
-
     // If linear interpolation of the velocity from the CFD mesh to the actuator
     // points is used, we need velocity gradient information.
     gradU = fvc::grad(U_);
+
+    // Gamesa anno part.
+    forAll(windVectorsAnno, i)
+    {
+        windVectorsAnno[i] = vector::zero;
+
+        if(minDisCellIDAnno[i] != -1)
+        {
+
+            windVectorsAnno[i] = U_[minDisCellIDAnno[i]];
+            //Pout << "nearest velocity " << windVectorsAnno[i] << endl;
+            vector dx = annoPoints[i] - mesh_.C()[minDisCellIDAnno[i]];
+            vector dU = dx & gradU[minDisCellIDAnno[i]];
+            windVectorsAnno[i] += dU;
+            //Pout << "linear interp velocity " << windVectorsAnno[i] << endl;
+        }
+    }
+    Pstream::gather(windVectorsAnno,sumOp<List<vector> >());
+    Pstream::scatter(windVectorsAnno);
+    //Info << "parallel comm velocity " << windVectorsAnno << endl;
+
+
+    // Create a list of wind velocity in x, y, z coordinates for each blade point.
+    List<vector> windVectorsLocal(totDiskPointsArray,vector::zero);
+
+
 
     forAll(turbinesControlled, p)
     {
@@ -1469,8 +1541,8 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         
         powOpPoint = (powerGenerator[i])/2000000.0;  //get opoint for this turbine (normalized power)
 
-        Info << "*****Turbine = " << i << tab << "powOp = " << powOpPoint << endl;
-        Info << "*****Power = " << powerGenerator[i] <<endl;
+        //Info << "*****Turbine = " << i << tab << "powOp = " << powOpPoint << endl;
+        //Info << "*****Power = " << powerGenerator[i] <<endl;
 
 
         // Update gearbox  efficiency //varyeff
@@ -1479,7 +1551,7 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         else
             GBEfficiencyPerTurbine[i] = -0.24820627*powOpPoint*powOpPoint*powOpPoint +0.28750697*powOpPoint*powOpPoint + 0.02204702*powOpPoint + 0.90278056; 
         
-        Info << "*****GB = " << GBEfficiencyPerTurbine[i]  << endl;
+        //Info << "*****GB = " << GBEfficiencyPerTurbine[i]  << endl;
 
         // Update generator efficiency //varyeff
         if (powOpPoint<0.16915)
@@ -1487,7 +1559,7 @@ void horizontalAxisWindTurbinesADM::computeBladeForce()
         else
             GenEfficiencyPerTurbine[i] = 0.06051991*powOpPoint*powOpPoint*powOpPoint -0.12426195*powOpPoint*powOpPoint + 0.08857418*powOpPoint + 0.93556377; 
 
-        Info << "*****Gen = " << GenEfficiencyPerTurbine[i]  << endl;
+        //Info << "*****Gen = " << GenEfficiencyPerTurbine[i]  << endl;
 
     }
 }
@@ -1752,6 +1824,8 @@ scalar horizontalAxisWindTurbinesADM::standardToCompass(scalar dir)
     
 void horizontalAxisWindTurbinesADM::update()
 {
+    float yawSum = 0;
+    
     // Update the time step size.
     dt = runTime_.deltaT().value();
 
@@ -1772,6 +1846,17 @@ void horizontalAxisWindTurbinesADM::update()
         controlGenTorque();
         controlBladePitch();
         controlNacYaw();
+
+        // If yawing, update control procs
+        yawSum = 0;
+        forAll(turbineName,i)
+            yawSum+= abs(deltaNacYaw[i]);
+        if (yawSum > 0.001)
+        {
+            Info<<"Yawing, update control procs"<<endl;
+            findControlProcNo();
+        }
+
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
@@ -1785,6 +1870,17 @@ void horizontalAxisWindTurbinesADM::update()
         controlGenTorque();
         controlBladePitch();
         controlNacYaw();
+
+        // If yawing, update control procs
+        yawSum = 0;
+        forAll(turbineName,i)
+            yawSum+= abs(deltaNacYaw[i]);
+        if (yawSum > 0.001)
+        {
+            Info<<"Yawing, update control procs"<<endl;
+            findControlProcNo();
+        }
+
         computeRotSpeed();
         rotateBlades();
         yawNacelle();
@@ -1889,6 +1985,10 @@ void horizontalAxisWindTurbinesADM::openOutputFiles()
         powerGeneratorFile_ = new OFstream(rootDir/time/"powerGenerator");
         *powerGeneratorFile_ << "#Turbine    Time(s)    dt(s)    generator power (W)" << endl;
 
+        // Create an anno wind file.
+        annoWindFile_ = new OFstream(rootDir/time/"annoWind");
+        *annoWindFile_ << "#Turbine    Time(s)    dt(s)    wind speed (m/s)" << endl;
+
         // Create a rotation rate file.
         rotSpeedFile_ = new OFstream(rootDir/time/"rotSpeed");
         *rotSpeedFile_ << "#Turbine    Time(s)    dt(s)    rotor rotation rate(rpm)" << endl;
@@ -1973,6 +2073,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *thrustFile_ << i << " " << time << " " << dt << " ";
             *powerRotorFile_ << i << " " << time << " " << dt << " ";
             *powerGeneratorFile_ << i << " " << time << " " << dt << " ";
+            *annoWindFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFile_ << i << " " << time << " " << dt << " ";
             *rotSpeedFFile_ << i << " " << time << " " << dt << " ";
             *azimuthFile_ << i << " " << time << " " << dt << " ";
@@ -1987,6 +2088,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
             *thrustFile_ << thrust[i]*fluidDensity[i] << endl;
             *powerRotorFile_ << powerRotor[i]*fluidDensity[i] << endl;
             *powerGeneratorFile_ << powerGenerator[i]<< endl;
+            *annoWindFile_ << windVectorsAnno[i].x()<< endl;
             *rotSpeedFile_ << rotSpeed[i]/rpmRadSec << endl;
             *rotSpeedFFile_ << rotSpeedF[i]/rpmRadSec << endl;
             *azimuthFile_ << azimuth[i]/degRad << endl;
@@ -2054,6 +2156,7 @@ void horizontalAxisWindTurbinesADM::printOutputFiles()
         *thrustFile_ << endl;
         *powerRotorFile_ << endl;
         *powerGeneratorFile_ << endl;
+        *annoWindFile_ << endl;
         *rotSpeedFile_ << endl;
         *rotSpeedFFile_ << endl;
         *azimuthFile_ << endl;

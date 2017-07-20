@@ -471,6 +471,7 @@ private:
             //  processor in control of that point.  If the value is -1, then this
             //  processor is not in control of this point.
             DynamicList<List<List<label> > > minDisCellID;
+            DynamicList<label> minDisCellIDAnno;  //Gamesa
 
             //- List of locations of the intersection of the tower axis and the shaft 
             //  centerline relative to the origin (m).
@@ -496,6 +497,9 @@ private:
 
             //- Actuator line point locations with respect to origin.
             DynamicList<List<List<vector> > > bladePoints;
+
+            //- Gamesa anno points
+            DynamicList<vector> annoPoints;
 
             //- Random perturbation of blade points applied only when determining control
             //  processors to break ties.  This does not affect true location where
@@ -543,6 +547,7 @@ private:
             DynamicList<List<List<List<vector> > > > bladeAlignedVectors;
 
             //- Wind vector at each actuator point in blade-aligned coordinate system.
+            DynamicList<vector> windVectorsAnno; //Gamesa
             DynamicList<List<List<vector> > > windVectors;
             DynamicList<List<List<vector> > > windVectorsSecAvg;
 
@@ -664,6 +669,9 @@ private:
             //- List of output files for generator power.
             OFstream* powerGeneratorFile_;
 
+            //- List of output files for anno wind speed.
+            OFstream* annoWindFile_;
+
             //- List of output files for rotation rate.
             OFstream* rotSpeedFile_;
 
@@ -718,6 +726,9 @@ private:
         //- Find out which processor zone each actuator line point lies within.
         //  (Which processor is controlling each actuator line point?)
         void findControlProcNo();
+
+                //Gamesa
+        void findControlProcNoAnno();
         
 	//- Compute the unit vector at all blade points in blade-aligned
 	//  coordinates.  Then, compute the wind vector in these blade-aligned
